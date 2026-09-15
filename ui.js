@@ -25,7 +25,6 @@
       { coef: [1, 0], rel: '>=', rhs: 5 },
       { coef: [1, 0], rel: '<=', rhs: 2 }] }
   ];
-  var demoIdx = 0;
 
   var state = { dir: 'max', n: 2, m: 2, c: [2, 3], cons: [] };
 
@@ -51,8 +50,22 @@
     state.cons = d.cons.map(function (k) {
       return { coef: k.coef.slice(), rel: k.rel, rhs: k.rhs };
     });
+    /* max/min 分段按钮必须跟着例题同步，否则界面显示与实际方向不符 */
+    Array.prototype.forEach.call($('dirSeg').querySelectorAll('button'), function (b) {
+      b.classList.toggle('on', b.dataset.dir === state.dir);
+    });
+    markDemoSelected(i);
     renderInput();
-    $('demoBtn').textContent = d.name;
+  }
+
+  /* 在下拉菜单里标记当前选中的例题。
+     按钮文字固定为「经典例题」，不再被例题名替换 —— 否则按钮看起来像标签，
+     且每次点击都直接跳到下一个例题，容易把已输入的内容冲掉。 */
+  function markDemoSelected(i) {
+    var items = $('demoMenu').querySelectorAll('button[data-i]');
+    Array.prototype.forEach.call(items, function (el) {
+      el.classList.toggle('on', +el.dataset.i === i);
+    });
   }
 
   /* ---------------- 渲染输入表 ---------------- */
@@ -68,9 +81,18 @@
       html += '<td><input class="num" type="text" inputmode="decimal" '
         + 'data-k="c" data-j="' + j2 + '" value="' + esc(fmtIn(state.c[j2])) + '"></td>';
     }
-    html += '<td></td><td></td><td></td></tr>';
+    if (n === 0) {
+      html += '<td colspan="3" class="empty-tip">还没有变量，点下方「+ 变量」添加</td>';
+    } else {
+      html += '<td></td><td></td><td></td>';
+    }
+    html += '</tr>';
 
     /* 约束行 */
+    if (m === 0) {
+      html += '<tr><td class="lbl">&mdash;</td><td colspan="' + (n + 3)
+        + '" class="empty-tip">没有约束条件，点下方「+ 约束」添加</td></tr>';
+    }
     for (var i = 0; i < m; i++) {
       var k = state.cons[i];
       html += '<tr><td class="lbl">' + (i + 1) + '</td>';
@@ -91,8 +113,8 @@
     html += '</tbody>';
     $('inTbl').innerHTML = html;
     bindInputs();
-    $('delVar').disabled = (state.n <= 1);
-    $('delCon').disabled = (state.m <= 1);
+    $('delVar').disabled = (state.n < 1);
+    $('delCon').disabled = (state.m < 1);
     $('addVar').disabled = (state.n >= MAXN);
     $('addCon').disabled = (state.m >= MAXM);
   }
@@ -118,7 +140,7 @@
     });
     Array.prototype.forEach.call(t.querySelectorAll('button.delvar'), function (b) {
       b.addEventListener('click', function () {
-        if (state.m <= 1) return;
+        if (state.m < 1) return;
         state.cons.splice(+b.dataset.i, 1);
         state.m--;
         renderInput();
@@ -126,9 +148,9 @@
     });
   }
 
-  /* ---------------- 变量数 / 约束数 ---------------- */
+  /* ---------------- 变量数 / 约束数（下限放宽到 0） ---------------- */
   function setN(n) {
-    n = Math.max(1, Math.min(MAXN, n));
+    n = Math.max(0, Math.min(MAXN, n));
     if (n === state.n) return;
     var j;
     while (state.c.length < n) state.c.push(0);
@@ -141,7 +163,7 @@
     renderInput();
   }
   function setM(m) {
-    m = Math.max(1, Math.min(MAXM, m));
+    m = Math.max(0, Math.min(MAXM, m));
     if (m === state.m) return;
     while (state.cons.length < m) {
       var coef = [];
@@ -272,6 +294,9 @@
       var sols = res.solution.map(function (v, j) {
         return 'x' + (j + 1) + ' = <span class="v">' + fmtNum(v) + '</span>';
       }).join('　　');
+      if (res.solution.length === 0) {
+        sols = '<span class="muted">本题没有决策变量</span>';
+      }
       var extra = '<div class="vsum">';
       extra += '非基变量取 0。最优值 <b>z = ' + fmtNum(res.objective) + '</b>。';
       if (res.altOptimal.length) {
@@ -331,13 +356,34 @@
   $('addCon').addEventListener('click', function () { setM(state.m + 1); });
   $('delCon').addEventListener('click', function () { setM(state.m - 1); });
   $('solveBtn').addEventListener('click', doSolve);
-  $('demoBtn').addEventListener('click', function () {
-    demoIdx = (demoIdx + 1) % DEMOS.length;
-    loadDemo(demoIdx);
+
+  /* 例题选择：改成下拉列表。
+     点按钮只展开/收起列表，只有真正选中某一项才会载入，
+     不会再像以前那样"点一下就跳到下一个例题、把当前输入冲掉"。 */
+  var demoMenu = $('demoMenu');
+  demoMenu.innerHTML = DEMOS.map(function (d, i) {
+    return '<button type="button" data-i="' + i + '">' + esc(d.name) + '</button>';
+  }).join('');
+
+  function closeDemoMenu() {
+    demoMenu.classList.remove('open');
+    $('demoBtn').classList.remove('open');
+  }
+  $('demoBtn').addEventListener('click', function (e) {
+    e.stopPropagation();
+    var open = demoMenu.classList.toggle('open');
+    $('demoBtn').classList.toggle('open', open);
+  });
+  demoMenu.addEventListener('click', function (e) {
+    e.stopPropagation();
+    var btn = e.target.closest ? e.target.closest('button[data-i]') : null;
+    if (!btn) return;
+    loadDemo(+btn.dataset.i);
+    closeDemoMenu();
     doSolve();
   });
+  document.addEventListener('click', closeDemoMenu);
 
   /* ---------------- 启动 ---------------- */
   loadDemo(0);
-  $('dirSeg').querySelector('button[data-dir="max"]').classList.add('on');
 })();

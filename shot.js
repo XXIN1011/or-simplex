@@ -98,6 +98,13 @@ class CDP {
   }
   await sleep(700);
 
+  // 可选的额外动作（第 7 个参数）：例如展开下拉、把变量减到 0 等
+  const extraJs = process.argv[7] || '';
+  if (extraJs) {
+    await cdp.send('Runtime.evaluate', { expression: extraJs }, sessionId);
+    await sleep(450);
+  }
+
   const probe = await cdp.send('Runtime.evaluate', {
     expression: `JSON.stringify({
       errors: window.__errors,

@@ -95,7 +95,41 @@ button.btn.primary{
   font-size:15px;font-weight:600;padding:11px 13px;
 }
 button.btn.primary:active{background:#1d4ed8}
-button.btn.pick{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+button.btn.pick{
+  width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;
+  text-align:left;white-space:nowrap;
+}
+button.btn.pick.open{border-color:var(--accent);color:var(--accent)}
+.caret{
+  width:9px;height:6px;flex:none;background:currentColor;opacity:.55;
+  clip-path:polygon(0 0,100% 0,50% 100%);
+}
+
+/* ---------- 例题下拉菜单 ---------- */
+.pick-wrap{position:relative;flex:1;min-width:0}
+.pick-menu{
+  position:absolute;left:0;bottom:calc(100% + 6px);z-index:30;
+  min-width:100%;max-width:calc(100vw - 40px);
+  background:#fff;border:1px solid var(--line2);border-radius:10px;
+  box-shadow:0 6px 20px rgba(0,0,0,.10);
+  padding:4px;display:none;max-height:56vh;overflow-y:auto;
+}
+.pick-menu.open{display:block}
+.pick-menu button{
+  display:block;width:100%;text-align:left;border:0;background:transparent;
+  font:inherit;font-size:13.5px;color:var(--fg);
+  padding:10px 11px;border-radius:7px;cursor:pointer;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.pick-menu button:active{background:#f4f4f5}
+.pick-menu button.on{color:var(--accent);font-weight:600;background:var(--accent-soft)}
+
+/* 输入表里的空状态提示 */
+.inp td.empty-tip{
+  font-size:12px;color:var(--fg3);text-align:left;
+  padding-left:8px;white-space:nowrap;
+}
+.verdict .muted{color:var(--fg3);font-size:14px;font-weight:400}
 
 /* ---------- 结果 ---------- */
 #result{display:none}
@@ -201,7 +235,12 @@ table.tb th.leave{color:var(--warn)}
       <button type="button" class="btn" id="delCon">− 约束</button>
     </div>
     <div class="actions">
-      <button type="button" class="btn pick" id="demoBtn">经典例题</button>
+      <div class="pick-wrap">
+        <button type="button" class="btn pick" id="demoBtn">
+          <span>经典例题</span><i class="caret"></i>
+        </button>
+        <div class="pick-menu" id="demoMenu"></div>
+      </div>
       <button type="button" class="btn primary" id="solveBtn">求　解</button>
     </div>
   </section>

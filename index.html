@@ -95,7 +95,41 @@ button.btn.primary{
   font-size:15px;font-weight:600;padding:11px 13px;
 }
 button.btn.primary:active{background:#1d4ed8}
-button.btn.pick{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+button.btn.pick{
+  width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;
+  text-align:left;white-space:nowrap;
+}
+button.btn.pick.open{border-color:var(--accent);color:var(--accent)}
+.caret{
+  width:9px;height:6px;flex:none;background:currentColor;opacity:.55;
+  clip-path:polygon(0 0,100% 0,50% 100%);
+}
+
+/* ---------- 例题下拉菜单 ---------- */
+.pick-wrap{position:relative;flex:1;min-width:0}
+.pick-menu{
+  position:absolute;left:0;bottom:calc(100% + 6px);z-index:30;
+  min-width:100%;max-width:calc(100vw - 40px);
+  background:#fff;border:1px solid var(--line2);border-radius:10px;
+  box-shadow:0 6px 20px rgba(0,0,0,.10);
+  padding:4px;display:none;max-height:56vh;overflow-y:auto;
+}
+.pick-menu.open{display:block}
+.pick-menu button{
+  display:block;width:100%;text-align:left;border:0;background:transparent;
+  font:inherit;font-size:13.5px;color:var(--fg);
+  padding:10px 11px;border-radius:7px;cursor:pointer;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.pick-menu button:active{background:#f4f4f5}
+.pick-menu button.on{color:var(--accent);font-weight:600;background:var(--accent-soft)}
+
+/* 输入表里的空状态提示 */
+.inp td.empty-tip{
+  font-size:12px;color:var(--fg3);text-align:left;
+  padding-left:8px;white-space:nowrap;
+}
+.verdict .muted{color:var(--fg3);font-size:14px;font-weight:400}
 
 /* ---------- 结果 ---------- */
 #result{display:none}
@@ -201,7 +235,12 @@ table.tb th.leave{color:var(--warn)}
       <button type="button" class="btn" id="delCon">− 约束</button>
     </div>
     <div class="actions">
-      <button type="button" class="btn pick" id="demoBtn">经典例题</button>
+      <div class="pick-wrap">
+        <button type="button" class="btn pick" id="demoBtn">
+          <span>经典例题</span><i class="caret"></i>
+        </button>
+        <div class="pick-menu" id="demoMenu"></div>
+      </div>
       <button type="button" class="btn primary" id="solveBtn">求　解</button>
     </div>
   </section>
@@ -293,9 +332,11 @@ function simplexSolve(problem) {
   var n = c0.length;
   var m = problem.constraints.length;
 
+  /* 允许 0 个变量或 0 个约束：
+     - 0 个约束 = 无约束问题：存在正检验数则无界，否则最优解取 0；
+     - 0 个变量 = 目标函数不含变量，目标值恒为 0。
+     两种情况都能给出确定结论，因此不再硬性拦截。 */
   var invalid = [];
-  if (n < 1) invalid.push('目标函数至少要有 1 个变量');
-  if (m < 1) invalid.push('至少要有 1 个约束条件');
   for (var q = 0; q < m; q++) {
     var kk = problem.constraints[q];
     if (kk.coef.length !== n) invalid.push('第 ' + (q + 1) + ' 个约束的系数个数与变量数不一致');
@@ -553,7 +594,6 @@ if (typeof module !== 'undefined' && module.exports) {
       { coef: [1, 0], rel: '>=', rhs: 5 },
       { coef: [1, 0], rel: '<=', rhs: 2 }] }
   ];
-  var demoIdx = 0;
 
   var state = { dir: 'max', n: 2, m: 2, c: [2, 3], cons: [] };
 
@@ -579,8 +619,22 @@ if (typeof module !== 'undefined' && module.exports) {
     state.cons = d.cons.map(function (k) {
       return { coef: k.coef.slice(), rel: k.rel, rhs: k.rhs };
     });
+    /* max/min 分段按钮必须跟着例题同步，否则界面显示与实际方向不符 */
+    Array.prototype.forEach.call($('dirSeg').querySelectorAll('button'), function (b) {
+      b.classList.toggle('on', b.dataset.dir === state.dir);
+    });
+    markDemoSelected(i);
     renderInput();
-    $('demoBtn').textContent = d.name;
+  }
+
+  /* 在下拉菜单里标记当前选中的例题。
+     按钮文字固定为「经典例题」，不再被例题名替换 —— 否则按钮看起来像标签，
+     且每次点击都直接跳到下一个例题，容易把已输入的内容冲掉。 */
+  function markDemoSelected(i) {
+    var items = $('demoMenu').querySelectorAll('button[data-i]');
+    Array.prototype.forEach.call(items, function (el) {
+      el.classList.toggle('on', +el.dataset.i === i);
+    });
   }
 
   /* ---------------- 渲染输入表 ---------------- */
@@ -596,9 +650,18 @@ if (typeof module !== 'undefined' && module.exports) {
       html += '<td><input class="num" type="text" inputmode="decimal" '
         + 'data-k="c" data-j="' + j2 + '" value="' + esc(fmtIn(state.c[j2])) + '"></td>';
     }
-    html += '<td></td><td></td><td></td></tr>';
+    if (n === 0) {
+      html += '<td colspan="3" class="empty-tip">还没有变量，点下方「+ 变量」添加</td>';
+    } else {
+      html += '<td></td><td></td><td></td>';
+    }
+    html += '</tr>';
 
     /* 约束行 */
+    if (m === 0) {
+      html += '<tr><td class="lbl">&mdash;</td><td colspan="' + (n + 3)
+        + '" class="empty-tip">没有约束条件，点下方「+ 约束」添加</td></tr>';
+    }
     for (var i = 0; i < m; i++) {
       var k = state.cons[i];
       html += '<tr><td class="lbl">' + (i + 1) + '</td>';
@@ -619,8 +682,8 @@ if (typeof module !== 'undefined' && module.exports) {
     html += '</tbody>';
     $('inTbl').innerHTML = html;
     bindInputs();
-    $('delVar').disabled = (state.n <= 1);
-    $('delCon').disabled = (state.m <= 1);
+    $('delVar').disabled = (state.n < 1);
+    $('delCon').disabled = (state.m < 1);
     $('addVar').disabled = (state.n >= MAXN);
     $('addCon').disabled = (state.m >= MAXM);
   }
@@ -646,7 +709,7 @@ if (typeof module !== 'undefined' && module.exports) {
     });
     Array.prototype.forEach.call(t.querySelectorAll('button.delvar'), function (b) {
       b.addEventListener('click', function () {
-        if (state.m <= 1) return;
+        if (state.m < 1) return;
         state.cons.splice(+b.dataset.i, 1);
         state.m--;
         renderInput();
@@ -654,9 +717,9 @@ if (typeof module !== 'undefined' && module.exports) {
     });
   }
 
-  /* ---------------- 变量数 / 约束数 ---------------- */
+  /* ---------------- 变量数 / 约束数（下限放宽到 0） ---------------- */
   function setN(n) {
-    n = Math.max(1, Math.min(MAXN, n));
+    n = Math.max(0, Math.min(MAXN, n));
     if (n === state.n) return;
     var j;
     while (state.c.length < n) state.c.push(0);
@@ -669,7 +732,7 @@ if (typeof module !== 'undefined' && module.exports) {
     renderInput();
   }
   function setM(m) {
-    m = Math.max(1, Math.min(MAXM, m));
+    m = Math.max(0, Math.min(MAXM, m));
     if (m === state.m) return;
     while (state.cons.length < m) {
       var coef = [];
@@ -800,6 +863,9 @@ if (typeof module !== 'undefined' && module.exports) {
       var sols = res.solution.map(function (v, j) {
         return 'x' + (j + 1) + ' = <span class="v">' + fmtNum(v) + '</span>';
       }).join('　　');
+      if (res.solution.length === 0) {
+        sols = '<span class="muted">本题没有决策变量</span>';
+      }
       var extra = '<div class="vsum">';
       extra += '非基变量取 0。最优值 <b>z = ' + fmtNum(res.objective) + '</b>。';
       if (res.altOptimal.length) {
@@ -859,15 +925,36 @@ if (typeof module !== 'undefined' && module.exports) {
   $('addCon').addEventListener('click', function () { setM(state.m + 1); });
   $('delCon').addEventListener('click', function () { setM(state.m - 1); });
   $('solveBtn').addEventListener('click', doSolve);
-  $('demoBtn').addEventListener('click', function () {
-    demoIdx = (demoIdx + 1) % DEMOS.length;
-    loadDemo(demoIdx);
+
+  /* 例题选择：改成下拉列表。
+     点按钮只展开/收起列表，只有真正选中某一项才会载入，
+     不会再像以前那样"点一下就跳到下一个例题、把当前输入冲掉"。 */
+  var demoMenu = $('demoMenu');
+  demoMenu.innerHTML = DEMOS.map(function (d, i) {
+    return '<button type="button" data-i="' + i + '">' + esc(d.name) + '</button>';
+  }).join('');
+
+  function closeDemoMenu() {
+    demoMenu.classList.remove('open');
+    $('demoBtn').classList.remove('open');
+  }
+  $('demoBtn').addEventListener('click', function (e) {
+    e.stopPropagation();
+    var open = demoMenu.classList.toggle('open');
+    $('demoBtn').classList.toggle('open', open);
+  });
+  demoMenu.addEventListener('click', function (e) {
+    e.stopPropagation();
+    var btn = e.target.closest ? e.target.closest('button[data-i]') : null;
+    if (!btn) return;
+    loadDemo(+btn.dataset.i);
+    closeDemoMenu();
     doSolve();
   });
+  document.addEventListener('click', closeDemoMenu);
 
   /* ---------------- 启动 ---------------- */
   loadDemo(0);
-  $('dirSeg').querySelector('button[data-dir="max"]').classList.add('on');
 })();
 
 </script>

@@ -79,9 +79,11 @@ function simplexSolve(problem) {
   var n = c0.length;
   var m = problem.constraints.length;
 
+  /* 允许 0 个变量或 0 个约束：
+     - 0 个约束 = 无约束问题：存在正检验数则无界，否则最优解取 0；
+     - 0 个变量 = 目标函数不含变量，目标值恒为 0。
+     两种情况都能给出确定结论，因此不再硬性拦截。 */
   var invalid = [];
-  if (n < 1) invalid.push('目标函数至少要有 1 个变量');
-  if (m < 1) invalid.push('至少要有 1 个约束条件');
   for (var q = 0; q < m; q++) {
     var kk = problem.constraints[q];
     if (kk.coef.length !== n) invalid.push('第 ' + (q + 1) + ' 个约束的系数个数与变量数不一致');
