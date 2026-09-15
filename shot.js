@@ -17,7 +17,10 @@ const doClick  = (process.argv[5] || '1') === '1';
 const demoClicks = parseInt(process.argv[6] || '0', 10);
 
 const PORT = 9000 + Math.floor(Math.random() * 900);
-const url = 'file:///' + path.resolve(__dirname, pageFile).replace(/\\/g, '/');
+// 参数是 http(s) 开头就直接当线上地址用，否则当作本地文件
+const url = /^https?:\/\//i.test(pageFile)
+  ? pageFile
+  : 'file:///' + path.resolve(__dirname, pageFile).replace(/\\/g, '/');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'orchrome-'));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
