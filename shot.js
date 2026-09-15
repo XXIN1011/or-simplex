@@ -14,7 +14,6 @@ const pageFile = process.argv[2] || 'index.html';
 const outPng   = process.argv[3] || 'shot.png';
 const width    = parseInt(process.argv[4] || '390', 10);
 const doClick  = (process.argv[5] || '1') === '1';
-const demoClicks = parseInt(process.argv[6] || '0', 10);
 
 const PORT = 9000 + Math.floor(Math.random() * 900);
 // 参数是 http(s) 开头就直接当线上地址用，否则当作本地文件
@@ -86,20 +85,17 @@ class CDP {
   await cdp.send('Page.navigate', { url }, sessionId);
   await sleep(1000);
 
-  if (demoClicks > 0) {
-    for (let i = 0; i < demoClicks; i++) {
-      await cdp.send('Runtime.evaluate',
-        { expression: "document.getElementById('demoBtn').click()" }, sessionId);
-      await sleep(280);
-    }
-  } else if (doClick) {
+  if (doClick) {
     await cdp.send('Runtime.evaluate',
       { expression: "document.getElementById('solveBtn').click()" }, sessionId);
   }
   await sleep(700);
 
-  // 可选的额外动作（第 7 个参数）：例如展开下拉、把变量减到 0 等
-  const extraJs = process.argv[7] || '';
+  // 可选的额外动作（第 6 个参数）：直接给 JS，或用 @文件名 从文件读取
+  const extraArg = process.argv[6] || '';
+  const extraJs = extraArg.startsWith('@')
+    ? fs.readFileSync(path.join(__dirname, extraArg.slice(1)), 'utf8')
+    : extraArg;
   if (extraJs) {
     await cdp.send('Runtime.evaluate', { expression: extraJs }, sessionId);
     await sleep(450);

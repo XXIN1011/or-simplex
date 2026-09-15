@@ -6,27 +6,8 @@
 
   var MAXN = 6, MAXM = 8;
 
-  var DEMOS = [
-    { name: 'max z = 2x1 + 3x2', dir: 'max', c: [2, 3], cons: [
-      { coef: [1, 2], rel: '<=', rhs: 8 },
-      { coef: [4, 0], rel: '<=', rhs: 16 },
-      { coef: [0, 4], rel: '<=', rhs: 12 }] },
-    { name: 'min z = 2x1 + 3x2（≥ 约束）', dir: 'min', c: [2, 3], cons: [
-      { coef: [1, 1], rel: '>=', rhs: 3 },
-      { coef: [1, 2], rel: '>=', rhs: 4 }] },
-    { name: 'min z = 4x1 + x2（含等式）', dir: 'min', c: [4, 1], cons: [
-      { coef: [3, 1], rel: '=', rhs: 3 },
-      { coef: [4, 3], rel: '>=', rhs: 6 },
-      { coef: [1, 2], rel: '<=', rhs: 4 }] },
-    { name: '无界解示例', dir: 'max', c: [1, 0], cons: [
-      { coef: [-1, 1], rel: '<=', rhs: 0 },
-      { coef: [0, 1], rel: '<=', rhs: 3 }] },
-    { name: '无可行解示例', dir: 'max', c: [1, 0], cons: [
-      { coef: [1, 0], rel: '>=', rhs: 5 },
-      { coef: [1, 0], rel: '<=', rhs: 2 }] }
-  ];
-
-  var state = { dir: 'max', n: 2, m: 2, c: [2, 3], cons: [] };
+  /* 默认打开即为空状态：0 个决策变量、0 个约束，题目全部由用户自己搭建 */
+  var state = { dir: 'max', n: 0, m: 0, c: [], cons: [] };
 
   /* ---------------- 工具 ---------------- */
   function $(id) { return document.getElementById(id); }
@@ -40,40 +21,22 @@
     });
   }
 
-  /* ---------------- 载入数据 ---------------- */
-  function loadDemo(i) {
-    var d = DEMOS[i];
-    state.dir = d.dir;
-    state.n = d.c.length;
-    state.m = d.cons.length;
-    state.c = d.c.slice();
-    state.cons = d.cons.map(function (k) {
-      return { coef: k.coef.slice(), rel: k.rel, rhs: k.rhs };
-    });
-    /* max/min 分段按钮必须跟着例题同步，否则界面显示与实际方向不符 */
-    Array.prototype.forEach.call($('dirSeg').querySelectorAll('button'), function (b) {
-      b.classList.toggle('on', b.dataset.dir === state.dir);
-    });
-    markDemoSelected(i);
-    renderInput();
-  }
-
-  /* 在下拉菜单里标记当前选中的例题。
-     按钮文字固定为「经典例题」，不再被例题名替换 —— 否则按钮看起来像标签，
-     且每次点击都直接跳到下一个例题，容易把已输入的内容冲掉。 */
-  function markDemoSelected(i) {
-    var items = $('demoMenu').querySelectorAll('button[data-i]');
-    Array.prototype.forEach.call(items, function (el) {
-      el.classList.toggle('on', +el.dataset.i === i);
-    });
-  }
-
   /* ---------------- 渲染输入表 ---------------- */
   function renderInput() {
     var n = state.n, m = state.m, html = '';
-    html += '<thead><tr><th></th>';
-    for (var j = 0; j < n; j++) html += '<th class="var">x' + (j + 1) + '</th>';
-    html += '<th></th><th class="rhs">b</th><th></th></tr></thead><tbody>';
+    /* 完全没有变量也没有约束时不渲染表头，否则会留下一个孤零零的 "b" 悬在中间 */
+    if (n > 0 || m > 0) {
+      html += '<thead><tr><th></th>';
+      for (var j = 0; j < n; j++) html += '<th class="var">x' + (j + 1) + '</th>';
+      if (m > 0) {
+        html += '<th></th><th class="rhs">b</th><th></th>';
+      } else {
+        /* 没有约束行时，关系符 / b / 删除 这三列不存在，表头留空占位以保持列数一致 */
+        html += '<th colspan="3"></th>';
+      }
+      html += '</tr></thead>';
+    }
+    html += '<tbody>';
 
     /* 目标函数行 */
     html += '<tr><td class="lbl">z =</td>';
@@ -357,33 +320,7 @@
   $('delCon').addEventListener('click', function () { setM(state.m - 1); });
   $('solveBtn').addEventListener('click', doSolve);
 
-  /* 例题选择：改成下拉列表。
-     点按钮只展开/收起列表，只有真正选中某一项才会载入，
-     不会再像以前那样"点一下就跳到下一个例题、把当前输入冲掉"。 */
-  var demoMenu = $('demoMenu');
-  demoMenu.innerHTML = DEMOS.map(function (d, i) {
-    return '<button type="button" data-i="' + i + '">' + esc(d.name) + '</button>';
-  }).join('');
-
-  function closeDemoMenu() {
-    demoMenu.classList.remove('open');
-    $('demoBtn').classList.remove('open');
-  }
-  $('demoBtn').addEventListener('click', function (e) {
-    e.stopPropagation();
-    var open = demoMenu.classList.toggle('open');
-    $('demoBtn').classList.toggle('open', open);
-  });
-  demoMenu.addEventListener('click', function (e) {
-    e.stopPropagation();
-    var btn = e.target.closest ? e.target.closest('button[data-i]') : null;
-    if (!btn) return;
-    loadDemo(+btn.dataset.i);
-    closeDemoMenu();
-    doSolve();
-  });
-  document.addEventListener('click', closeDemoMenu);
-
   /* ---------------- 启动 ---------------- */
-  loadDemo(0);
+  /* 打开即是空状态（0 变量 0 约束），用户点「+ 变量」「+ 约束」自行搭建题目 */
+  renderInput();
 })();
