@@ -1,0 +1,18 @@
+# Netlify 部署配置
+# 本项目是零构建的纯静态单文件页面，直接发布仓库根目录即可。
+
+[build]
+  publish = "."
+  command = ""
+
+# 单文件工具页：HTML 不做长缓存，改完刷新即见最新版本
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# 中文文件名/路径无需特殊处理；此处仅显式声明字符集相关
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"

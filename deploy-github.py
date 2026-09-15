@@ -17,7 +17,25 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 os.chdir(ROOT)
 
 REPO = sys.argv[1] if len(sys.argv) > 1 else 'or-simplex'
-TOKEN = open('token.txt', encoding='utf-8').read().strip()
+
+
+def load_token():
+    """优先读 token.txt；没有就从本机 git 凭据管理器取。
+    （这台机器 github.com 网页端被 Steam++ hosts 劫持不可达，
+      但 Windows 凭据管理器里存有可用的 GitHub OAuth token。）"""
+    if os.path.exists('token.txt'):
+        return open('token.txt', encoding='utf-8').read().strip()
+    p = subprocess.run(['git', 'credential', 'fill'],
+                       input='protocol=https\nhost=github.com\n\n',
+                       capture_output=True, text=True, timeout=40)
+    for line in p.stdout.splitlines():
+        if line.startswith('password='):
+            return line.split('=', 1)[1].strip()
+    raise SystemExit('取不到 GitHub 凭据：请先在能上网的环境登录一次 GitHub，'
+                     '或手动写入 token.txt')
+
+
+TOKEN = load_token()
 API = 'https://api.github.com'
 ENV = dict(os.environ, GIT_TERMINAL_PROMPT='0')   # 禁止 git 弹交互提示
 
