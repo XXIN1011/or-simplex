@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>单纯形法</title>
+<style>
+:root{
+  --fg:#18181b; --fg2:#71717a; --fg3:#a1a1aa;
+  --line:#e4e4e7; --line2:#d4d4d8;
+  --bg:#f4f4f5; --card:#fff;
+  --accent:#2563eb; --accent-soft:#eff6ff;
+  --leave-soft:#fff7ed; --pivot:#f59e0b;
+  --ok:#15803d; --warn:#b45309; --err:#b91c1c;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--bg);color:var(--fg);
+  font-family:-apple-system,BlinkMacSystemFont,"HarmonyOS Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:15px;line-height:1.55;
+  padding:0 0 env(safe-area-inset-bottom);
+}
+.wrap{max-width:760px;margin:0 auto;padding:20px 12px 60px}
+
+/* ---------- 头部 ---------- */
+header{margin:0 2px 16px}
+h1{margin:0;font-size:21px;font-weight:650;letter-spacing:-.01em}
+header p{margin:3px 0 0;font-size:12.5px;color:var(--fg3);letter-spacing:.02em}
+
+/* ---------- 卡片 ---------- */
+.card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:12px}
+
+/* ---------- 分段控件 ---------- */
+.seg{display:inline-flex;background:#f4f4f5;border-radius:8px;padding:3px;margin-bottom:12px}
+.seg button{
+  border:0;background:transparent;color:var(--fg2);
+  font:inherit;font-size:14px;font-weight:600;
+  padding:6px 20px;border-radius:6px;cursor:pointer;transition:.12s;
+}
+.seg button.on{background:#fff;color:var(--accent);box-shadow:0 1px 2px rgba(0,0,0,.07)}
+
+/* ---------- 输入表 ---------- */
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -14px;padding:0 14px}
+table{border-collapse:collapse;font-variant-numeric:tabular-nums}
+.inp th{
+  font-size:12px;font-weight:600;color:var(--fg2);
+  padding:0 3px 6px;text-align:center;white-space:nowrap;
+}
+.inp th.var{color:var(--accent)}
+.inp th.rhs{color:var(--fg)}
+.inp td{padding:2px 3px;text-align:center;vertical-align:middle}
+.inp td.lbl{
+  font-size:12.5px;color:var(--fg2);text-align:right;
+  padding-right:8px;white-space:nowrap;min-width:34px;font-weight:600;
+}
+input.num{
+  width:58px;padding:9px 2px;text-align:center;
+  border:1px solid var(--line2);border-radius:7px;
+  font:inherit;font-size:16px;color:var(--fg);background:#fff;
+  font-variant-numeric:tabular-nums;
+}
+input.num:focus{outline:none;border-color:var(--accent);background:var(--accent-soft)}
+select.rel{
+  width:58px;padding:9px 4px 9px 2px;border:1px solid var(--line2);border-radius:7px;
+  font:inherit;font-size:15px;color:var(--fg);background:#fff;
+  -webkit-appearance:none;appearance:none;text-align:center;text-align-last:center;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%23a1a1aa' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 5px center;
+}
+select.rel:focus{outline:none;border-color:var(--accent)}
+.delvar{
+  border:0;background:transparent;color:var(--fg3);font-size:17px;
+  padding:8px 4px;cursor:pointer;line-height:1;
+}
+.delvar:active{color:var(--err)}
+
+/* ---------- 按钮 ---------- */
+.ctrls{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}
+.actions{display:flex;gap:9px;margin-top:13px}
+button.btn{
+  border:1px solid var(--line2);background:#fff;color:var(--fg2);
+  font:inherit;font-size:13.5px;font-weight:500;
+  padding:8px 13px;border-radius:8px;cursor:pointer;transition:.12s;
+}
+button.btn:active{background:#f4f4f5}
+button.btn:disabled{opacity:.35;cursor:default}
+button.btn.primary{
+  flex:1;background:var(--accent);border-color:var(--accent);color:#fff;
+  font-size:15px;font-weight:600;padding:11px 13px;
+}
+button.btn.primary:active{background:#1d4ed8}
+button.btn.pick{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ---------- 结果 ---------- */
+#result{display:none}
+#result.show{display:block}
+#result.stale{opacity:.38;transition:opacity .15s}
+h2.sec{
+  font-size:13px;font-weight:600;color:var(--fg3);
+  margin:22px 2px 9px;letter-spacing:.03em;
+}
+h2.sec:first-child{margin-top:14px}
+
+.iter-head{
+  display:flex;align-items:center;justify-content:space-between;
+  margin:-2px 0 10px;
+}
+.iter-head .name{font-size:13.5px;font-weight:650;color:var(--fg)}
+.iter-head .tag{
+  font-size:11.5px;color:var(--accent);background:var(--accent-soft);
+  padding:2px 8px;border-radius:20px;font-weight:600;
+}
+.iter-head .tag.done{color:var(--ok);background:#f0fdf4}
+.iter-head .tag.stop{color:var(--warn);background:#fffbeb}
+
+table.tb{width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+table.tb th,table.tb td{
+  padding:6px 5px;text-align:center;white-space:nowrap;
+  border-bottom:1px solid #f4f4f5;
+}
+table.tb th{
+  font-size:11.5px;font-weight:600;color:var(--fg2);
+  border-bottom:1px solid var(--line);padding-bottom:5px;
+}
+table.tb th.bcol,table.tb td.bcol{
+  border-left:1px solid var(--line);color:var(--fg);font-weight:600;
+}
+table.tb td.rowlbl{font-weight:650;color:var(--fg);font-size:12.5px}
+table.tb td.rowlbl.base{color:var(--accent)}
+table.tb tr.objrow td{
+  border-top:1.5px solid var(--line2);border-bottom:0;
+  color:var(--fg2);padding-top:7px;
+}
+table.tb tr.objrow td.rowlbl{color:var(--fg2)}
+table.tb .cell.enter{background:var(--accent-soft)}
+table.tb .cell.leave{background:var(--leave-soft)}
+table.tb .cell.pivot{
+  background:#fef3c7;font-weight:700;
+  box-shadow:inset 0 0 0 1.5px var(--pivot);border-radius:4px;
+}
+table.tb th.enter{color:var(--accent)}
+table.tb th.leave{color:var(--warn)}
+
+.explain{
+  margin-top:11px;padding-top:11px;border-top:1px solid #f4f4f5;
+  font-size:13px;color:var(--fg2);line-height:1.65;
+}
+.explain b{color:var(--fg);font-weight:600}
+.explain .k{color:var(--accent);font-weight:650}
+.explain .w{color:var(--warn);font-weight:650}
+.explain .r{color:var(--err);font-weight:650}
+.explain .g{color:var(--ok);font-weight:650}
+.explain .row{display:block}
+
+/* ---------- 结论 ---------- */
+.verdict{border-radius:12px;padding:16px;background:#fff}
+.verdict .vtitle{font-size:13px;font-weight:650;margin-bottom:10px}
+.verdict.opt .vtitle{color:var(--ok)}
+.verdict.no .vtitle{color:var(--err)}
+.verdict.unb .vtitle{color:var(--warn)}
+.sol{font-size:17px;font-weight:650;font-variant-numeric:tabular-nums;line-height:1.9}
+.sol .v{color:var(--accent)}
+.sol .zv{color:var(--ok)}
+.vsum{
+  margin-top:11px;padding-top:11px;border-top:1px solid #f4f4f5;
+  font-size:13px;color:var(--fg2);line-height:1.7;
+}
+.banner{
+  margin-bottom:12px;padding:11px 13px;border-radius:10px;
+  font-size:13px;line-height:1.6;background:#fff;color:var(--fg2);
+}
+.banner.err{background:#fef2f2;color:var(--err)}
+.banner b{color:inherit;font-weight:650}
+.banner .nb{white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>单纯形法</h1>
+    <p>线性规划 · 大 M 法 · 逐步迭代</p>
+  </header>
+
+  <section class="card">
+    <div class="seg" id="dirSeg">
+      <button type="button" data-dir="max">max</button>
+      <button type="button" data-dir="min">min</button>
+    </div>
+    <div class="scroll"><table class="inp" id="inTbl"></table></div>
+    <div class="ctrls">
+      <button type="button" class="btn" id="addVar">+ 变量</button>
+      <button type="button" class="btn" id="delVar">− 变量</button>
+      <button type="button" class="btn" id="addCon">+ 约束</button>
+      <button type="button" class="btn" id="delCon">− 约束</button>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn pick" id="demoBtn">经典例题</button>
+      <button type="button" class="btn primary" id="solveBtn">求　解</button>
+    </div>
+  </section>
+
+  <div id="banners"></div>
+  <section id="result"></section>
+
+</div>
+
+<script>
+/*__CORE__*/
+</script>
+<script>
+/*__UI__*/
+</script>
+</body>
+</html>

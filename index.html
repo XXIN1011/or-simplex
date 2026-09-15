@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>单纯形法</title>
+<style>
+:root{
+  --fg:#18181b; --fg2:#71717a; --fg3:#a1a1aa;
+  --line:#e4e4e7; --line2:#d4d4d8;
+  --bg:#f4f4f5; --card:#fff;
+  --accent:#2563eb; --accent-soft:#eff6ff;
+  --leave-soft:#fff7ed; --pivot:#f59e0b;
+  --ok:#15803d; --warn:#b45309; --err:#b91c1c;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--bg);color:var(--fg);
+  font-family:-apple-system,BlinkMacSystemFont,"HarmonyOS Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:15px;line-height:1.55;
+  padding:0 0 env(safe-area-inset-bottom);
+}
+.wrap{max-width:760px;margin:0 auto;padding:20px 12px 60px}
+
+/* ---------- 头部 ---------- */
+header{margin:0 2px 16px}
+h1{margin:0;font-size:21px;font-weight:650;letter-spacing:-.01em}
+header p{margin:3px 0 0;font-size:12.5px;color:var(--fg3);letter-spacing:.02em}
+
+/* ---------- 卡片 ---------- */
+.card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:12px}
+
+/* ---------- 分段控件 ---------- */
+.seg{display:inline-flex;background:#f4f4f5;border-radius:8px;padding:3px;margin-bottom:12px}
+.seg button{
+  border:0;background:transparent;color:var(--fg2);
+  font:inherit;font-size:14px;font-weight:600;
+  padding:6px 20px;border-radius:6px;cursor:pointer;transition:.12s;
+}
+.seg button.on{background:#fff;color:var(--accent);box-shadow:0 1px 2px rgba(0,0,0,.07)}
+
+/* ---------- 输入表 ---------- */
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -14px;padding:0 14px}
+table{border-collapse:collapse;font-variant-numeric:tabular-nums}
+.inp th{
+  font-size:12px;font-weight:600;color:var(--fg2);
+  padding:0 3px 6px;text-align:center;white-space:nowrap;
+}
+.inp th.var{color:var(--accent)}
+.inp th.rhs{color:var(--fg)}
+.inp td{padding:2px 3px;text-align:center;vertical-align:middle}
+.inp td.lbl{
+  font-size:12.5px;color:var(--fg2);text-align:right;
+  padding-right:8px;white-space:nowrap;min-width:34px;font-weight:600;
+}
+input.num{
+  width:58px;padding:9px 2px;text-align:center;
+  border:1px solid var(--line2);border-radius:7px;
+  font:inherit;font-size:16px;color:var(--fg);background:#fff;
+  font-variant-numeric:tabular-nums;
+}
+input.num:focus{outline:none;border-color:var(--accent);background:var(--accent-soft)}
+select.rel{
+  width:58px;padding:9px 4px 9px 2px;border:1px solid var(--line2);border-radius:7px;
+  font:inherit;font-size:15px;color:var(--fg);background:#fff;
+  -webkit-appearance:none;appearance:none;text-align:center;text-align-last:center;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%23a1a1aa' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 5px center;
+}
+select.rel:focus{outline:none;border-color:var(--accent)}
+.delvar{
+  border:0;background:transparent;color:var(--fg3);font-size:17px;
+  padding:8px 4px;cursor:pointer;line-height:1;
+}
+.delvar:active{color:var(--err)}
+
+/* ---------- 按钮 ---------- */
+.ctrls{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}
+.actions{display:flex;gap:9px;margin-top:13px}
+button.btn{
+  border:1px solid var(--line2);background:#fff;color:var(--fg2);
+  font:inherit;font-size:13.5px;font-weight:500;
+  padding:8px 13px;border-radius:8px;cursor:pointer;transition:.12s;
+}
+button.btn:active{background:#f4f4f5}
+button.btn:disabled{opacity:.35;cursor:default}
+button.btn.primary{
+  flex:1;background:var(--accent);border-color:var(--accent);color:#fff;
+  font-size:15px;font-weight:600;padding:11px 13px;
+}
+button.btn.primary:active{background:#1d4ed8}
+button.btn.pick{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ---------- 结果 ---------- */
+#result{display:none}
+#result.show{display:block}
+#result.stale{opacity:.38;transition:opacity .15s}
+h2.sec{
+  font-size:13px;font-weight:600;color:var(--fg3);
+  margin:22px 2px 9px;letter-spacing:.03em;
+}
+h2.sec:first-child{margin-top:14px}
+
+.iter-head{
+  display:flex;align-items:center;justify-content:space-between;
+  margin:-2px 0 10px;
+}
+.iter-head .name{font-size:13.5px;font-weight:650;color:var(--fg)}
+.iter-head .tag{
+  font-size:11.5px;color:var(--accent);background:var(--accent-soft);
+  padding:2px 8px;border-radius:20px;font-weight:600;
+}
+.iter-head .tag.done{color:var(--ok);background:#f0fdf4}
+.iter-head .tag.stop{color:var(--warn);background:#fffbeb}
+
+table.tb{width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+table.tb th,table.tb td{
+  padding:6px 5px;text-align:center;white-space:nowrap;
+  border-bottom:1px solid #f4f4f5;
+}
+table.tb th{
+  font-size:11.5px;font-weight:600;color:var(--fg2);
+  border-bottom:1px solid var(--line);padding-bottom:5px;
+}
+table.tb th.bcol,table.tb td.bcol{
+  border-left:1px solid var(--line);color:var(--fg);font-weight:600;
+}
+table.tb td.rowlbl{font-weight:650;color:var(--fg);font-size:12.5px}
+table.tb td.rowlbl.base{color:var(--accent)}
+table.tb tr.objrow td{
+  border-top:1.5px solid var(--line2);border-bottom:0;
+  color:var(--fg2);padding-top:7px;
+}
+table.tb tr.objrow td.rowlbl{color:var(--fg2)}
+table.tb .cell.enter{background:var(--accent-soft)}
+table.tb .cell.leave{background:var(--leave-soft)}
+table.tb .cell.pivot{
+  background:#fef3c7;font-weight:700;
+  box-shadow:inset 0 0 0 1.5px var(--pivot);border-radius:4px;
+}
+table.tb th.enter{color:var(--accent)}
+table.tb th.leave{color:var(--warn)}
+
+.explain{
+  margin-top:11px;padding-top:11px;border-top:1px solid #f4f4f5;
+  font-size:13px;color:var(--fg2);line-height:1.65;
+}
+.explain b{color:var(--fg);font-weight:600}
+.explain .k{color:var(--accent);font-weight:650}
+.explain .w{color:var(--warn);font-weight:650}
+.explain .r{color:var(--err);font-weight:650}
+.explain .g{color:var(--ok);font-weight:650}
+.explain .row{display:block}
+
+/* ---------- 结论 ---------- */
+.verdict{border-radius:12px;padding:16px;background:#fff}
+.verdict .vtitle{font-size:13px;font-weight:650;margin-bottom:10px}
+.verdict.opt .vtitle{color:var(--ok)}
+.verdict.no .vtitle{color:var(--err)}
+.verdict.unb .vtitle{color:var(--warn)}
+.sol{font-size:17px;font-weight:650;font-variant-numeric:tabular-nums;line-height:1.9}
+.sol .v{color:var(--accent)}
+.sol .zv{color:var(--ok)}
+.vsum{
+  margin-top:11px;padding-top:11px;border-top:1px solid #f4f4f5;
+  font-size:13px;color:var(--fg2);line-height:1.7;
+}
+.banner{
+  margin-bottom:12px;padding:11px 13px;border-radius:10px;
+  font-size:13px;line-height:1.6;background:#fff;color:var(--fg2);
+}
+.banner.err{background:#fef2f2;color:var(--err)}
+.banner b{color:inherit;font-weight:650}
+.banner .nb{white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>单纯形法</h1>
+    <p>线性规划 · 大 M 法 · 逐步迭代</p>
+  </header>
+
+  <section class="card">
+    <div class="seg" id="dirSeg">
+      <button type="button" data-dir="max">max</button>
+      <button type="button" data-dir="min">min</button>
+    </div>
+    <div class="scroll"><table class="inp" id="inTbl"></table></div>
+    <div class="ctrls">
+      <button type="button" class="btn" id="addVar">+ 变量</button>
+      <button type="button" class="btn" id="delVar">− 变量</button>
+      <button type="button" class="btn" id="addCon">+ 约束</button>
+      <button type="button" class="btn" id="delCon">− 约束</button>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn pick" id="demoBtn">经典例题</button>
+      <button type="button" class="btn primary" id="solveBtn">求　解</button>
+    </div>
+  </section>
+
+  <div id="banners"></div>
+  <section id="result"></section>
+
+</div>
+
+<script>
+/* =========================================================================
+   大M法单纯形法 —— 教学版核心算法（可展示每一步迭代）
+   ---------------------------------------------------------------------
+   数值表示：pair = {a, b} 表示  a + b·M ，M 是形式上的"无穷大"。
+   这样人工变量的检验数可以按教材写法显示成 "3 - 2M" 这类形式，
+   而且比较大小是良定义的：先比 M 的系数，再比常数。
+   约束行始终是纯数字（M 只进入检验数行），所以只有 obj 用 pair。
+   ========================================================================= */
+'use strict';
+
+var EPS = 1e-9;
+
+/* ---------- pair (a + bM) 运算 ---------- */
+function pAdd(x, y) { return { a: x.a + y.a, b: x.b + y.b }; }
+function pSub(x, y) { return { a: x.a - y.a, b: x.b - y.b }; }
+function pMul(x, s) { return { a: x.a * s, b: x.b * s }; }   // s 为普通数字
+function pCmp(x, y) {                                        // M -> +∞ 的字典序比较
+  if (Math.abs(x.b - y.b) > EPS) return x.b > y.b ? 1 : -1;
+  if (Math.abs(x.a - y.a) > EPS) return x.a > y.a ? 1 : -1;
+  return 0;
+}
+function pIsPos(x) { return x.b > EPS || (Math.abs(x.b) <= EPS && x.a > EPS); }
+function pIsZero(x) { return Math.abs(x.a) <= EPS && Math.abs(x.b) <= EPS; }
+
+/* ---------- 数字 / 分式显示 ---------- */
+function asFraction(v) {
+  if (Math.abs(v) < 1e-9) return '0';
+  for (var d = 1; d <= 200; d++) {
+    var num = v * d;
+    if (Math.abs(num - Math.round(num)) < 1e-7) {
+      var N = Math.round(num);
+      return d === 1 ? String(N) : N + '/' + d;
+    }
+  }
+  return null;
+}
+function fmtNum(v) {
+  if (v === null || v === undefined || isNaN(v)) return '—';
+  if (Math.abs(v) < 1e-9) return '0';
+  var f = asFraction(v);
+  if (f !== null) return f;
+  var s = v.toPrecision(6);
+  if (s.indexOf('e') === -1 && s.indexOf('.') !== -1) {
+    s = s.replace(/0+$/, '').replace(/\.$/, '');
+  }
+  return s;
+}
+/* 含 M 时显示为「M 项 + 常数项」，例如 7M - 4、2M + 3、-M - 3。
+   把 M 项放在前面，是为了让"这个检验数究竟是正是负"一眼可辨 —— M 是形式上的
+   无穷大，7M - 4 显然是正数，而写成 -4 + 7M 容易被初学者误读成负数。 */
+function fmtPair(p) {
+  var a = Math.abs(p.a) < 1e-7 ? 0 : p.a;
+  var b = Math.abs(p.b) < 1e-7 ? 0 : p.b;
+  if (b === 0) return fmtNum(a);
+  var mPart;
+  if (Math.abs(b - 1) < 1e-9) mPart = 'M';
+  else if (Math.abs(b + 1) < 1e-9) mPart = '-M';
+  else mPart = fmtNum(b) + 'M';
+  if (a === 0) return mPart;
+  return mPart + (a > 0 ? ' + ' : ' - ') + fmtNum(Math.abs(a));
+}
+
+/* =========================================================================
+   主函数
+   problem = {
+     direction: 'max' | 'min',
+     c: [c1, c2, ...],                                  // 目标函数系数
+     constraints: [{ coef: [a1, a2, ...], rel: '<='|'>='|'=', rhs: number }]
+   }
+   返回 {
+     ok, status, vars, steps, solution, objective, swapped, message, altOptimal
+   }
+   status: 'optimal' | 'unbounded' | 'infeasible' | 'iteration-limit'
+   ========================================================================= */
+function simplexSolve(problem) {
+  var direction = problem.direction === 'min' ? 'min' : 'max';
+  var swapped = direction === 'min';            // min z  ->  max w = -z
+  var c0 = problem.c.map(Number);
+  var n = c0.length;
+  var m = problem.constraints.length;
+
+  var invalid = [];
+  if (n < 1) invalid.push('目标函数至少要有 1 个变量');
+  if (m < 1) invalid.push('至少要有 1 个约束条件');
+  for (var q = 0; q < m; q++) {
+    var kk = problem.constraints[q];
+    if (kk.coef.length !== n) invalid.push('第 ' + (q + 1) + ' 个约束的系数个数与变量数不一致');
+    if (!isFinite(Number(kk.rhs))) invalid.push('第 ' + (q + 1) + ' 个约束的右端项不是有效数字');
+  }
+  for (var q2 = 0; q2 < n; q2++) {
+    if (!isFinite(c0[q2])) invalid.push('目标函数第 ' + (q2 + 1) + ' 个系数不是有效数字');
+  }
+  if (invalid.length) return { ok: false, message: invalid.join('；') };
+
+  /* ---- 1. 规范化：右端项一律化成非负（整行取负并翻转关系符） ---- */
+  var cons = problem.constraints.map(function (k) {
+    return { coef: k.coef.map(Number), rel: k.rel, rhs: Number(k.rhs) };
+  });
+  for (var i = 0; i < m; i++) {
+    if (cons[i].rhs < -EPS) {
+      cons[i].coef = cons[i].coef.map(function (v) { return -v; });
+      cons[i].rhs = -cons[i].rhs;
+      cons[i].rel = cons[i].rel === '<=' ? '>=' : (cons[i].rel === '>=' ? '<=' : '=');
+    }
+    for (var j = 0; j < n; j++) {
+      if (Math.abs(cons[i].coef[j]) < EPS) cons[i].coef[j] = 0;
+    }
+    if (Math.abs(cons[i].rhs) < EPS) cons[i].rhs = 0;
+  }
+
+  /* ---- 2. 建变量表：决策变量 x1..xn，松弛/剩余 s_i，人工 a_i ---- */
+  var vars = [];
+  for (var jx = 0; jx < n; jx++) vars.push({ name: 'x' + (jx + 1), kind: 'x' });
+  var sCol = [], aCol = [], basis = [];
+  for (var i2 = 0; i2 < m; i2++) {
+    var k2 = cons[i2];
+    if (k2.rel === '<=') {
+      sCol[i2] = vars.length; vars.push({ name: 's' + (i2 + 1), kind: 's' });
+      basis[i2] = sCol[i2];
+    } else if (k2.rel === '>=') {
+      sCol[i2] = vars.length; vars.push({ name: 's' + (i2 + 1), kind: 's' });
+      aCol[i2] = vars.length; vars.push({ name: 'a' + (i2 + 1), kind: 'a' });
+      basis[i2] = aCol[i2];
+    } else {
+      aCol[i2] = vars.length; vars.push({ name: 'a' + (i2 + 1), kind: 'a' });
+      basis[i2] = aCol[i2];
+    }
+  }
+  var N = vars.length;
+
+  /* ---- 3. 目标函数系数（统一按 max 处理；人工变量罚 -M） ---- */
+  var cObj = [];
+  for (var jc = 0; jc < N; jc++) cObj.push({ a: 0, b: 0 });
+  for (var jd = 0; jd < n; jd++) cObj[jd] = { a: swapped ? -c0[jd] : c0[jd], b: 0 };
+  for (var ia = 0; ia < m; ia++) {
+    if (aCol[ia] !== undefined) cObj[aCol[ia]] = { a: 0, b: -1 };   // -M
+  }
+
+  /* ---- 4. 初始单纯形表 ---- */
+  var rows = [];
+  for (var ir = 0; ir < m; ir++) {
+    var r = new Array(N + 1).fill(0);
+    for (var jr = 0; jr < n; jr++) r[jr] = cons[ir].coef[jr];
+    if (sCol[ir] !== undefined) r[sCol[ir]] = (cons[ir].rel === '>=' ? -1 : 1);
+    if (aCol[ir] !== undefined) r[aCol[ir]] = 1;
+    r[N] = cons[ir].rhs;
+    rows.push(r);
+  }
+
+  /* ---- 5. 检验数行：σ_j = c_j - z_j ，末位存 -z ---- */
+  var obj = [];
+  for (var jo = 0; jo < N; jo++) obj.push({ a: cObj[jo].a, b: cObj[jo].b });
+  obj.push({ a: 0, b: 0 });
+  for (var ib = 0; ib < m; ib++) {
+    var cB = cObj[basis[ib]];
+    for (var jb = 0; jb <= N; jb++) obj[jb] = pSub(obj[jb], pMul(cB, rows[ib][jb]));
+  }
+
+  function snapshot(extra) {
+    var s = {
+      iter: 0, rows: [], obj: [], basis: basis.slice(),
+      entering: null, leaving: null, pivot: null, ratios: null, note: ''
+    };
+    for (var x in extra) s[x] = extra[x];
+    for (var i3 = 0; i3 < m; i3++) s.rows.push(rows[i3].slice());
+    for (var j3 = 0; j3 <= N; j3++) s.obj.push({ a: obj[j3].a, b: obj[j3].b });
+    return s;
+  }
+
+  var steps = [];
+  var status = 'optimal';
+  var iter = 0;
+
+  while (true) {
+    /* 6.1 找入基变量：σ_j > 0 中最大者（Dantzig 规则） */
+    var e = -1, best = null;
+    for (var je = 0; je < N; je++) {
+      if (pIsPos(obj[je]) && (best === null || pCmp(obj[je], best) > 0)) {
+        best = obj[je]; e = je;
+      }
+    }
+
+    if (e === -1) {   /* 全部 σ_j ≤ 0 → 最优 */
+      steps.push(snapshot({
+        iter: iter,
+        entering: null, leaving: null, pivot: null, ratios: null,
+        note: '所有检验数 σⱼ ≤ 0，没有可改进的方向，当前基可行解就是最优解。'
+      }));
+      break;
+    }
+
+    /* 6.2 比值检验（最小比值规则） */
+    var ratios = [], r = -1, minRatio = Infinity;
+    for (var it = 0; it < m; it++) {
+      if (rows[it][e] > EPS) {
+        var th = rows[it][N] / rows[it][e];
+        ratios.push({ row: it, theta: th, ok: true });
+        if (th < minRatio - EPS) { minRatio = th; r = it; }
+      } else {
+        ratios.push({ row: it, theta: null, ok: false });
+      }
+    }
+
+    if (r === -1) {   /* 入基列没有正系数 → 要么原问题无界，要么原问题无可行解 */
+      /* 关键：大M法是在"含人工变量的扩展问题"上迭代的。若此刻基中仍残留取正值的
+         人工变量，说明原约束根本不能同时满足，沿这条射线走只会让人工变量越来越大
+         （依然违背原约束），因此正确结论是【无可行解】，而不是无界。 */
+      var artPos = -1;
+      for (var ia3 = 0; ia3 < m; ia3++) {
+        if (vars[basis[ia3]].kind === 'a' && rows[ia3][N] > 1e-7) { artPos = ia3; break; }
+      }
+      if (artPos >= 0) {
+        steps.push(snapshot({
+          iter: iter,
+          entering: e, leaving: null, pivot: null, ratios: ratios,
+          note: '入基变量 ' + vars[e].name + ' 所在列没有正的系数，比值 θ 无法计算；' +
+                '但此时人工变量 ' + vars[basis[artPos]].name + ' 仍取正值（= ' + fmtNum(rows[artPos][N]) + '），' +
+                '说明原问题的约束无法同时满足 → 问题为**无可行解**。'
+        }));
+        status = 'infeasible';
+        break;
+      }
+      steps.push(snapshot({
+        iter: iter,
+        entering: e, leaving: null, pivot: null, ratios: ratios,
+        note: '入基变量 ' + vars[e].name + ' 所在列中没有任何正的系数，比值 θ 无法计算 → ' +
+              '该变量可以无限增大而始终满足约束，目标函数值无上界，问题为**无界解**。'
+      }));
+      status = 'unbounded';
+      break;
+    }
+
+    /* 6.3 记录当前表 + 本步判定 */
+    steps.push(snapshot({
+      iter: iter,
+      entering: e, leaving: r, pivot: rows[r][e], ratios: ratios, note: ''
+    }));
+
+    /* 6.4 枢轴变换（高斯消元，把入基列化为单位向量） */
+    var p = rows[r][e];
+    for (var jp = 0; jp <= N; jp++) rows[r][jp] /= p;
+    for (var ip = 0; ip < m; ip++) {
+      if (ip === r) continue;
+      var f = rows[ip][e];
+      if (f === 0) continue;
+      for (var jf = 0; jf <= N; jf++) rows[ip][jf] -= f * rows[r][jf];
+    }
+    var fo = obj[e];
+    for (var jg = 0; jg <= N; jg++) obj[jg] = pSub(obj[jg], pMul(fo, rows[r][jg]));
+    basis[r] = e;
+
+    iter++;
+    if (iter > 200) { status = 'iteration-limit'; break; }
+  }
+
+  /* ---- 7. 解与结论 ---- */
+  var solution = new Array(n).fill(0);
+  for (var iv = 0; iv < m; iv++) {
+    if (basis[iv] < n) solution[basis[iv]] = rows[iv][N];
+  }
+  for (var iz = 0; iz < n; iz++) if (Math.abs(solution[iz]) < 1e-9) solution[iz] = 0;
+
+  var artificialInBasis = false;
+  for (var iba = 0; iba < m; iba++) {
+    if (vars[basis[iba]].kind === 'a' && rows[iba][N] > 1e-7) artificialInBasis = true;
+  }
+
+  var altOptimal = [];
+  if (status === 'optimal' && !artificialInBasis) {
+    for (var jalt = 0; jalt < N; jalt++) {
+      if (vars[jalt].kind === 'a') continue;
+      if (basis.indexOf(jalt) !== -1) continue;
+      if (pIsZero(obj[jalt])) altOptimal.push(jalt);
+    }
+  }
+
+  var zStar = null;
+  if (status === 'optimal' && !artificialInBasis) {
+    zStar = swapped ? obj[N].a : -obj[N].a;
+    if (Math.abs(zStar) < 1e-9) zStar = 0;
+  }
+
+  var finalStatus = status;
+  if (status === 'optimal' && artificialInBasis) finalStatus = 'infeasible';
+
+  return {
+    ok: true,
+    status: finalStatus,
+    direction: direction,
+    swapped: swapped,
+    vars: vars,
+    nDecision: n,
+    mConstraints: m,
+    steps: steps,
+    basis: basis,
+    solution: solution,
+    objective: zStar,
+    artificialInBasis: artificialInBasis,
+    altOptimal: altOptimal
+  };
+}
+
+/* Node 下导出（浏览器里 module 不存在，自动跳过） */
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    simplexSolve: simplexSolve,
+    fmtNum: fmtNum,
+    fmtPair: fmtPair,
+    asFraction: asFraction
+  };
+}
+
+</script>
+<script>
+/* =========================================================================
+   界面逻辑：输入表 ↔ 状态 ↔ 渲染迭代过程
+   ========================================================================= */
+(function () {
+  'use strict';
+
+  var MAXN = 6, MAXM = 8;
+
+  var DEMOS = [
+    { name: 'max z = 2x1 + 3x2', dir: 'max', c: [2, 3], cons: [
+      { coef: [1, 2], rel: '<=', rhs: 8 },
+      { coef: [4, 0], rel: '<=', rhs: 16 },
+      { coef: [0, 4], rel: '<=', rhs: 12 }] },
+    { name: 'min z = 2x1 + 3x2（≥ 约束）', dir: 'min', c: [2, 3], cons: [
+      { coef: [1, 1], rel: '>=', rhs: 3 },
+      { coef: [1, 2], rel: '>=', rhs: 4 }] },
+    { name: 'min z = 4x1 + x2（含等式）', dir: 'min', c: [4, 1], cons: [
+      { coef: [3, 1], rel: '=', rhs: 3 },
+      { coef: [4, 3], rel: '>=', rhs: 6 },
+      { coef: [1, 2], rel: '<=', rhs: 4 }] },
+    { name: '无界解示例', dir: 'max', c: [1, 0], cons: [
+      { coef: [-1, 1], rel: '<=', rhs: 0 },
+      { coef: [0, 1], rel: '<=', rhs: 3 }] },
+    { name: '无可行解示例', dir: 'max', c: [1, 0], cons: [
+      { coef: [1, 0], rel: '>=', rhs: 5 },
+      { coef: [1, 0], rel: '<=', rhs: 2 }] }
+  ];
+  var demoIdx = 0;
+
+  var state = { dir: 'max', n: 2, m: 2, c: [2, 3], cons: [] };
+
+  /* ---------------- 工具 ---------------- */
+  function $(id) { return document.getElementById(id); }
+  function fmtIn(v) {
+    if (v === undefined || v === null || isNaN(v)) return '0';
+    return (Math.abs(v - Math.round(v)) < 1e-9) ? String(Math.round(v)) : String(v);
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  /* ---------------- 载入数据 ---------------- */
+  function loadDemo(i) {
+    var d = DEMOS[i];
+    state.dir = d.dir;
+    state.n = d.c.length;
+    state.m = d.cons.length;
+    state.c = d.c.slice();
+    state.cons = d.cons.map(function (k) {
+      return { coef: k.coef.slice(), rel: k.rel, rhs: k.rhs };
+    });
+    renderInput();
+    $('demoBtn').textContent = d.name;
+  }
+
+  /* ---------------- 渲染输入表 ---------------- */
+  function renderInput() {
+    var n = state.n, m = state.m, html = '';
+    html += '<thead><tr><th></th>';
+    for (var j = 0; j < n; j++) html += '<th class="var">x' + (j + 1) + '</th>';
+    html += '<th></th><th class="rhs">b</th><th></th></tr></thead><tbody>';
+
+    /* 目标函数行 */
+    html += '<tr><td class="lbl">z =</td>';
+    for (var j2 = 0; j2 < n; j2++) {
+      html += '<td><input class="num" type="text" inputmode="decimal" '
+        + 'data-k="c" data-j="' + j2 + '" value="' + esc(fmtIn(state.c[j2])) + '"></td>';
+    }
+    html += '<td></td><td></td><td></td></tr>';
+
+    /* 约束行 */
+    for (var i = 0; i < m; i++) {
+      var k = state.cons[i];
+      html += '<tr><td class="lbl">' + (i + 1) + '</td>';
+      for (var j3 = 0; j3 < n; j3++) {
+        html += '<td><input class="num" type="text" inputmode="decimal" '
+          + 'data-k="a" data-i="' + i + '" data-j="' + j3 + '" value="' + esc(fmtIn(k.coef[j3])) + '"></td>';
+      }
+      html += '<td><select class="rel" data-i="' + i + '">'
+        + ['<=', '>=', '='].map(function (r) {
+          return '<option value="' + r + '"' + (k.rel === r ? ' selected' : '') + '>' + r + '</option>';
+        }).join('')
+        + '</select></td>';
+      html += '<td><input class="num" type="text" inputmode="decimal" '
+        + 'data-k="b" data-i="' + i + '" value="' + esc(fmtIn(k.rhs)) + '"></td>';
+      html += '<td><button type="button" class="delvar" data-i="' + i + '">&times;</button></td>';
+      html += '</tr>';
+    }
+    html += '</tbody>';
+    $('inTbl').innerHTML = html;
+    bindInputs();
+    $('delVar').disabled = (state.n <= 1);
+    $('delCon').disabled = (state.m <= 1);
+    $('addVar').disabled = (state.n >= MAXN);
+    $('addCon').disabled = (state.m >= MAXM);
+  }
+
+  function bindInputs() {
+    var t = $('inTbl');
+    Array.prototype.forEach.call(t.querySelectorAll('input.num'), function (inp) {
+      inp.addEventListener('input', function () {
+        var v = parseFloat(inp.value.replace(/[^0-9.\-]/g, ''));
+        if (isNaN(v)) v = 0;
+        var k = inp.dataset.k;
+        if (k === 'c') state.c[+inp.dataset.j] = v;
+        else if (k === 'a') state.cons[+inp.dataset.i].coef[+inp.dataset.j] = v;
+        else if (k === 'b') state.cons[+inp.dataset.i].rhs = v;
+        markStale();
+      });
+    });
+    Array.prototype.forEach.call(t.querySelectorAll('select.rel'), function (sel) {
+      sel.addEventListener('change', function () {
+        state.cons[+sel.dataset.i].rel = sel.value;
+        markStale();
+      });
+    });
+    Array.prototype.forEach.call(t.querySelectorAll('button.delvar'), function (b) {
+      b.addEventListener('click', function () {
+        if (state.m <= 1) return;
+        state.cons.splice(+b.dataset.i, 1);
+        state.m--;
+        renderInput();
+      });
+    });
+  }
+
+  /* ---------------- 变量数 / 约束数 ---------------- */
+  function setN(n) {
+    n = Math.max(1, Math.min(MAXN, n));
+    if (n === state.n) return;
+    var j;
+    while (state.c.length < n) state.c.push(0);
+    state.c.length = n;
+    for (var i = 0; i < state.cons.length; i++) {
+      while (state.cons[i].coef.length < n) state.cons[i].coef.push(0);
+      state.cons[i].coef.length = n;
+    }
+    state.n = n;
+    renderInput();
+  }
+  function setM(m) {
+    m = Math.max(1, Math.min(MAXM, m));
+    if (m === state.m) return;
+    while (state.cons.length < m) {
+      var coef = [];
+      for (var j = 0; j < state.n; j++) coef.push(0);
+      state.cons.push({ coef: coef, rel: '<=', rhs: 0 });
+    }
+    state.cons.length = m;
+    state.m = m;
+    renderInput();
+  }
+
+  /* ---------------- 迭代表渲染 ---------------- */
+  function renderTable(res, step) {
+    var names = res.vars.map(function (v) { return v.name; });
+    var N = names.length;
+    var leaveCol = (step.leaving === null || step.leaving === undefined) ? -1 : step.basis[step.leaving];
+    var h = '<thead><tr><th>基</th>';
+    for (var j = 0; j < N; j++) {
+      var thc = [];
+      if (step.entering === j) thc.push('enter');
+      if (leaveCol === j) thc.push('leave');
+      h += '<th class="' + thc.join(' ') + '">' + names[j] + '</th>';
+    }
+    h += '<th class="bcol">b</th></tr></thead><tbody>';
+
+    for (var i = 0; i < res.mConstraints; i++) {
+      h += '<tr><td class="rowlbl base">' + names[step.basis[i]] + '</td>';
+      for (var j2 = 0; j2 < N; j2++) {
+        var cls = [];
+        if (step.entering === j2) cls.push('enter');
+        if (step.leaving === i) cls.push('leave');
+        if (step.leaving === i && step.entering === j2) cls.push('pivot');
+        h += '<td class="cell ' + cls.join(' ') + '">' + fmtNum(step.rows[i][j2]) + '</td>';
+      }
+      h += '<td class="bcol">' + fmtNum(step.rows[i][N]) + '</td></tr>';
+    }
+
+    h += '<tr class="objrow"><td class="rowlbl">σ</td>';
+    for (var j3 = 0; j3 < N; j3++) {
+      h += '<td class="cell ' + (step.entering === j3 ? 'enter' : '') + '">'
+        + fmtPair(step.obj[j3]) + '</td>';
+    }
+    h += '<td class="bcol">' + fmtPair(step.obj[N]) + '</td></tr>';
+
+    return '<div class="scroll"><table class="tb">' + h + '</tbody></table></div>';
+  }
+
+  function explain(res, step) {
+    if (step.note) return '<div class="explain">' + step.note + '</div>';
+    var names = res.vars.map(function (v) { return v.name; });
+    var eName = names[step.entering];
+    var lName = names[step.basis[step.leaving]];
+    var sig = fmtPair(step.obj[step.entering]);
+
+    var ratios = step.ratios.map(function (r) {
+      if (!r.ok) return '第 ' + (r.row + 1) + ' 行系数 ≤ 0，不参与比值';
+      return '<span class="row">θ' + (r.row + 1) + ' = ' + fmtNum(step.rows[r.row][names.length])
+        + ' ÷ ' + fmtNum(step.rows[r.row][step.entering]) + ' = <b>' + fmtNum(r.theta) + '</b></span>';
+    }).join('');
+
+    return '<div class="explain">'
+      + '<span class="row"><b>① 选入基变量</b>：检验数 <span class="k">σ = ' + sig + '</span>（'
+      + eName + ' 列）是当前最大的正检验数，说明增加 ' + eName + ' 能改善目标函数 → '
+      + '<span class="k">' + eName + ' 入基</span>。</span>'
+      + '<span class="row"><b>② 比值检验</b>（最小比值规则，保证解仍然可行）：</span>'
+      + ratios
+      + '<span class="row">最小值对应的第 ' + (step.leaving + 1) + ' 行被顶出，故 '
+      + '<span class="w">' + lName + ' 出基</span>，即它变为 0。</span>'
+      + '<span class="row"><b>③ 枢轴变换</b>：枢轴元素为 <span class="k">'
+      + fmtNum(step.pivot) + '</span>（第 ' + (step.leaving + 1) + ' 行 ' + eName
+      + ' 列），对该行做初等行变换使它变成 1、该列其余元素变成 0。</span>'
+      + '</div>';
+  }
+
+  /* 输入改动后把旧结果标灰，避免"结果与输入不符"的误读 */
+  function markStale() {
+    var r = $('result');
+    if (!r.classList.contains('show') || r.classList.contains('stale')) return;
+    r.classList.add('stale');
+    $('banners').innerHTML = '<div class="banner">输入已修改，点「求解」重新计算。</div>';
+  }
+
+  function renderResult(res, prob) {
+    var banners = $('banners');
+    var box = $('result');
+    banners.innerHTML = '';
+    box.classList.remove('stale');
+
+    if (!res.ok) {
+      banners.innerHTML = '<div class="banner err"><b>输入有误</b>：' + esc(res.message) + '</div>';
+      box.classList.remove('show');
+      box.innerHTML = '';
+      return;
+    }
+
+    var html = '';
+    var legend = '<span class="nb">x = 决策变量</span>　<span class="nb">s = 松弛 / 剩余变量</span>　'
+      + '<span class="nb">a = 人工变量</span>　·　<span class="nb">σ 行末列为 −z</span>';
+    if (res.swapped) legend += '　·　<span class="nb">min 问题已取负转为 max，z 已还原</span>';
+    html += '<div class="banner">' + legend + '</div>';
+
+    html += '<h2 class="sec">迭代过程（共 ' + (res.steps.length - 1) + ' 次迭代）</h2>';
+    res.steps.forEach(function (step, idx) {
+      var title = idx === 0 ? '初始表' : '第 ' + idx + ' 次迭代';
+      var isLast = (idx === res.steps.length - 1);
+      var tag = '';
+      if (isLast && res.status === 'optimal') tag = '<span class="tag done">最优</span>';
+      else if (isLast) tag = '<span class="tag stop">终止</span>';
+      else tag = '<span class="tag">' + (idx === 0 ? '起点' : '迭代 ' + idx) + '</span>';
+
+      html += '<div class="card">'
+        + '<div class="iter-head"><span class="name">' + title + '</span>' + tag + '</div>'
+        + renderTable(res, step)
+        + explain(res, step)
+        + '</div>';
+    });
+
+    html += '<h2 class="sec">结论</h2>';
+    html += verdict(res);
+
+    box.innerHTML = html;
+    box.classList.add('show');
+    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function verdict(res) {
+    if (res.status === 'optimal') {
+      var sols = res.solution.map(function (v, j) {
+        return 'x' + (j + 1) + ' = <span class="v">' + fmtNum(v) + '</span>';
+      }).join('　　');
+      var extra = '<div class="vsum">';
+      extra += '非基变量取 0。最优值 <b>z = ' + fmtNum(res.objective) + '</b>。';
+      if (res.altOptimal.length) {
+        var names = res.vars.map(function (v) { return v.name; });
+        extra += '<br>注意：非基变量 ' + res.altOptimal.map(function (i) { return names[i]; }).join('、')
+          + ' 的检验数为 0，说明本题存在<b>多重最优解</b>（还有别的方案达到同样最优值）。';
+      }
+      if (res.swapped) extra += '<br>原问题为 min 型，已按 max 求解后还原目标值。';
+      extra += '</div>';
+      return '<div class="verdict opt">'
+        + '<div class="vtitle">最优解</div>'
+        + '<div class="sol">' + sols + '</div>'
+        + '<div class="sol">z = <span class="zv">' + fmtNum(res.objective) + '</span></div>'
+        + extra + '</div>';
+    }
+    if (res.status === 'infeasible') {
+      return '<div class="verdict no">'
+        + '<div class="vtitle">无可行解</div>'
+        + '<div class="vsum">迭代结束时人工变量仍然留在基中并取正值，说明约束条件之间互相矛盾，'
+        + '不存在能同时满足全部约束的非负解。</div></div>';
+    }
+    if (res.status === 'unbounded') {
+      return '<div class="verdict unb">'
+        + '<div class="vtitle">无界解</div>'
+        + '<div class="vsum">入基变量的列中没有正的系数，它可以在满足约束的前提下无限增大，'
+        + '目标函数值也随之无限增大（或减小），因此最优解不存在。</div></div>';
+    }
+    return '<div class="verdict no">'
+      + '<div class="vtitle">未能在限定步数内收敛</div>'
+      + '<div class="vsum">可能存在退化导致的循环，请检查题目数据。</div></div>';
+  }
+
+  /* ---------------- 求解 ---------------- */
+  function doSolve() {
+    var prob = {
+      direction: state.dir,
+      c: state.c.slice(0, state.n),
+      constraints: state.cons.slice(0, state.m).map(function (k) {
+        return { coef: k.coef.slice(0, state.n), rel: k.rel, rhs: k.rhs };
+      })
+    };
+    var res = simplexSolve(prob);
+    renderResult(res, prob);
+  }
+
+  /* ---------------- 事件绑定 ---------------- */
+  Array.prototype.forEach.call($('dirSeg').querySelectorAll('button'), function (b) {
+    b.addEventListener('click', function () {
+      state.dir = b.dataset.dir;
+      Array.prototype.forEach.call($('dirSeg').querySelectorAll('button'), function (x) {
+        x.classList.toggle('on', x === b);
+      });
+    });
+  });
+  $('addVar').addEventListener('click', function () { setN(state.n + 1); });
+  $('delVar').addEventListener('click', function () { setN(state.n - 1); });
+  $('addCon').addEventListener('click', function () { setM(state.m + 1); });
+  $('delCon').addEventListener('click', function () { setM(state.m - 1); });
+  $('solveBtn').addEventListener('click', doSolve);
+  $('demoBtn').addEventListener('click', function () {
+    demoIdx = (demoIdx + 1) % DEMOS.length;
+    loadDemo(demoIdx);
+    doSolve();
+  });
+
+  /* ---------------- 启动 ---------------- */
+  loadDemo(0);
+  $('dirSeg').querySelector('button[data-dir="max"]').classList.add('on');
+})();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+# 授权与敏感文件（绝不入库）
+device.json
+token.txt
+poll-token.py
+
+# 测试/构建生成物
+random-bank.json
+__pycache__/
+deploy/
+
+# 本地截图
+*.png
