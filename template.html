@@ -170,6 +170,37 @@ button.btn.primary:active{background:var(--accent);filter:brightness(.9)}
 }
 .dlist .dv{color:var(--accent)}
 
+/* 灵敏度分析（系数允许变化范围） */
+.sens-h{
+  font-size:12.5px;font-weight:650;color:var(--fg);
+  margin:14px 0 4px;
+}
+.sens-h:first-of-type{margin-top:2px}
+table.sens{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+table.sens td{
+  padding:5px 0;font-size:13px;vertical-align:baseline;
+  border-bottom:1px solid var(--line);
+}
+table.sens tr:last-child td{border-bottom:0}
+table.sens td.nm{color:var(--fg2);white-space:nowrap;padding-right:10px}
+table.sens td.cur{color:var(--fg2);text-align:right;white-space:nowrap;padding-right:10px}
+table.sens td.rng{color:var(--fg2);white-space:nowrap}
+/* 区间的端点值用强调色标出来，一眼能看出「卡在哪」 */
+table.sens td.rng b{color:var(--accent);font-weight:650}
+table.sens td.rng .free{color:var(--fg3)}
+table.sens td.eff{color:var(--fg2);text-align:right;white-space:nowrap;padding-left:10px}
+.sens-note{font-size:12px;color:var(--fg2);line-height:1.65;margin-top:8px}
+.sens-warn{
+  font-size:12px;color:var(--warn);line-height:1.65;
+  margin-top:10px;padding-top:10px;border-top:1px solid var(--soft);
+}
+.btag{
+  display:inline-block;margin-left:5px;
+  font-size:10.5px;font-weight:600;padding:1px 5px;border-radius:5px;
+  background:var(--soft);color:var(--fg3);
+}
+.btag.on{background:var(--accent-soft);color:var(--accent)}
+
 /* ---------- 标准化卡片 ---------- */
 .std-h{
   font-size:12px;font-weight:650;color:var(--fg2);

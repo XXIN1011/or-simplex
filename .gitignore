@@ -6,6 +6,7 @@ poll-token.py
 # 测试/构建生成物
 random-bank.json
 dual-bank.json
+sens-bank.json
 __pycache__/
 
 # 本地截图

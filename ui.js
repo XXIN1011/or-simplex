@@ -279,6 +279,7 @@
     html += '<h2 class="sec">结论</h2>';
     html += verdict(res);
     html += dualCard(res, prob);
+    html += sensCard(res);
 
     box.innerHTML = html;
     box.classList.add('show');
@@ -345,6 +346,79 @@
             + (loose.length > 1 ? '它们' : '它') + '还有余量、没被用尽，放宽也不会改变最优值。'
           : '这里全是紧约束：每条约束都被用尽了，放宽任何一条都会改变最优值。')
       + '</div></div>';
+  }
+
+  /* 灵敏度分析：保持当前最优基不变时，c 与 b 的允许变化范围。
+     算法层已经把区间算好（见 simplex-core.js 的 sensitivityAnalysis），
+     这里只负责把区间写成教材里那种不等式。 */
+  function sensCard(res) {
+    var s = res.sensitivity;
+    if (!s || (!s.c.length && !s.b.length)) return '';
+
+    /* 把区间写成「3/2 ≤ c1 ≤ 5」「c1 ≥ 3/2」这种形式 */
+    function rng(lo, hi, name) {
+      var noLo = (lo === -Infinity), noHi = (hi === Infinity);
+      if (noLo && noHi) return '<span class="free">可任意取值</span>';
+      if (noLo) return name + ' ≤ <b>' + fmtNum(hi) + '</b>';
+      if (noHi) return name + ' ≥ <b>' + fmtNum(lo) + '</b>';
+      if (Math.abs(hi - lo) < 1e-9) return name + ' = <b>' + fmtNum(lo) + '</b>';
+      return '<b>' + fmtNum(lo) + '</b> ≤ ' + name + ' ≤ <b>' + fmtNum(hi) + '</b>';
+    }
+
+    var pinned = 0;
+    var h = '<h2 class="sec">灵敏度分析</h2><div class="card">';
+    h += '<div class="sens-note">保持当前最优基不变时，各系数允许的变化范围。</div>';
+
+    if (s.c.length) {
+      h += '<div class="sens-h">目标函数系数 c</div>';
+      h += '<div class="scroll"><table class="sens"><tbody>';
+      s.c.forEach(function (e) {
+        var nm = 'c' + (e.j + 1);
+        var eff;
+        if (!e.basic || Math.abs(e.slope) < 1e-9) {
+          eff = '不改变 z*';
+        } else {
+          eff = '每 +1 → z* ' + (e.slope > 0 ? '+' : '−') + fmtNum(Math.abs(e.slope));
+        }
+        h += '<tr>'
+          + '<td class="nm">x' + (e.j + 1) + '<span class="btag' + (e.basic ? ' on' : '') + '">'
+          + (e.basic ? '基' : '非基') + '</span></td>'
+          + '<td class="cur">' + fmtNum(e.current) + '</td>'
+          + '<td class="rng">' + rng(e.lo, e.hi, nm) + '</td>'
+          + '<td class="eff">' + eff + '</td>'
+          + '</tr>';
+      });
+      h += '</tbody></table></div>';
+      h += '<div class="sens-note">基变量的 c 每增加 1，最优值就变化 x 的取值；'
+        + '非基变量仍取 0，所以改它的 c 在这段范围内不影响最优值。</div>';
+    }
+
+    if (s.b.length) {
+      h += '<div class="sens-h">右端项 b</div>';
+      h += '<div class="scroll"><table class="sens"><tbody>';
+      s.b.forEach(function (e) {
+        var nm = 'b' + (e.i + 1);
+        if (e.pinned) pinned++;
+        h += '<tr>'
+          + '<td class="nm">约束 ' + (e.i + 1) + '</td>'
+          + '<td class="cur">' + fmtNum(e.current) + '</td>'
+          + '<td class="rng">' + rng(e.lo, e.hi, nm) + '</td>'
+          + '<td class="eff">y = ' + fmtNum(e.shadow) + '</td>'
+          + '</tr>';
+      });
+      h += '</tbody></table></div>';
+      h += '<div class="sens-note">区间内影子价格 y 保持有效：b 每增加 1，最优值变化 y。</div>';
+    }
+
+    if (s.degenerate) {
+      h += '<div class="sens-warn">本题最优基里含取值为 0 的人工变量（退化情形），'
+        + '允许区间不唯一，下表给出的是「当前这个基」能保持的范围。';
+      if (pinned) h += '写成「= 某值」的表示该系数一动，最优基就会改变。';
+      h += '</div>';
+    }
+
+    h += '</div>';
+    return h;
   }
 
   /* 关系符显示成数学符号 */

@@ -380,6 +380,82 @@ class CDP {
     `实时间距=${gap.gap}px（margin-bottom=${gap.mb}px，下一块="${gap.next}"）`);
   check(gap.errors === 0, '结论区渲染无 JS 错误');
 
+  /* ---------- 6.8 灵敏度分析 ---------- */
+  console.log('\n--- 灵敏度分析 ---');
+  const sens = JSON.parse(await evl(`(function(){
+    window.__T.reset(2, 3); window.__T.setDir('max');
+    window.__T.setC(0, 2); window.__T.setC(1, 3);
+    window.__T.setA(0,0,1); window.__T.setA(0,1,2); window.__T.setB(0,8);
+    window.__T.setA(1,0,4); window.__T.setA(1,1,0); window.__T.setB(1,16);
+    window.__T.setA(2,0,0); window.__T.setA(2,1,4); window.__T.setB(2,12);
+    document.getElementById('solveBtn').click();
+    var secs = Array.prototype.map.call(document.querySelectorAll('#result h2.sec'),
+                 function(e){ return e.textContent; });
+    return JSON.stringify({
+      all: (document.getElementById('result').textContent||'').replace(/\\s+/g,' '),
+      secs: secs,
+      tables: document.querySelectorAll('table.sens').length,
+      rows: document.querySelectorAll('table.sens tr').length,
+      errors: window.__errors.length
+    });
+  })()`));
+  check(sens.tables === 2 && sens.rows === 5,
+    '灵敏度卡片渲染出 c 与 b 两张表共 5 行', `表=${sens.tables} 行=${sens.rows}`);
+  check(sens.all.indexOf('c1 ≥ 3/2') >= 0, '基变量 x1：c1 ≥ 3/2');
+  check(sens.all.indexOf('0 ≤ c2 ≤ 4') >= 0, '基变量 x2：0 ≤ c2 ≤ 4');
+  check(sens.all.indexOf('4 ≤ b1 ≤ 10') >= 0, '约束 1：4 ≤ b1 ≤ 10');
+  check(sens.all.indexOf('8 ≤ b2 ≤ 32') >= 0, '约束 2：8 ≤ b2 ≤ 32');
+  check(sens.all.indexOf('b3 ≥ 8') >= 0, '约束 3：b3 ≥ 8');
+  check(sens.all.indexOf('每 +1 → z* +4') >= 0, '基变量给出斜率提示「每 +1 → z* +4」');
+  check(sens.secs.indexOf('灵敏度分析') > sens.secs.indexOf('结论'),
+    '灵敏度分析排在结论区之后', sens.secs.join(' / '));
+  check(sens.errors === 0, '灵敏度卡片渲染无 JS 错误');
+
+  /* 非基变量应当只有单侧区间 */
+  const sensNB = JSON.parse(await evl(`(function(){
+    window.__T.reset(2, 1); window.__T.setDir('max');
+    window.__T.setC(0, 2); window.__T.setC(1, 3);
+    window.__T.setA(0,0,1); window.__T.setA(0,1,1); window.__T.setB(0,4);
+    document.getElementById('solveBtn').click();
+    return JSON.stringify({
+      all: (document.getElementById('result').textContent||'').replace(/\\s+/g,' '),
+      errors: window.__errors.length
+    });
+  })()`));
+  check(sensNB.all.indexOf('c1 ≤ 3') >= 0 && sensNB.all.indexOf('非基') >= 0
+        && sensNB.all.indexOf('不改变 z*') >= 0,
+    '非基变量显示单侧区间（c1 ≤ 3）并标注「非基」「不改变 z*」');
+  check(sensNB.errors === 0, '非基变量情形渲染无 JS 错误');
+
+  /* 退化情形：最优基里残留取 0 的人工变量，必须给出提示 */
+  const sensDG = JSON.parse(await evl(`(function(){
+    window.__T.reset(4, 5); window.__T.setDir('min');
+    var c = [2,8,4,-2];
+    var cons = [
+      {a:[3,5,-3,0],   r:'>=', b:1},
+      {a:[-2,3,2,6],   r:'<=', b:-11},
+      {a:[2,-3,4,3],   r:'<=', b:16},
+      {a:[1,-3,5,2],   r:'<=', b:15},
+      {a:[1,-3,0,-3],  r:'>=', b:8}
+    ];
+    c.forEach(function(v, j){ window.__T.setC(j, v); });
+    cons.forEach(function(k, i){
+      k.a.forEach(function(v, j){ window.__T.setA(i, j, v); });
+      window.__T.setB(i, k.b);
+      window.__T.setRel(i, k.r);
+    });
+    document.getElementById('solveBtn').click();
+    return JSON.stringify({
+      all: (document.getElementById('result').textContent||'').replace(/\\s+/g,' '),
+      errors: window.__errors.length
+    });
+  })()`));
+  check(sensDG.all.indexOf('人工变量') >= 0 && sensDG.all.indexOf('退化') >= 0,
+    '退化情形（基中残留取 0 人工变量）给出提示');
+  check(sensDG.all.indexOf('b3 = 16') >= 0 && sensDG.all.indexOf('b5 = 8') >= 0,
+    '退化时被钉住的区间用等号表示（b3 = 16、b5 = 8）');
+  check(sensDG.errors === 0, '退化情形渲染无 JS 错误');
+
   /* ---------- 7. 0 变量 0 约束 ---------- */
   console.log('\n--- 0 变量 0 约束 ---');
   const zero = JSON.parse(await evl(`(function(){
