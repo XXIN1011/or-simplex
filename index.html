@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131316" media="(prefers-color-scheme: dark)">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -13,10 +14,28 @@
 :root{
   --fg:#18181b; --fg2:#71717a; --fg3:#a1a1aa;
   --line:#e4e4e7; --line2:#d4d4d8;
-  --bg:#f4f4f5; --card:#fff;
+  --bg:#f4f4f5; --card:#fff; --input:#fff; --soft:#f4f4f5;
   --accent:#2563eb; --accent-soft:#eff6ff;
-  --leave-soft:#fff7ed; --pivot:#f59e0b;
-  --ok:#15803d; --warn:#b45309; --err:#b91c1c;
+  --leave-soft:#fff7ed; --pivot:#f59e0b; --pivot-soft:#fef3c7;
+  --ok:#15803d; --ok-soft:#f0fdf4;
+  --warn:#b45309; --warn-soft:#fffbeb;
+  --err:#b91c1c; --err-soft:#fef2f2;
+  --caret:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%23a1a1aa' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+/* ---------- 深色模式：颜色全部走变量，这里整体换一套 ---------- */
+@media (prefers-color-scheme: dark){
+  :root{
+    --fg:#e8e8ea; --fg2:#a1a1a9; --fg3:#7c7c85;
+    --line:#2f2f36; --line2:#41414a;
+    --bg:#131316; --card:#1c1c20; --input:#232329; --soft:#26262c;
+    --accent:#6ea8fe; --accent-soft:#1c3252;
+    --leave-soft:#3a2a17; --pivot:#fbbf24; --pivot-soft:#463711;
+    --ok:#4ade80; --ok-soft:#123020;
+    --warn:#fbbf24; --warn-soft:#3a2d0e;
+    --err:#f87171; --err-soft:#3a1c1c;
+    --caret:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%237c7c85' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  }
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
@@ -36,17 +55,48 @@ header p{margin:3px 0 0;font-size:12.5px;color:var(--fg3);letter-spacing:.02em}
 /* ---------- 卡片 ---------- */
 .card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:12px}
 
+/* ---------- 符号说明（可折叠） ---------- */
+.help{background:var(--card);border-radius:12px;padding:0 14px;margin-bottom:12px}
+.help summary{
+  padding:13px 0;font-size:13.5px;font-weight:600;color:var(--fg2);
+  cursor:pointer;list-style:none;display:flex;align-items:center;
+}
+.help summary::-webkit-details-marker{display:none}
+.help summary::after{
+  content:'';width:7px;height:7px;margin-left:7px;
+  border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;
+  transform:rotate(45deg) translate(-2px,-2px);opacity:.45;transition:transform .15s;
+}
+.help[open] summary::after{transform:rotate(-135deg) translate(-2px,-2px)}
+.help ul{margin:0;padding:0 0 13px;list-style:none}
+.help li{
+  display:flex;gap:10px;
+  font-size:13px;color:var(--fg2);line-height:1.65;
+  padding:8px 0;border-top:1px solid var(--line);
+}
+.help li b{
+  flex:none;width:82px;
+  color:var(--fg);font-weight:650;font-variant-numeric:tabular-nums;
+}
+.help li .d{flex:1;min-width:0}
+.help .mono{font-variant-numeric:tabular-nums;color:var(--fg)}
+
 /* ---------- 分段控件 ---------- */
-.seg{display:inline-flex;background:#f4f4f5;border-radius:8px;padding:3px;margin-bottom:12px}
+.seg{display:inline-flex;background:var(--soft);border-radius:8px;padding:3px;margin-bottom:12px}
 .seg button{
   border:0;background:transparent;color:var(--fg2);
   font:inherit;font-size:14px;font-weight:600;
   padding:6px 20px;border-radius:6px;cursor:pointer;transition:.12s;
 }
-.seg button.on{background:#fff;color:var(--accent);box-shadow:0 1px 2px rgba(0,0,0,.07)}
+.seg button.on{background:var(--card);color:var(--accent);box-shadow:0 1px 2px rgba(0,0,0,.07)}
 
 /* ---------- 输入表 ---------- */
 .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -14px;padding:0 14px}
+.scroll-hint{
+  font-size:11.5px;color:var(--fg3);text-align:center;
+  margin:-3px 0 8px;transition:opacity .2s;
+}
+.scroll-hint.hide{opacity:0}
 table{border-collapse:collapse;font-variant-numeric:tabular-nums}
 .inp th{
   font-size:12px;font-weight:600;color:var(--fg2);
@@ -62,15 +112,15 @@ table{border-collapse:collapse;font-variant-numeric:tabular-nums}
 input.num{
   width:58px;padding:9px 2px;text-align:center;
   border:1px solid var(--line2);border-radius:7px;
-  font:inherit;font-size:16px;color:var(--fg);background:#fff;
+  font:inherit;font-size:16px;color:var(--fg);background:var(--input);
   font-variant-numeric:tabular-nums;
 }
 input.num:focus{outline:none;border-color:var(--accent);background:var(--accent-soft)}
 select.rel{
   width:58px;padding:9px 4px 9px 2px;border:1px solid var(--line2);border-radius:7px;
-  font:inherit;font-size:15px;color:var(--fg);background:#fff;
+  font:inherit;font-size:15px;color:var(--fg);background:var(--input);
   -webkit-appearance:none;appearance:none;text-align:center;text-align-last:center;
-  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%23a1a1aa' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-image:var(--caret);
   background-repeat:no-repeat;background-position:right 5px center;
 }
 select.rel:focus{outline:none;border-color:var(--accent)}
@@ -84,23 +134,45 @@ select.rel:focus{outline:none;border-color:var(--accent)}
 .ctrls{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}
 .actions{display:flex;gap:9px;margin-top:13px}
 button.btn{
-  border:1px solid var(--line2);background:#fff;color:var(--fg2);
+  border:1px solid var(--line2);background:var(--input);color:var(--fg2);
   font:inherit;font-size:13.5px;font-weight:500;
   padding:8px 13px;border-radius:8px;cursor:pointer;transition:.12s;
 }
-button.btn:active{background:#f4f4f5}
+button.btn:active{background:var(--soft)}
 button.btn:disabled{opacity:.35;cursor:default}
 button.btn.primary{
   flex:1;background:var(--accent);border-color:var(--accent);color:#fff;
   font-size:15px;font-weight:600;padding:11px 13px;
 }
-button.btn.primary:active{background:#1d4ed8}
+button.btn.primary:active{background:var(--accent);filter:brightness(.9)}
 /* 输入表里的空状态提示 */
 .inp td.empty-tip{
   font-size:12px;color:var(--fg3);text-align:left;
   padding-left:8px;white-space:nowrap;
 }
 .verdict .muted{color:var(--fg3);font-size:14px;font-weight:400}
+
+/* 对偶解（影子价格） */
+.dlist{
+  display:flex;flex-wrap:wrap;gap:5px 20px;
+  font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;
+}
+.dlist .dv{color:var(--accent)}
+
+/* ---------- 图解法 ---------- */
+.graph{margin:2px 0 10px}
+.graph svg{display:block;width:100%;height:auto}
+.graph .g-grid{stroke:var(--line);stroke-width:1}
+.graph .g-axis{stroke:var(--fg2);stroke-width:1.2}
+.graph .g-cline{stroke:var(--line2);stroke-width:1;stroke-dasharray:3 3}
+.graph .g-feas{fill:var(--accent);fill-opacity:.13;stroke:var(--accent);stroke-width:1.4}
+.graph .g-feas-line{stroke:var(--accent);stroke-width:1.4;stroke-dasharray:4 3}
+.graph .g-contour{stroke:var(--pivot);stroke-width:1.1;stroke-dasharray:5 4;opacity:.5}
+.graph .g-contour-hi{opacity:1;stroke-width:1.4}
+.graph .g-opt{fill:var(--pivot)}
+.graph text{font-size:8.5px;fill:var(--fg3)}
+.graph .g-lbl{font-size:10px;fill:var(--fg2);font-weight:600}
+.graph .g-optlbl{font-size:9.5px;fill:var(--pivot);font-weight:600}
 
 /* ---------- 结果 ---------- */
 #result{display:none}
@@ -121,13 +193,13 @@ h2.sec:first-child{margin-top:14px}
   font-size:11.5px;color:var(--accent);background:var(--accent-soft);
   padding:2px 8px;border-radius:20px;font-weight:600;
 }
-.iter-head .tag.done{color:var(--ok);background:#f0fdf4}
-.iter-head .tag.stop{color:var(--warn);background:#fffbeb}
+.iter-head .tag.done{color:var(--ok);background:var(--ok-soft)}
+.iter-head .tag.stop{color:var(--warn);background:var(--warn-soft)}
 
 table.tb{width:100%;font-size:13px;font-variant-numeric:tabular-nums}
 table.tb th,table.tb td{
   padding:6px 5px;text-align:center;white-space:nowrap;
-  border-bottom:1px solid #f4f4f5;
+  border-bottom:1px solid var(--soft);
 }
 table.tb th{
   font-size:11.5px;font-weight:600;color:var(--fg2);
@@ -146,14 +218,14 @@ table.tb tr.objrow td.rowlbl{color:var(--fg2)}
 table.tb .cell.enter{background:var(--accent-soft)}
 table.tb .cell.leave{background:var(--leave-soft)}
 table.tb .cell.pivot{
-  background:#fef3c7;font-weight:700;
+  background:var(--pivot-soft);font-weight:700;
   box-shadow:inset 0 0 0 1.5px var(--pivot);border-radius:4px;
 }
 table.tb th.enter{color:var(--accent)}
 table.tb th.leave{color:var(--warn)}
 
 .explain{
-  margin-top:11px;padding-top:11px;border-top:1px solid #f4f4f5;
+  margin-top:11px;padding-top:11px;border-top:1px solid var(--soft);
   font-size:13px;color:var(--fg2);line-height:1.65;
 }
 .explain b{color:var(--fg);font-weight:600}
@@ -164,7 +236,7 @@ table.tb th.leave{color:var(--warn)}
 .explain .row{display:block}
 
 /* ---------- 结论 ---------- */
-.verdict{border-radius:12px;padding:16px;background:#fff}
+.verdict{border-radius:12px;padding:16px;background:var(--card)}
 .verdict .vtitle{font-size:13px;font-weight:650;margin-bottom:10px}
 .verdict.opt .vtitle{color:var(--ok)}
 .verdict.no .vtitle{color:var(--err)}
@@ -173,14 +245,14 @@ table.tb th.leave{color:var(--warn)}
 .sol .v{color:var(--accent)}
 .sol .zv{color:var(--ok)}
 .vsum{
-  margin-top:11px;padding-top:11px;border-top:1px solid #f4f4f5;
+  margin-top:11px;padding-top:11px;border-top:1px solid var(--soft);
   font-size:13px;color:var(--fg2);line-height:1.7;
 }
 .banner{
   margin-bottom:12px;padding:11px 13px;border-radius:10px;
-  font-size:13px;line-height:1.6;background:#fff;color:var(--fg2);
+  font-size:13px;line-height:1.6;background:var(--card);color:var(--fg2);
 }
-.banner.err{background:#fef2f2;color:var(--err)}
+.banner.err{background:var(--err-soft);color:var(--err)}
 .banner b{color:inherit;font-weight:650}
 .banner .nb{white-space:nowrap}
 </style>
@@ -209,6 +281,19 @@ table.tb th.leave{color:var(--warn)}
       <button type="button" class="btn primary" id="solveBtn">求　解</button>
     </div>
   </section>
+
+  <details class="help">
+    <summary>符号说明</summary>
+    <ul>
+      <li><b>x1, x2 …</b><span class="d">决策变量，就是你要决定的量。</span></li>
+      <li><b>s1, s2 …</b><span class="d">松弛 / 剩余变量。≤ 约束里加进去，表示「还剩多少没用完」；≥ 约束里减掉，表示「比要求多出多少」。作用是先把不等式变成等式，才能套用单纯形法。</span></li>
+      <li><b>a1, a2 …</b><span class="d">人工变量。约束里出现 ≥ 或 = 时凑不出初始单位基，于是人为添一个变量顶上。最优解中它必须退到 0，否则说明原问题无可行解。</span></li>
+      <li><b>M</b><span class="d">形式上「无穷大」的正数。人工变量在目标函数里带 −M 的代价，逼它退到 0。表格按教材写法显示为 <span class="mono">3M − 4</span> 这类形式。</span></li>
+      <li><b>σ</b><span class="d">检验数，σⱼ = cⱼ − zⱼ。max 问题里 σⱼ &gt; 0 表示增加 xⱼ 还能让目标函数变好；全部 σⱼ ≤ 0 就达到最优了。</span></li>
+      <li><b>基变量</b><span class="d">当前取非零值的那组变量，就是表格左边「基」那一列；其余非基变量一律取 0。</span></li>
+      <li><b>z</b><span class="d">目标函数的值。</span></li>
+    </ul>
+  </details>
 
   <div id="banners"></div>
   <section id="result"></section>
@@ -276,6 +361,36 @@ function fmtPair(p) {
   else mPart = fmtNum(b) + 'M';
   if (a === 0) return mPart;
   return mPart + (a > 0 ? ' + ' : ' - ') + fmtNum(Math.abs(a));
+}
+
+/* ---------- 小规模矩阵求逆（高斯-约当 + 部分选主元）；奇异返回 null ---------- */
+function matInverse(M) {
+  var m = M.length, i, j, k;
+  var A = [];
+  for (i = 0; i < m; i++) {
+    var row = M[i].slice();
+    for (k = 0; k < m; k++) row.push(i === k ? 1 : 0);
+    A.push(row);
+  }
+  for (i = 0; i < m; i++) {
+    var p = i;
+    for (k = i + 1; k < m; k++) {
+      if (Math.abs(A[k][i]) > Math.abs(A[p][i])) p = k;
+    }
+    if (Math.abs(A[p][i]) < 1e-12) return null;
+    if (p !== i) { var t = A[i]; A[i] = A[p]; A[p] = t; }
+    var piv = A[i][i];
+    for (j = 0; j < 2 * m; j++) A[i][j] /= piv;
+    for (k = 0; k < m; k++) {
+      if (k === i) continue;
+      var f = A[k][i];
+      if (f === 0) continue;
+      for (j = 0; j < 2 * m; j++) A[k][j] -= f * A[i][j];
+    }
+  }
+  var inv = [];
+  for (i = 0; i < m; i++) inv.push(A[i].slice(m));
+  return inv;
 }
 
 /* =========================================================================
@@ -358,6 +473,7 @@ function simplexSolve(problem) {
 
   /* ---- 4. 初始单纯形表 ---- */
   var rows = [];
+  var A0 = [];      // 标准化后的约束系数矩阵（不含右端项），事后用于求对偶解
   for (var ir = 0; ir < m; ir++) {
     var r = new Array(N + 1).fill(0);
     for (var jr = 0; jr < n; jr++) r[jr] = cons[ir].coef[jr];
@@ -365,6 +481,7 @@ function simplexSolve(problem) {
     if (aCol[ir] !== undefined) r[aCol[ir]] = 1;
     r[N] = cons[ir].rhs;
     rows.push(r);
+    A0.push(r.slice(0, N));
   }
 
   /* ---- 5. 检验数行：σ_j = c_j - z_j ，末位存 -z ---- */
@@ -379,7 +496,8 @@ function simplexSolve(problem) {
   function snapshot(extra) {
     var s = {
       iter: 0, rows: [], obj: [], basis: basis.slice(),
-      entering: null, leaving: null, pivot: null, ratios: null, note: ''
+      entering: null, leaving: null, pivot: null, ratios: null,
+      degenerate: false, note: ''
     };
     for (var x in extra) s[x] = extra[x];
     for (var i3 = 0; i3 < m; i3++) s.rows.push(rows[i3].slice());
@@ -451,9 +569,12 @@ function simplexSolve(problem) {
     }
 
     /* 6.3 记录当前表 + 本步判定 */
+    /* θ = 0 表示被顶出的基变量本来就是 0，这一步迭代不会改善目标值，称为「退化」 */
+    var degenerate = (r >= 0 && minRatio < 1e-7);
     steps.push(snapshot({
       iter: iter,
-      entering: e, leaving: r, pivot: rows[r][e], ratios: ratios, note: ''
+      entering: e, leaving: r, pivot: rows[r][e], ratios: ratios,
+      degenerate: degenerate, note: ''
     }));
 
     /* 6.4 枢轴变换（高斯消元，把入基列化为单位向量） */
@@ -503,6 +624,29 @@ function simplexSolve(problem) {
   var finalStatus = status;
   if (status === 'optimal' && artificialInBasis) finalStatus = 'infeasible';
 
+  /* ---- 8. 对偶解（影子价格）：y = c_B · B⁻¹ ----
+     B 取最终基在「标准化约束矩阵 A0」中对应的列。用原始目标系数 c0（而不是
+     min 转换后的 -c0）来计算，这样 y_i 对 max / min 都直接等于「最优值对右端项的偏导」。 */
+  var dual = null;
+  if (finalStatus === 'optimal') {
+    var B = [];
+    for (var ib5 = 0; ib5 < m; ib5++) {
+      var brow = [];
+      for (var kb = 0; kb < m; kb++) brow.push(A0[ib5][basis[kb]]);
+      B.push(brow);
+    }
+    var Binv = matInverse(B);
+    if (Binv) {
+      var cB = basis.map(function (col) { return col < n ? c0[col] : 0; });
+      dual = [];
+      for (var jd5 = 0; jd5 < m; jd5++) {
+        var acc = 0;
+        for (var id5 = 0; id5 < m; id5++) acc += cB[id5] * Binv[id5][jd5];
+        dual.push(Math.abs(acc) < 1e-9 ? 0 : acc);
+      }
+    }
+  }
+
   return {
     ok: true,
     status: finalStatus,
@@ -515,6 +659,7 @@ function simplexSolve(problem) {
     basis: basis,
     solution: solution,
     objective: zStar,
+    dual: dual,
     artificialInBasis: artificialInBasis,
     altOptimal: altOptimal
   };
@@ -529,6 +674,260 @@ if (typeof module !== 'undefined' && module.exports) {
     asFraction: asFraction
   };
 }
+
+</script>
+<script>
+/* =========================================================================
+   图解法：当决策变量恰好 2 个时，用 SVG 画出可行域、目标函数等值线与最优解
+   ---------------------------------------------------------------------------
+   思路：把「视口矩形的四条边」也当成约束加进去，于是可行域被限制成有界多边形，
+   顶点有限、直接求凸包即可，不必单独写多边形裁剪。
+   ========================================================================= */
+(function () {
+  'use strict';
+
+  var W = 330, H = 250;
+  var PL = 36, PR = 14, PT = 12, PB = 26;
+
+  /* 两直线求交：a1x+b1y=c1 与 a2x+b2y=c2 */
+  function solve2(a1, b1, c1, a2, b2, c2) {
+    var d = a1 * b2 - a2 * b1;
+    if (Math.abs(d) < 1e-12) return null;
+    return { x: (c1 * b2 - c2 * b1) / d, y: (a1 * c2 - a2 * c1) / d };
+  }
+
+  /* 选一个好看的刻度间隔（1/2/5 × 10ⁿ） */
+  function niceStep(range) {
+    var raw = range / 5;
+    if (!(raw > 0)) return 1;
+    var mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    var n = raw / mag;
+    return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * mag;
+  }
+
+  function dedupe(pts) {
+    var out = [];
+    for (var i = 0; i < pts.length; i++) {
+      var dup = false;
+      for (var j = 0; j < out.length; j++) {
+        if (Math.abs(out[j].x - pts[i].x) < 1e-7 && Math.abs(out[j].y - pts[i].y) < 1e-7) { dup = true; break; }
+      }
+      if (!dup) out.push(pts[i]);
+    }
+    return out;
+  }
+
+  function feasible(p, cons) {
+    if (p.x < -1e-7 || p.y < -1e-7) return false;
+    for (var k = 0; k < cons.length; k++) {
+      var c = cons[k];
+      var lhs = c.coef[0] * p.x + c.coef[1] * p.y;
+      var tol = 1e-7 * Math.max(1, Math.abs(c.rhs));
+      if (c.rel === '<=' && lhs > c.rhs + tol) return false;
+      if (c.rel === '>=' && lhs < c.rhs - tol) return false;
+      if (c.rel === '=' && Math.abs(lhs - c.rhs) > tol) return false;
+    }
+    return true;
+  }
+
+  /* Andrew's monotone chain 凸包 */
+  function hull(pts) {
+    if (pts.length < 3) return pts.slice();
+    var p = pts.slice().sort(function (a, b) { return a.x - b.x || a.y - b.y; });
+    function cr(o, a, b) { return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x); }
+    var lo = [], up = [], i;
+    for (i = 0; i < p.length; i++) {
+      while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p[i]) <= 1e-12) lo.pop();
+      lo.push(p[i]);
+    }
+    for (i = p.length - 1; i >= 0; i--) {
+      while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p[i]) <= 1e-12) up.pop();
+      up.push(p[i]);
+    }
+    lo.pop(); up.pop();
+    return lo.concat(up);
+  }
+
+  /* 直线 a x + b y = c 落在矩形内的那一段（返回两个端点） */
+  function lineInRect(a, b, c, x1, y1, x2, y2) {
+    var pts = [];
+    if (Math.abs(b) > 1e-12) {
+      [x1, x2].forEach(function (x) {
+        var y = (c - a * x) / b;
+        if (y >= y1 - 1e-9 && y <= y2 + 1e-9) pts.push({ x: x, y: y });
+      });
+    }
+    if (Math.abs(a) > 1e-12) {
+      [y1, y2].forEach(function (y) {
+        var x = (c - b * y) / a;
+        if (x >= x1 - 1e-9 && x <= x2 + 1e-9) pts.push({ x: x, y: y });
+      });
+    }
+    pts = dedupe(pts);
+    if (pts.length < 2) return null;
+    var best = [pts[0], pts[1]], bd = -1;
+    for (var i = 0; i < pts.length; i++) {
+      for (var j = i + 1; j < pts.length; j++) {
+        var d = Math.pow(pts[i].x - pts[j].x, 2) + Math.pow(pts[i].y - pts[j].y, 2);
+        if (d > bd) { bd = d; best = [pts[i], pts[j]]; }
+      }
+    }
+    return best;
+  }
+
+  function n1(v) { return (+v).toFixed(1); }
+
+  /* 主入口：返回 { svg, caption } ；不适用（非 2 变量 / 无约束 / 无可行解）时返回 null */
+  function renderGraph(prob, res) {
+    var cons = prob.constraints || [];
+    if (prob.c.length !== 2 || cons.length === 0) return null;
+    if (res.status === 'infeasible') return null;
+
+    /* ---- 1. 收集候选坐标值（用 90 分位，避免个别大数把图压扁） ---- */
+    var xs = [], ys = [];
+    cons.forEach(function (k) {
+      if (Math.abs(k.coef[0]) > 1e-12) { var v = k.rhs / k.coef[0]; if (v > 0) xs.push(v); }
+      if (Math.abs(k.coef[1]) > 1e-12) { var w = k.rhs / k.coef[1]; if (w > 0) ys.push(w); }
+    });
+    for (var i = 0; i < cons.length; i++) {
+      for (var j = i + 1; j < cons.length; j++) {
+        var q = solve2(cons[i].coef[0], cons[i].coef[1], cons[i].rhs,
+                       cons[j].coef[0], cons[j].coef[1], cons[j].rhs);
+        if (q && isFinite(q.x) && isFinite(q.y) && q.x > 1e-9 && q.y > 1e-9) {
+          xs.push(q.x); ys.push(q.y);
+        }
+      }
+    }
+    if (res.solution && res.solution.length === 2) {
+      if (res.solution[0] > 0) xs.push(res.solution[0]);
+      if (res.solution[1] > 0) ys.push(res.solution[1]);
+    }
+    function pick(arr, fb) {
+      if (!arr.length) return fb;
+      var a = arr.slice().sort(function (p, r) { return p - r; });
+      var v = a[Math.min(a.length - 1, Math.floor(a.length * 0.9))];
+      return v > 0 ? v : fb;
+    }
+
+    /* ---- 2. 求「视口矩形内的可行域」顶点：把四条边也当成约束加进去 ---- */
+    function vertsOf(xmax, ymax) {
+      var ext = cons.concat([
+        { coef: [1, 0], rel: '<=', rhs: xmax },
+        { coef: [0, 1], rel: '<=', rhs: ymax },
+        { coef: [1, 0], rel: '>=', rhs: 0 },
+        { coef: [0, 1], rel: '>=', rhs: 0 }
+      ]);
+      var cand = [];
+      for (var a = 0; a < ext.length; a++) {
+        for (var b2 = a + 1; b2 < ext.length; b2++) {
+          var pt = solve2(ext[a].coef[0], ext[a].coef[1], ext[a].rhs,
+                          ext[b2].coef[0], ext[b2].coef[1], ext[b2].rhs);
+          if (pt && isFinite(pt.x) && isFinite(pt.y) && feasible(pt, cons)) cand.push(pt);
+        }
+      }
+      return hull(dedupe(cand));
+    }
+
+    /* 第一遍用较宽松的范围（约束截距可能远大于实际可行范围），
+       拿到真实顶点后再用它收紧视图，图才不会被大片空白挤扁 */
+    var bx = pick(xs, 10) * 1.6, by = pick(ys, 10) * 1.6;
+    var probeVerts = vertsOf(bx, by);
+    var xmax = bx, ymax = by;
+    if (probeVerts.length >= 3) {
+      var mx = 0, my = 0;
+      probeVerts.forEach(function (p) { if (p.x > mx) mx = p.x; if (p.y > my) my = p.y; });
+      if (mx > 0 && my > 0) { xmax = mx * 1.18; ymax = my * 1.18; }
+    }
+    var verts = vertsOf(xmax, ymax);
+    if (verts.length < 2) return null;
+
+    /* ---- 3. 坐标变换 ---- */
+    var pw = W - PL - PR, ph = H - PT - PB;
+    var scale = Math.min(pw / xmax, ph / ymax);
+    function sx(x) { return PL + x * scale; }
+    function sy(y) { return H - PB - y * scale; }
+
+    var out = [];
+    out.push('<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="图解法">');
+
+    /* ③ 网格 + 刻度 */
+    var stepx = niceStep(xmax), stepy = niceStep(ymax);
+    for (var gx = stepx; gx <= xmax + 1e-9; gx += stepx) {
+      out.push('<line class="g-grid" x1="' + n1(sx(gx)) + '" y1="' + n1(sy(0)) +
+               '" x2="' + n1(sx(gx)) + '" y2="' + n1(sy(ymax)) + '"/>');
+      out.push('<text x="' + n1(sx(gx)) + '" y="' + n1(sy(0) + 11) + '" text-anchor="middle">' +
+               (Math.round(gx * 100) / 100) + '</text>');
+    }
+    for (var gy = stepy; gy <= ymax + 1e-9; gy += stepy) {
+      out.push('<line class="g-grid" x1="' + n1(sx(0)) + '" y1="' + n1(sy(gy)) +
+               '" x2="' + n1(sx(xmax)) + '" y2="' + n1(sy(gy)) + '"/>');
+      out.push('<text x="' + n1(sx(0) - 5) + '" y="' + n1(sy(gy) + 3) + '" text-anchor="end">' +
+               (Math.round(gy * 100) / 100) + '</text>');
+    }
+    out.push('<text x="' + n1(sx(0) - 6) + '" y="' + n1(sy(0) + 11) + '" text-anchor="end">0</text>');
+
+    /* ④ 各约束直线 */
+    cons.forEach(function (k) {
+      var seg = lineInRect(k.coef[0], k.coef[1], k.rhs, 0, 0, xmax, ymax);
+      if (seg) {
+        out.push('<line class="g-cline" x1="' + n1(sx(seg[0].x)) + '" y1="' + n1(sy(seg[0].y)) +
+                 '" x2="' + n1(sx(seg[1].x)) + '" y2="' + n1(sy(seg[1].y)) + '"/>');
+      }
+    });
+
+    /* ⑤ 可行域 */
+    if (verts.length >= 3) {
+      var poly = verts.map(function (p) { return n1(sx(p.x)) + ',' + n1(sy(p.y)); }).join(' ');
+      out.push('<polygon class="g-feas" points="' + poly + '"/>');
+    } else {
+      out.push('<line class="g-feas-line" x1="' + n1(sx(verts[0].x)) + '" y1="' + n1(sy(verts[0].y)) +
+               '" x2="' + n1(sx(verts[1].x)) + '" y2="' + n1(sy(verts[1].y)) + '"/>');
+    }
+
+    /* ⑥ 目标函数等值线：过原点的与过最优点的各一条 */
+    var c1 = prob.c[0], c2 = prob.c[1];
+    if (Math.abs(c1) > 1e-12 || Math.abs(c2) > 1e-12) {
+      var ks = [0];
+      if (res.status === 'optimal' && res.solution) {
+        ks.push(c1 * res.solution[0] + c2 * res.solution[1]);
+      }
+      ks.forEach(function (kk, idx) {
+        var seg2 = lineInRect(c1, c2, kk, 0, 0, xmax, ymax);
+        if (seg2) {
+          out.push('<line class="g-contour' + (idx ? ' g-contour-hi' : '') +
+                   '" x1="' + n1(sx(seg2[0].x)) + '" y1="' + n1(sy(seg2[0].y)) +
+                   '" x2="' + n1(sx(seg2[1].x)) + '" y2="' + n1(sy(seg2[1].y)) + '"/>');
+        }
+      });
+    }
+
+    /* ⑦ 坐标轴 */
+    out.push('<line class="g-axis" x1="' + n1(sx(0)) + '" y1="' + n1(sy(0)) +
+             '" x2="' + n1(sx(xmax)) + '" y2="' + n1(sy(0)) + '"/>');
+    out.push('<line class="g-axis" x1="' + n1(sx(0)) + '" y1="' + n1(sy(0)) +
+             '" x2="' + n1(sx(0)) + '" y2="' + n1(sy(ymax)) + '"/>');
+    out.push('<text class="g-lbl" x="' + n1(sx(xmax) - 6) + '" y="' + n1(sy(0) - 5) + '" text-anchor="end">x1</text>');
+    out.push('<text class="g-lbl" x="' + n1(sx(0) + 5) + '" y="' + n1(sy(ymax) + 9) + '">x2</text>');
+
+    /* ⑧ 最优解点 */
+    if (res.status === 'optimal' && res.solution && res.solution.length === 2) {
+      var ox = sx(res.solution[0]), oy = sy(res.solution[1]);
+      out.push('<circle class="g-opt" cx="' + n1(ox) + '" cy="' + n1(oy) + '" r="4"/>');
+      out.push('<text class="g-optlbl" x="' + n1(ox + 7) + '" y="' + n1(oy - 6) + '">(' +
+               fmtNum(res.solution[0]) + ', ' + fmtNum(res.solution[1]) + ')</text>');
+    }
+
+    out.push('</svg>');
+
+    var caption = '蓝色区域 = 可行域　橙色虚线 = 目标函数等值线（越靠外 z 越大）'
+      + (res.status === 'optimal' ? '　橙点 = 最优解（等值线平移到可行域边界时取到）' : '')
+      + (res.status === 'unbounded' ? '　本例可行域无界，等值线可以一直外移 → 无界解' : '');
+
+    return { svg: out.join(''), caption: caption };
+  }
+
+  window.renderGraph = renderGraph;
+})();
 
 </script>
 <script>
@@ -552,6 +951,23 @@ if (typeof module !== 'undefined' && module.exports) {
   function esc(s) {
     return String(s).replace(/[&<>"]/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  /* 表格横向溢出时给一句提示：手机上看不见滚动条，不说一声用户不知道右边还有内容。
+     只在真的溢出（scrollWidth > clientWidth）时才插入，且不重复插入。 */
+  function addScrollHints(root) {
+    Array.prototype.forEach.call(root.querySelectorAll('.scroll'), function (box) {
+      if (box.scrollWidth <= box.clientWidth + 1) return;
+      var next = box.nextElementSibling;
+      if (next && next.className === 'scroll-hint') return;
+      var hint = document.createElement('div');
+      hint.className = 'scroll-hint';
+      hint.textContent = '← 左右滑动查看完整表格 →';
+      box.parentNode.insertBefore(hint, box.nextSibling);
+      box.addEventListener('scroll', function () {
+        hint.classList.toggle('hide', box.scrollLeft > 6);
+      }, { passive: true });
     });
   }
 
@@ -614,6 +1030,7 @@ if (typeof module !== 'undefined' && module.exports) {
     $('delCon').disabled = (state.m < 1);
     $('addVar').disabled = (state.n >= MAXN);
     $('addCon').disabled = (state.m >= MAXM);
+    addScrollHints(document);
   }
 
   function bindInputs() {
@@ -729,6 +1146,12 @@ if (typeof module !== 'undefined' && module.exports) {
       + ratios
       + '<span class="row">最小值对应的第 ' + (step.leaving + 1) + ' 行被顶出，故 '
       + '<span class="w">' + lName + ' 出基</span>，即它变为 0。</span>'
+      + (step.degenerate
+          ? '<span class="row"><b>注意：这一步出现「退化」</b>——最小比值 θ = 0，'
+            + '说明被顶出的 ' + lName + ' 本来就取 0，所以这次迭代'
+            + '<span class="w">不会改善目标函数值</span>，只是换了一组基。'
+            + '退化时若枢轴规则选取不当可能出现循环。</span>'
+          : '')
       + '<span class="row"><b>③ 枢轴变换</b>：枢轴元素为 <span class="k">'
       + fmtNum(step.pivot) + '</span>（第 ' + (step.leaving + 1) + ' 行 ' + eName
       + ' 列），对该行做初等行变换使它变成 1、该列其余元素变成 0。</span>'
@@ -762,6 +1185,8 @@ if (typeof module !== 'undefined' && module.exports) {
     if (res.swapped) legend += '　·　<span class="nb">min 问题已取负转为 max，z 已还原</span>';
     html += '<div class="banner">' + legend + '</div>';
 
+    html += graphCard(prob, res);
+
     html += '<h2 class="sec">迭代过程（共 ' + (res.steps.length - 1) + ' 次迭代）</h2>';
     res.steps.forEach(function (step, idx) {
       var title = idx === 0 ? '初始表' : '第 ' + idx + ' 次迭代';
@@ -780,9 +1205,11 @@ if (typeof module !== 'undefined' && module.exports) {
 
     html += '<h2 class="sec">结论</h2>';
     html += verdict(res);
+    html += dualCard(res, prob);
 
     box.innerHTML = html;
     box.classList.add('show');
+    addScrollHints(box);
     box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
@@ -795,7 +1222,7 @@ if (typeof module !== 'undefined' && module.exports) {
         sols = '<span class="muted">本题没有决策变量</span>';
       }
       var extra = '<div class="vsum">';
-      extra += '非基变量取 0。最优值 <b>z = ' + fmtNum(res.objective) + '</b>。';
+      extra += '非基变量取 0。';
       if (res.altOptimal.length) {
         var names = res.vars.map(function (v) { return v.name; });
         extra += '<br>注意：非基变量 ' + res.altOptimal.map(function (i) { return names[i]; }).join('、')
@@ -824,6 +1251,38 @@ if (typeof module !== 'undefined' && module.exports) {
     return '<div class="verdict no">'
       + '<div class="vtitle">未能在限定步数内收敛</div>'
       + '<div class="vsum">可能存在退化导致的循环，请检查题目数据。</div></div>';
+  }
+
+  /* 对偶解（影子价格）：y = c_B·B⁻¹，由算法层算出 */
+  function dualCard(res, prob) {
+    if (res.status !== 'optimal' || !res.dual || !res.dual.length) return '';
+    var items = res.dual.map(function (v, i) {
+      return '<span>y' + (i + 1) + ' = <span class="dv">' + fmtNum(v) + '</span></span>';
+    }).join('');
+    var loose = [];
+    for (var i = 0; i < res.dual.length; i++) {
+      if (Math.abs(res.dual[i]) < 1e-9) loose.push(i + 1);
+    }
+    return '<div class="card"><div class="iter-head"><span class="name">对偶解（影子价格）</span></div>'
+      + '<div class="dlist">' + items + '</div>'
+      + '<div class="explain">yᵢ 表示第 i 个约束的右端项每增加 1 个单位时，最优目标值 z 会变化多少'
+      + '（在最优基不变的前提下）。'
+      + (loose.length
+          ? '其中第 ' + loose.join('、') + ' 个约束的影子价格为 0 —— '
+            + (loose.length > 1 ? '它们' : '它') + '还有余量、没被用尽，放宽也不会改变最优值。'
+          : '这里全是紧约束：每条约束都被用尽了，放宽任何一条都会改变最优值。')
+      + '</div></div>';
+  }
+
+  /* 图解法：仅当决策变量恰好 2 个、且不是无可行解时才画 */
+  function graphCard(prob, res) {
+    if (typeof renderGraph !== 'function') return '';
+    var g = null;
+    try { g = renderGraph(prob, res); } catch (e) { g = null; }
+    if (!g) return '';
+    return '<h2 class="sec">图解法</h2>'
+      + '<div class="card"><div class="graph">' + g.svg + '</div>'
+      + '<div class="explain">' + g.caption + '</div></div>';
   }
 
   /* ---------------- 求解 ---------------- */

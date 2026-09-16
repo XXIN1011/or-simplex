@@ -8,14 +8,17 @@ const read = f => fs.readFileSync(path.join(root, f), 'utf8');
 
 const tpl = read('template.html');
 const core = read('simplex-core.js');
+const graph = read('graph.js');
 const ui = read('ui.js');
 
-if (tpl.indexOf('/*__CORE__*/') === -1 || tpl.indexOf('/*__UI__*/') === -1) {
+if (tpl.indexOf('/*__CORE__*/') === -1 || tpl.indexOf('/*__UI__*/') === -1 ||
+    tpl.indexOf('/*__GRAPH__*/') === -1) {
   throw new Error('template.html 缺少占位符');
 }
 
 // 用函数作为替换值，避免 $& 等替换模式被解释
 let out = tpl.replace('/*__CORE__*/', () => core);
+out = out.replace('/*__GRAPH__*/', () => graph);
 out = out.replace('/*__UI__*/', () => ui);
 
 fs.writeFileSync(path.join(root, 'index.html'), out, 'utf8');

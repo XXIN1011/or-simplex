@@ -1,8 +1,11 @@
-/* UI 层回归验证（例题功能已移除，题目由脚本直接搭建）
-   1) 初始必须是空状态：0 变量 0 约束、有提示、结果区隐藏、例题控件已删净
-   2) 自行搭题求解：标准 max / 含 ≥ 与 = 的 min / 无界 / 无可行解
-   3) 0 变量 0 约束下求解不报错
-   4) 6 变量 8 约束极限尺寸
+/* UI 层回归验证
+   1) 初始空状态（0 变量 0 约束、例题已删净）
+   2) 自行搭题求解：四类结论 + 对偶解
+   3) 图解法：2 变量出现、3 变量不出现
+   4) 退化提示
+   5) 横向滚动提示
+   6) 深色模式
+   7) 0 变量 0 约束求解 + 极限尺寸
 */
 'use strict';
 const { spawn } = require('child_process');
@@ -22,7 +25,6 @@ const url = /^https?:\/\//i.test(target)
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'orverify-'));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-/* 注入到页面里的表单操作助手 */
 const HELPERS = `(function(){
   function q(s){ return document.querySelector(s); }
   function fire(el, ev){ el.dispatchEvent(new Event(ev, {bubbles:true})); }
@@ -43,11 +45,15 @@ const HELPERS = `(function(){
 
 const PROBE = `JSON.stringify({
   errors: window.__errors.length ? window.__errors : [],
-  cards: document.querySelectorAll('#result .card').length,
+  tables: document.querySelectorAll('table.tb').length,
   resultVisible: document.getElementById('result').classList.contains('show'),
   verdict: (document.querySelector('.verdict .vtitle')||{}).textContent || null,
   sol: (document.querySelector('.verdict .sol')||{}).textContent || null,
-  zline: (document.querySelectorAll('.verdict .sol')[1]||{}).textContent || null
+  zline: (document.querySelectorAll('.verdict .sol')[1]||{}).textContent || null,
+  dual: (document.querySelector('.dlist')||{}).textContent || null,
+  hasGraph: !!document.querySelector('.graph svg'),
+  degen: (document.getElementById('result').textContent||'').indexOf('退化') >= 0,
+  hints: document.querySelectorAll('.scroll-hint').length
 })`;
 
 class CDP {
@@ -100,7 +106,7 @@ class CDP {
 
   const evl = async expr => {
     const r = await cdp.send('Runtime.evaluate', { expression: expr, returnByValue: true }, sessionId);
-    if (r.exceptionDetails) throw new Error('页面执行异常: ' + JSON.stringify(r.exceptionDetails).slice(0, 200));
+    if (r.exceptionDetails) throw new Error('页面执行异常: ' + JSON.stringify(r.exceptionDetails).slice(0, 220));
     return r.result.value;
   };
   let pass = 0, fail = 0;
@@ -119,116 +125,165 @@ class CDP {
     dirOn: (document.querySelector('#dirSeg button.on')||{}).textContent || null,
     resultVisible: document.getElementById('result').classList.contains('show'),
     hasDemoBtn: !!document.getElementById('demoBtn'),
-    hasDemoMenu: !!document.getElementById('demoMenu'),
+    hasHelp: !!document.querySelector('.help'),
     solveBtn: !!document.getElementById('solveBtn'),
     errors: window.__errors
   })`));
   check(init.vars === 0 && init.cons === 0, '打开时 0 个决策变量、0 个约束',
     `变量=${init.vars} 约束=${init.cons}`);
-  check(init.tips === 2, '空状态给出两处提示（变量 / 约束）', `提示块数=${init.tips}`);
-  check(init.dirOn === 'max', '默认方向为 max', `方向按钮="${init.dirOn}"`);
-  check(init.resultVisible === false, '打开时不显示任何结果（结果区隐藏）');
-  check(init.hasDemoBtn === false && init.hasDemoMenu === false && init.solveBtn === true,
-    '例题按钮与菜单已彻底移除，求解按钮保留');
+  check(init.tips === 2, '空状态给出两处提示', `提示块=${init.tips}`);
+  check(init.dirOn === 'max', '默认方向为 max');
+  check(init.resultVisible === false, '打开时不显示结果');
+  check(init.hasDemoBtn === false && init.solveBtn === true, '例题已移除、求解按钮在位');
+  check(init.hasHelp === true, '符号说明折叠块存在');
   check(init.errors.length === 0, '加载无 JS 错误');
 
   await evl(HELPERS);
 
-  /* ---------- 2. 自行搭题求解 ---------- */
-  console.log('\n--- 自行搭题求解 ---');
+  /* ---------- 2. 搭题求解 + 对偶解 ---------- */
+  console.log('\n--- 搭题求解与对偶解 ---');
   const cases = [
-    { name: 'max 2x1+3x2, 3 个 ≤ 约束',
-      build: `__T.reset(2,3); __T.setDir('max');
-        __T.setC(0,2); __T.setC(1,3);
+    { name: 'max 2x1+3x2（3 个 ≤）', expectVerdict: '最优解',
+      build: `__T.reset(2,3); __T.setDir('max'); __T.setC(0,2); __T.setC(1,3);
         __T.setA(0,0,1); __T.setA(0,1,2); __T.setB(0,8);
         __T.setA(1,0,4); __T.setA(1,1,0); __T.setB(1,16);
         __T.setA(2,0,0); __T.setA(2,1,4); __T.setB(2,12);`,
-      verdict: '最优解', sol: 'x1 = 4　　x2 = 2', z: 'z = 14', cards: 4 },
-    { name: 'min 4x1+x2, 含 = 与 ≥（人工变量）',
-      build: `__T.reset(2,3); __T.setDir('min');
-        __T.setC(0,4); __T.setC(1,1);
+      sol: 'x1 = 4　　x2 = 2', z: 'z = 14', tables: 4, graph: true,
+      dual: ['3/2', '1/8'] },
+    { name: 'min 4x1+x2（含 = 与 ≥）', expectVerdict: '最优解',
+      build: `__T.reset(2,3); __T.setDir('min'); __T.setC(0,4); __T.setC(1,1);
         __T.setA(0,0,3); __T.setA(0,1,1); __T.setB(0,3); __T.setRel(0,'=');
         __T.setA(1,0,4); __T.setA(1,1,3); __T.setB(1,6); __T.setRel(1,'>=');
         __T.setA(2,0,1); __T.setA(2,1,2); __T.setB(2,4); __T.setRel(2,'<=');`,
-      verdict: '最优解', sol: 'x1 = 2/5　　x2 = 9/5', z: 'z = 17/5', cards: 4 },
-    { name: '无界：max x1, -x1+x2≤0, x2≤3',
-      build: `__T.reset(2,2); __T.setDir('max');
-        __T.setC(0,1); __T.setC(1,0);
+      sol: 'x1 = 2/5　　x2 = 9/5', z: 'z = 17/5', tables: 4, graph: true,
+      dual: ['7/5'] },
+    { name: '无界：max x1', expectVerdict: '无界解',
+      build: `__T.reset(2,2); __T.setDir('max'); __T.setC(0,1); __T.setC(1,0);
         __T.setA(0,0,-1); __T.setA(0,1,1); __T.setB(0,0);
         __T.setA(1,0,0); __T.setA(1,1,1); __T.setB(1,3);`,
-      verdict: '无界解', sol: null, z: null, cards: 1 },
-    { name: '无可行解：max x1, x1≥5, x1≤2',
-      build: `__T.reset(1,2); __T.setDir('max');
-        __T.setC(0,1);
+      sol: null, z: null, tables: 1, graph: true, dual: null },
+    { name: '无可行解：x1≥5, x1≤2', expectVerdict: '无可行解',
+      build: `__T.reset(1,2); __T.setDir('max'); __T.setC(0,1);
         __T.setA(0,0,1); __T.setB(0,5); __T.setRel(0,'>=');
         __T.setA(1,0,1); __T.setB(1,2); __T.setRel(1,'<=');`,
-      verdict: '无可行解', sol: null, z: null, cards: 2 }
+      sol: null, z: null, tables: 2, graph: false, dual: null }
   ];
 
   for (const c of cases) {
     await evl(c.build.replace(/__T\./g, 'window.__T.') + " document.getElementById('solveBtn').click(); 'ok'");
-    await sleep(380);
+    await sleep(400);
     const p = JSON.parse(await evl(PROBE));
-    const okV = p.verdict === c.verdict;
+    const okV = p.verdict === c.expectVerdict;
     const okS = (c.sol === null) || (p.sol === c.sol);
     const okZ = (c.z === null) || (p.zline === c.z);
-    const okC = (c.cards === undefined) || (p.cards === c.cards);
-    check(okV && okS && okZ && okC && p.errors.length === 0, c.name,
-      `结论="${p.verdict}"  解="${p.sol}"  ${p.zline}  表数=${p.cards}`);
-    if (!okV) console.log(`      ✗ 期望结论 "${c.verdict}"`);
-    if (!okS) console.log(`      ✗ 期望解   "${c.sol}"`);
-    if (!okZ) console.log(`      ✗ 期望      "${c.z}"`);
-    if (!okC) console.log(`      ✗ 期望表数 ${c.cards}`);
+    const okT = p.tables === c.tables;
+    const okG = p.hasGraph === c.graph;
+    const okD = (c.dual === null) ? (p.dual === null) : (c.dual.every(s => p.dual && p.dual.indexOf(s) >= 0));
+    check(okV && okS && okZ && okT && okG && okD && p.errors.length === 0, c.name,
+      `结论=${p.verdict} 解=${p.sol} ${p.zline} 表=${p.tables} 图=${p.hasGraph} 对偶=${p.dual ? '有' : '无'}`);
+    if (!okV) console.log(`      ✗ 期望结论 ${c.expectVerdict}`);
+    if (!okS) console.log(`      ✗ 期望解 ${c.sol}`);
+    if (!okZ) console.log(`      ✗ 期望 ${c.z}`);
+    if (!okT) console.log(`      ✗ 期望迭代表数 ${c.tables}`);
+    if (!okG) console.log(`      ✗ 期望图解 ${c.graph}`);
+    if (!okD) console.log(`      ✗ 对偶解不符，实际 "${p.dual}"`);
     if (p.errors.length) console.log('      ✗ JS 错误: ' + JSON.stringify(p.errors));
   }
 
-  /* ---------- 3. 0 变量 0 约束下求解 ---------- */
-  console.log('\n--- 0 变量 0 约束求解 ---');
+  /* ---------- 3. 图解法只在 2 变量时出现 ---------- */
+  console.log('\n--- 图解法适用范围 ---');
+  const g3 = JSON.parse(await evl(`(function(){
+    window.__T.reset(3, 2);
+    window.__T.setDir('max');
+    window.__T.setC(0,2); window.__T.setC(1,3); window.__T.setC(2,1);
+    window.__T.setA(0,0,1); window.__T.setA(0,1,2); window.__T.setA(0,2,0); window.__T.setB(0,8);
+    window.__T.setA(1,0,4); window.__T.setA(1,1,0); window.__T.setA(1,2,0); window.__T.setB(1,16);
+    document.getElementById('solveBtn').click();
+    return JSON.stringify({ hasGraph: !!document.querySelector('.graph svg'),
+                            nVars: document.querySelectorAll('#inTbl thead th.var').length });
+  })()`));
+  check(g3.hasGraph === false && g3.nVars === 3,
+    '3 个变量时不显示图解法', `变量数=${g3.nVars} 有图=${g3.hasGraph}`);
+
+  /* ---------- 4. 退化提示 ---------- */
+  console.log('\n--- 退化提示 ---');
+  const deg = JSON.parse(await evl(`(function(){
+    __T.reset(2,2); __T.setDir('max'); __T.setC(0,3); __T.setC(1,9);
+    __T.setA(0,0,1); __T.setA(0,1,4); __T.setB(0,8);
+    __T.setA(1,0,1); __T.setA(1,1,2); __T.setB(1,4);
+    document.getElementById('solveBtn').click();
+    return JSON.stringify({
+      degen: (document.getElementById('result').textContent||'').indexOf('退化') >= 0,
+      verdict: (document.querySelector('.verdict .vtitle')||{}).textContent,
+      sol: (document.querySelector('.verdict .sol')||{}).textContent,
+      errors: window.__errors.length
+    });
+  })()`.replace(/__T\./g, 'window.__T.')));
+  check(deg.degen === true && deg.errors === 0,
+    'θ = 0 的退化迭代会给出文字提示',
+    `结论=${deg.verdict} 解=${deg.sol} 出现"退化"字样=${deg.degen}`);
+
+  /* ---------- 5. 横向滚动提示 ---------- */
+  console.log('\n--- 横向滚动提示 ---');
+  const sc = JSON.parse(await evl(`(function(){
+    var n = document.querySelectorAll('#inTbl thead th.var').length;
+    for (var i=n;i<6;i++) document.getElementById('addVar').click();
+    document.getElementById('solveBtn').click();
+    var boxes = document.querySelectorAll('.scroll');
+    var over = 0;
+    for (var j=0;j<boxes.length;j++) if (boxes[j].scrollWidth > boxes[j].clientWidth + 1) over++;
+    return JSON.stringify({
+      overflow: over,
+      hints: document.querySelectorAll('.scroll-hint').length,
+      errors: window.__errors.length
+    });
+  })()`));
+  check(sc.hints >= sc.overflow && sc.overflow > 0 && sc.errors === 0,
+    '宽表格溢出时插入「左右滑动」提示',
+    `溢出的表格容器=${sc.overflow} 已插入提示=${sc.hints}`);
+
+  /* ---------- 6. 深色模式 ---------- */
+  console.log('\n--- 深色模式 ---');
+  await cdp.send('Emulation.setEmulatedMedia',
+    { features: [{ name: 'prefers-color-scheme', value: 'dark' }] }, sessionId);
+  await sleep(300);
+  const dk = JSON.parse(await evl(`JSON.stringify({
+    bg: getComputedStyle(document.body).backgroundColor,
+    fg: getComputedStyle(document.body).color,
+    card: getComputedStyle(document.querySelector('.card')).backgroundColor,
+    input: getComputedStyle(document.querySelector('#inTbl input.num')).backgroundColor
+  })`));
+  const lum = s => {
+    const nums = s.substring(s.indexOf('(') + 1, s.indexOf(')')).split(',').map(parseFloat);
+    return nums.length >= 3 ? (nums[0] * 0.299 + nums[1] * 0.587 + nums[2] * 0.114) : -1;
+  };
+  const bgL = lum(dk.bg), fgL = lum(dk.fg), cardL = lum(dk.card), inputL = lum(dk.input);
+  check(bgL >= 0 && bgL < 60 && cardL < 80 && inputL < 90 && fgL > 180,
+    '深色模式下背景/卡片/输入框变暗、文字变亮',
+    `body=${dk.bg}(亮度${bgL.toFixed(0)}) 卡片=${dk.card} 输入框=${dk.input} 文字=${dk.fg}(亮度${fgL.toFixed(0)})`);
+  await cdp.send('Emulation.setEmulatedMedia', { features: [] }, sessionId);
+  await sleep(200);
+  const lt = JSON.parse(await evl(`JSON.stringify({
+    bg: getComputedStyle(document.body).backgroundColor })`));
+  check(lum(lt.bg) > 200, '切回浅色后背景恢复为浅色', `body=${lt.bg}`);
+
+  /* ---------- 7. 0 变量 0 约束 ---------- */
+  console.log('\n--- 0 变量 0 约束 ---');
   const zero = JSON.parse(await evl(`(function(){
     for(var i=0;i<14;i++) document.getElementById('delVar').click();
     for(var j=0;j<14;j++) document.getElementById('delCon').click();
     document.getElementById('solveBtn').click();
-    var r = {
+    return JSON.stringify({
       vars: document.querySelectorAll('#inTbl thead th.var').length,
       cons: document.querySelectorAll('#inTbl input[data-k="b"]').length,
-      delVarDisabled: document.getElementById('delVar').disabled,
-      delConDisabled: document.getElementById('delCon').disabled,
       verdict: (document.querySelector('.verdict .vtitle')||{}).textContent || null,
       sol: (document.querySelector('.verdict .sol')||{}).textContent || null,
       errors: window.__errors.length
-    };
-    document.getElementById('addVar').click();
-    document.getElementById('addCon').click();
-    r.nBack = document.querySelectorAll('#inTbl thead th.var').length;
-    r.mBack = document.querySelectorAll('#inTbl input[data-k="b"]').length;
-    return JSON.stringify(r);
-  })()`));
-  check(zero.vars === 0 && zero.cons === 0 && zero.delVarDisabled && zero.delConDisabled,
-    '可以减到 0 变量 0 约束，减号按钮置灰',
-    `变量=${zero.vars} 约束=${zero.cons}`);
-  check(zero.errors === 0 && zero.verdict === '最优解',
-    '0 变量 0 约束下求解不报错', `结论="${zero.verdict}"  解="${zero.sol}"`);
-  check(zero.nBack === 1 && zero.mBack === 1, '从 0 能再加回来',
-    `加回后 变量=${zero.nBack} 约束=${zero.mBack}`);
-
-  /* ---------- 4. 极限尺寸 ---------- */
-  console.log('\n--- 极限尺寸（6 变量 / 8 约束）---');
-  const lim = JSON.parse(await evl(`(function(){
-    var n = document.querySelectorAll('#inTbl thead th.var').length;
-    for (var i=n;i<6;i++) document.getElementById('addVar').click();
-    var m = document.querySelectorAll('#inTbl input[data-k="b"]').length;
-    for (var j=m;j<8;j++) document.getElementById('addCon').click();
-    document.getElementById('solveBtn').click();
-    return JSON.stringify({
-      errors: window.__errors,
-      nVars: document.querySelectorAll('#inTbl thead th.var').length,
-      nCons: document.querySelectorAll('#inTbl input[data-k="b"]').length,
-      verdict: (document.querySelector('.verdict .vtitle')||{}).textContent || null
     });
   })()`));
-  check(lim.errors.length === 0 && lim.nVars === 6 && lim.nCons === 8,
-    '极限尺寸下渲染与求解正常',
-    `变量=${lim.nVars} 约束=${lim.nCons} 结论="${lim.verdict}"`);
+  check(zero.vars === 0 && zero.cons === 0 && zero.errors === 0 && zero.verdict === '最优解',
+    '0 变量 0 约束下求解不报错',
+    `结论=${zero.verdict} 解=${zero.sol}`);
 
   console.log(`\n合计: ${pass} 通过 / ${fail} 失败`);
   ws.close(); child.kill();

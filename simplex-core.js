@@ -60,6 +60,36 @@ function fmtPair(p) {
   return mPart + (a > 0 ? ' + ' : ' - ') + fmtNum(Math.abs(a));
 }
 
+/* ---------- 小规模矩阵求逆（高斯-约当 + 部分选主元）；奇异返回 null ---------- */
+function matInverse(M) {
+  var m = M.length, i, j, k;
+  var A = [];
+  for (i = 0; i < m; i++) {
+    var row = M[i].slice();
+    for (k = 0; k < m; k++) row.push(i === k ? 1 : 0);
+    A.push(row);
+  }
+  for (i = 0; i < m; i++) {
+    var p = i;
+    for (k = i + 1; k < m; k++) {
+      if (Math.abs(A[k][i]) > Math.abs(A[p][i])) p = k;
+    }
+    if (Math.abs(A[p][i]) < 1e-12) return null;
+    if (p !== i) { var t = A[i]; A[i] = A[p]; A[p] = t; }
+    var piv = A[i][i];
+    for (j = 0; j < 2 * m; j++) A[i][j] /= piv;
+    for (k = 0; k < m; k++) {
+      if (k === i) continue;
+      var f = A[k][i];
+      if (f === 0) continue;
+      for (j = 0; j < 2 * m; j++) A[k][j] -= f * A[i][j];
+    }
+  }
+  var inv = [];
+  for (i = 0; i < m; i++) inv.push(A[i].slice(m));
+  return inv;
+}
+
 /* =========================================================================
    主函数
    problem = {
@@ -140,6 +170,7 @@ function simplexSolve(problem) {
 
   /* ---- 4. 初始单纯形表 ---- */
   var rows = [];
+  var A0 = [];      // 标准化后的约束系数矩阵（不含右端项），事后用于求对偶解
   for (var ir = 0; ir < m; ir++) {
     var r = new Array(N + 1).fill(0);
     for (var jr = 0; jr < n; jr++) r[jr] = cons[ir].coef[jr];
@@ -147,6 +178,7 @@ function simplexSolve(problem) {
     if (aCol[ir] !== undefined) r[aCol[ir]] = 1;
     r[N] = cons[ir].rhs;
     rows.push(r);
+    A0.push(r.slice(0, N));
   }
 
   /* ---- 5. 检验数行：σ_j = c_j - z_j ，末位存 -z ---- */
@@ -161,7 +193,8 @@ function simplexSolve(problem) {
   function snapshot(extra) {
     var s = {
       iter: 0, rows: [], obj: [], basis: basis.slice(),
-      entering: null, leaving: null, pivot: null, ratios: null, note: ''
+      entering: null, leaving: null, pivot: null, ratios: null,
+      degenerate: false, note: ''
     };
     for (var x in extra) s[x] = extra[x];
     for (var i3 = 0; i3 < m; i3++) s.rows.push(rows[i3].slice());
@@ -233,9 +266,12 @@ function simplexSolve(problem) {
     }
 
     /* 6.3 记录当前表 + 本步判定 */
+    /* θ = 0 表示被顶出的基变量本来就是 0，这一步迭代不会改善目标值，称为「退化」 */
+    var degenerate = (r >= 0 && minRatio < 1e-7);
     steps.push(snapshot({
       iter: iter,
-      entering: e, leaving: r, pivot: rows[r][e], ratios: ratios, note: ''
+      entering: e, leaving: r, pivot: rows[r][e], ratios: ratios,
+      degenerate: degenerate, note: ''
     }));
 
     /* 6.4 枢轴变换（高斯消元，把入基列化为单位向量） */
@@ -285,6 +321,29 @@ function simplexSolve(problem) {
   var finalStatus = status;
   if (status === 'optimal' && artificialInBasis) finalStatus = 'infeasible';
 
+  /* ---- 8. 对偶解（影子价格）：y = c_B · B⁻¹ ----
+     B 取最终基在「标准化约束矩阵 A0」中对应的列。用原始目标系数 c0（而不是
+     min 转换后的 -c0）来计算，这样 y_i 对 max / min 都直接等于「最优值对右端项的偏导」。 */
+  var dual = null;
+  if (finalStatus === 'optimal') {
+    var B = [];
+    for (var ib5 = 0; ib5 < m; ib5++) {
+      var brow = [];
+      for (var kb = 0; kb < m; kb++) brow.push(A0[ib5][basis[kb]]);
+      B.push(brow);
+    }
+    var Binv = matInverse(B);
+    if (Binv) {
+      var cB = basis.map(function (col) { return col < n ? c0[col] : 0; });
+      dual = [];
+      for (var jd5 = 0; jd5 < m; jd5++) {
+        var acc = 0;
+        for (var id5 = 0; id5 < m; id5++) acc += cB[id5] * Binv[id5][jd5];
+        dual.push(Math.abs(acc) < 1e-9 ? 0 : acc);
+      }
+    }
+  }
+
   return {
     ok: true,
     status: finalStatus,
@@ -297,6 +356,7 @@ function simplexSolve(problem) {
     basis: basis,
     solution: solution,
     objective: zStar,
+    dual: dual,
     artificialInBasis: artificialInBasis,
     altOptimal: altOptimal
   };

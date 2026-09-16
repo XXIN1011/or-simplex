@@ -96,6 +96,12 @@ class CDP {
   const extraJs = extraArg.startsWith('@')
     ? fs.readFileSync(path.join(__dirname, extraArg.slice(1)), 'utf8')
     : extraArg;
+  // 第 7 个参数若为 dark，则模拟系统深色模式
+  if ((process.argv[7] || '') === 'dark') {
+    await cdp.send('Emulation.setEmulatedMedia',
+      { features: [{ name: 'prefers-color-scheme', value: 'dark' }] }, sessionId);
+    await sleep(200);
+  }
   if (extraJs) {
     await cdp.send('Runtime.evaluate', { expression: extraJs }, sessionId);
     await sleep(450);

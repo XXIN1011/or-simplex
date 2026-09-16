@@ -21,6 +21,23 @@
     });
   }
 
+  /* 表格横向溢出时给一句提示：手机上看不见滚动条，不说一声用户不知道右边还有内容。
+     只在真的溢出（scrollWidth > clientWidth）时才插入，且不重复插入。 */
+  function addScrollHints(root) {
+    Array.prototype.forEach.call(root.querySelectorAll('.scroll'), function (box) {
+      if (box.scrollWidth <= box.clientWidth + 1) return;
+      var next = box.nextElementSibling;
+      if (next && next.className === 'scroll-hint') return;
+      var hint = document.createElement('div');
+      hint.className = 'scroll-hint';
+      hint.textContent = '← 左右滑动查看完整表格 →';
+      box.parentNode.insertBefore(hint, box.nextSibling);
+      box.addEventListener('scroll', function () {
+        hint.classList.toggle('hide', box.scrollLeft > 6);
+      }, { passive: true });
+    });
+  }
+
   /* ---------------- 渲染输入表 ---------------- */
   function renderInput() {
     var n = state.n, m = state.m, html = '';
@@ -80,6 +97,7 @@
     $('delCon').disabled = (state.m < 1);
     $('addVar').disabled = (state.n >= MAXN);
     $('addCon').disabled = (state.m >= MAXM);
+    addScrollHints(document);
   }
 
   function bindInputs() {
@@ -195,6 +213,12 @@
       + ratios
       + '<span class="row">最小值对应的第 ' + (step.leaving + 1) + ' 行被顶出，故 '
       + '<span class="w">' + lName + ' 出基</span>，即它变为 0。</span>'
+      + (step.degenerate
+          ? '<span class="row"><b>注意：这一步出现「退化」</b>——最小比值 θ = 0，'
+            + '说明被顶出的 ' + lName + ' 本来就取 0，所以这次迭代'
+            + '<span class="w">不会改善目标函数值</span>，只是换了一组基。'
+            + '退化时若枢轴规则选取不当可能出现循环。</span>'
+          : '')
       + '<span class="row"><b>③ 枢轴变换</b>：枢轴元素为 <span class="k">'
       + fmtNum(step.pivot) + '</span>（第 ' + (step.leaving + 1) + ' 行 ' + eName
       + ' 列），对该行做初等行变换使它变成 1、该列其余元素变成 0。</span>'
@@ -228,6 +252,8 @@
     if (res.swapped) legend += '　·　<span class="nb">min 问题已取负转为 max，z 已还原</span>';
     html += '<div class="banner">' + legend + '</div>';
 
+    html += graphCard(prob, res);
+
     html += '<h2 class="sec">迭代过程（共 ' + (res.steps.length - 1) + ' 次迭代）</h2>';
     res.steps.forEach(function (step, idx) {
       var title = idx === 0 ? '初始表' : '第 ' + idx + ' 次迭代';
@@ -246,9 +272,11 @@
 
     html += '<h2 class="sec">结论</h2>';
     html += verdict(res);
+    html += dualCard(res, prob);
 
     box.innerHTML = html;
     box.classList.add('show');
+    addScrollHints(box);
     box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
@@ -261,7 +289,7 @@
         sols = '<span class="muted">本题没有决策变量</span>';
       }
       var extra = '<div class="vsum">';
-      extra += '非基变量取 0。最优值 <b>z = ' + fmtNum(res.objective) + '</b>。';
+      extra += '非基变量取 0。';
       if (res.altOptimal.length) {
         var names = res.vars.map(function (v) { return v.name; });
         extra += '<br>注意：非基变量 ' + res.altOptimal.map(function (i) { return names[i]; }).join('、')
@@ -290,6 +318,38 @@
     return '<div class="verdict no">'
       + '<div class="vtitle">未能在限定步数内收敛</div>'
       + '<div class="vsum">可能存在退化导致的循环，请检查题目数据。</div></div>';
+  }
+
+  /* 对偶解（影子价格）：y = c_B·B⁻¹，由算法层算出 */
+  function dualCard(res, prob) {
+    if (res.status !== 'optimal' || !res.dual || !res.dual.length) return '';
+    var items = res.dual.map(function (v, i) {
+      return '<span>y' + (i + 1) + ' = <span class="dv">' + fmtNum(v) + '</span></span>';
+    }).join('');
+    var loose = [];
+    for (var i = 0; i < res.dual.length; i++) {
+      if (Math.abs(res.dual[i]) < 1e-9) loose.push(i + 1);
+    }
+    return '<div class="card"><div class="iter-head"><span class="name">对偶解（影子价格）</span></div>'
+      + '<div class="dlist">' + items + '</div>'
+      + '<div class="explain">yᵢ 表示第 i 个约束的右端项每增加 1 个单位时，最优目标值 z 会变化多少'
+      + '（在最优基不变的前提下）。'
+      + (loose.length
+          ? '其中第 ' + loose.join('、') + ' 个约束的影子价格为 0 —— '
+            + (loose.length > 1 ? '它们' : '它') + '还有余量、没被用尽，放宽也不会改变最优值。'
+          : '这里全是紧约束：每条约束都被用尽了，放宽任何一条都会改变最优值。')
+      + '</div></div>';
+  }
+
+  /* 图解法：仅当决策变量恰好 2 个、且不是无可行解时才画 */
+  function graphCard(prob, res) {
+    if (typeof renderGraph !== 'function') return '';
+    var g = null;
+    try { g = renderGraph(prob, res); } catch (e) { g = null; }
+    if (!g) return '';
+    return '<h2 class="sec">图解法</h2>'
+      + '<div class="card"><div class="graph">' + g.svg + '</div>'
+      + '<div class="explain">' + g.caption + '</div></div>';
   }
 
   /* ---------------- 求解 ---------------- */

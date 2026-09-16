@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131316" media="(prefers-color-scheme: dark)">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -13,10 +14,28 @@
 :root{
   --fg:#18181b; --fg2:#71717a; --fg3:#a1a1aa;
   --line:#e4e4e7; --line2:#d4d4d8;
-  --bg:#f4f4f5; --card:#fff;
+  --bg:#f4f4f5; --card:#fff; --input:#fff; --soft:#f4f4f5;
   --accent:#2563eb; --accent-soft:#eff6ff;
-  --leave-soft:#fff7ed; --pivot:#f59e0b;
-  --ok:#15803d; --warn:#b45309; --err:#b91c1c;
+  --leave-soft:#fff7ed; --pivot:#f59e0b; --pivot-soft:#fef3c7;
+  --ok:#15803d; --ok-soft:#f0fdf4;
+  --warn:#b45309; --warn-soft:#fffbeb;
+  --err:#b91c1c; --err-soft:#fef2f2;
+  --caret:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%23a1a1aa' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+/* ---------- 深色模式：颜色全部走变量，这里整体换一套 ---------- */
+@media (prefers-color-scheme: dark){
+  :root{
+    --fg:#e8e8ea; --fg2:#a1a1a9; --fg3:#7c7c85;
+    --line:#2f2f36; --line2:#41414a;
+    --bg:#131316; --card:#1c1c20; --input:#232329; --soft:#26262c;
+    --accent:#6ea8fe; --accent-soft:#1c3252;
+    --leave-soft:#3a2a17; --pivot:#fbbf24; --pivot-soft:#463711;
+    --ok:#4ade80; --ok-soft:#123020;
+    --warn:#fbbf24; --warn-soft:#3a2d0e;
+    --err:#f87171; --err-soft:#3a1c1c;
+    --caret:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%237c7c85' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  }
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
@@ -36,17 +55,48 @@ header p{margin:3px 0 0;font-size:12.5px;color:var(--fg3);letter-spacing:.02em}
 /* ---------- 卡片 ---------- */
 .card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:12px}
 
+/* ---------- 符号说明（可折叠） ---------- */
+.help{background:var(--card);border-radius:12px;padding:0 14px;margin-bottom:12px}
+.help summary{
+  padding:13px 0;font-size:13.5px;font-weight:600;color:var(--fg2);
+  cursor:pointer;list-style:none;display:flex;align-items:center;
+}
+.help summary::-webkit-details-marker{display:none}
+.help summary::after{
+  content:'';width:7px;height:7px;margin-left:7px;
+  border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;
+  transform:rotate(45deg) translate(-2px,-2px);opacity:.45;transition:transform .15s;
+}
+.help[open] summary::after{transform:rotate(-135deg) translate(-2px,-2px)}
+.help ul{margin:0;padding:0 0 13px;list-style:none}
+.help li{
+  display:flex;gap:10px;
+  font-size:13px;color:var(--fg2);line-height:1.65;
+  padding:8px 0;border-top:1px solid var(--line);
+}
+.help li b{
+  flex:none;width:82px;
+  color:var(--fg);font-weight:650;font-variant-numeric:tabular-nums;
+}
+.help li .d{flex:1;min-width:0}
+.help .mono{font-variant-numeric:tabular-nums;color:var(--fg)}
+
 /* ---------- 分段控件 ---------- */
-.seg{display:inline-flex;background:#f4f4f5;border-radius:8px;padding:3px;margin-bottom:12px}
+.seg{display:inline-flex;background:var(--soft);border-radius:8px;padding:3px;margin-bottom:12px}
 .seg button{
   border:0;background:transparent;color:var(--fg2);
   font:inherit;font-size:14px;font-weight:600;
   padding:6px 20px;border-radius:6px;cursor:pointer;transition:.12s;
 }
-.seg button.on{background:#fff;color:var(--accent);box-shadow:0 1px 2px rgba(0,0,0,.07)}
+.seg button.on{background:var(--card);color:var(--accent);box-shadow:0 1px 2px rgba(0,0,0,.07)}
 
 /* ---------- 输入表 ---------- */
 .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -14px;padding:0 14px}
+.scroll-hint{
+  font-size:11.5px;color:var(--fg3);text-align:center;
+  margin:-3px 0 8px;transition:opacity .2s;
+}
+.scroll-hint.hide{opacity:0}
 table{border-collapse:collapse;font-variant-numeric:tabular-nums}
 .inp th{
   font-size:12px;font-weight:600;color:var(--fg2);
@@ -62,15 +112,15 @@ table{border-collapse:collapse;font-variant-numeric:tabular-nums}
 input.num{
   width:58px;padding:9px 2px;text-align:center;
   border:1px solid var(--line2);border-radius:7px;
-  font:inherit;font-size:16px;color:var(--fg);background:#fff;
+  font:inherit;font-size:16px;color:var(--fg);background:var(--input);
   font-variant-numeric:tabular-nums;
 }
 input.num:focus{outline:none;border-color:var(--accent);background:var(--accent-soft)}
 select.rel{
   width:58px;padding:9px 4px 9px 2px;border:1px solid var(--line2);border-radius:7px;
-  font:inherit;font-size:15px;color:var(--fg);background:#fff;
+  font:inherit;font-size:15px;color:var(--fg);background:var(--input);
   -webkit-appearance:none;appearance:none;text-align:center;text-align-last:center;
-  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%23a1a1aa' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-image:var(--caret);
   background-repeat:no-repeat;background-position:right 5px center;
 }
 select.rel:focus{outline:none;border-color:var(--accent)}
@@ -84,23 +134,45 @@ select.rel:focus{outline:none;border-color:var(--accent)}
 .ctrls{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}
 .actions{display:flex;gap:9px;margin-top:13px}
 button.btn{
-  border:1px solid var(--line2);background:#fff;color:var(--fg2);
+  border:1px solid var(--line2);background:var(--input);color:var(--fg2);
   font:inherit;font-size:13.5px;font-weight:500;
   padding:8px 13px;border-radius:8px;cursor:pointer;transition:.12s;
 }
-button.btn:active{background:#f4f4f5}
+button.btn:active{background:var(--soft)}
 button.btn:disabled{opacity:.35;cursor:default}
 button.btn.primary{
   flex:1;background:var(--accent);border-color:var(--accent);color:#fff;
   font-size:15px;font-weight:600;padding:11px 13px;
 }
-button.btn.primary:active{background:#1d4ed8}
+button.btn.primary:active{background:var(--accent);filter:brightness(.9)}
 /* 输入表里的空状态提示 */
 .inp td.empty-tip{
   font-size:12px;color:var(--fg3);text-align:left;
   padding-left:8px;white-space:nowrap;
 }
 .verdict .muted{color:var(--fg3);font-size:14px;font-weight:400}
+
+/* 对偶解（影子价格） */
+.dlist{
+  display:flex;flex-wrap:wrap;gap:5px 20px;
+  font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;
+}
+.dlist .dv{color:var(--accent)}
+
+/* ---------- 图解法 ---------- */
+.graph{margin:2px 0 10px}
+.graph svg{display:block;width:100%;height:auto}
+.graph .g-grid{stroke:var(--line);stroke-width:1}
+.graph .g-axis{stroke:var(--fg2);stroke-width:1.2}
+.graph .g-cline{stroke:var(--line2);stroke-width:1;stroke-dasharray:3 3}
+.graph .g-feas{fill:var(--accent);fill-opacity:.13;stroke:var(--accent);stroke-width:1.4}
+.graph .g-feas-line{stroke:var(--accent);stroke-width:1.4;stroke-dasharray:4 3}
+.graph .g-contour{stroke:var(--pivot);stroke-width:1.1;stroke-dasharray:5 4;opacity:.5}
+.graph .g-contour-hi{opacity:1;stroke-width:1.4}
+.graph .g-opt{fill:var(--pivot)}
+.graph text{font-size:8.5px;fill:var(--fg3)}
+.graph .g-lbl{font-size:10px;fill:var(--fg2);font-weight:600}
+.graph .g-optlbl{font-size:9.5px;fill:var(--pivot);font-weight:600}
 
 /* ---------- 结果 ---------- */
 #result{display:none}
@@ -121,13 +193,13 @@ h2.sec:first-child{margin-top:14px}
   font-size:11.5px;color:var(--accent);background:var(--accent-soft);
   padding:2px 8px;border-radius:20px;font-weight:600;
 }
-.iter-head .tag.done{color:var(--ok);background:#f0fdf4}
-.iter-head .tag.stop{color:var(--warn);background:#fffbeb}
+.iter-head .tag.done{color:var(--ok);background:var(--ok-soft)}
+.iter-head .tag.stop{color:var(--warn);background:var(--warn-soft)}
 
 table.tb{width:100%;font-size:13px;font-variant-numeric:tabular-nums}
 table.tb th,table.tb td{
   padding:6px 5px;text-align:center;white-space:nowrap;
-  border-bottom:1px solid #f4f4f5;
+  border-bottom:1px solid var(--soft);
 }
 table.tb th{
   font-size:11.5px;font-weight:600;color:var(--fg2);
@@ -146,14 +218,14 @@ table.tb tr.objrow td.rowlbl{color:var(--fg2)}
 table.tb .cell.enter{background:var(--accent-soft)}
 table.tb .cell.leave{background:var(--leave-soft)}
 table.tb .cell.pivot{
-  background:#fef3c7;font-weight:700;
+  background:var(--pivot-soft);font-weight:700;
   box-shadow:inset 0 0 0 1.5px var(--pivot);border-radius:4px;
 }
 table.tb th.enter{color:var(--accent)}
 table.tb th.leave{color:var(--warn)}
 
 .explain{
-  margin-top:11px;padding-top:11px;border-top:1px solid #f4f4f5;
+  margin-top:11px;padding-top:11px;border-top:1px solid var(--soft);
   font-size:13px;color:var(--fg2);line-height:1.65;
 }
 .explain b{color:var(--fg);font-weight:600}
@@ -164,7 +236,7 @@ table.tb th.leave{color:var(--warn)}
 .explain .row{display:block}
 
 /* ---------- 结论 ---------- */
-.verdict{border-radius:12px;padding:16px;background:#fff}
+.verdict{border-radius:12px;padding:16px;background:var(--card)}
 .verdict .vtitle{font-size:13px;font-weight:650;margin-bottom:10px}
 .verdict.opt .vtitle{color:var(--ok)}
 .verdict.no .vtitle{color:var(--err)}
@@ -173,14 +245,14 @@ table.tb th.leave{color:var(--warn)}
 .sol .v{color:var(--accent)}
 .sol .zv{color:var(--ok)}
 .vsum{
-  margin-top:11px;padding-top:11px;border-top:1px solid #f4f4f5;
+  margin-top:11px;padding-top:11px;border-top:1px solid var(--soft);
   font-size:13px;color:var(--fg2);line-height:1.7;
 }
 .banner{
   margin-bottom:12px;padding:11px 13px;border-radius:10px;
-  font-size:13px;line-height:1.6;background:#fff;color:var(--fg2);
+  font-size:13px;line-height:1.6;background:var(--card);color:var(--fg2);
 }
-.banner.err{background:#fef2f2;color:var(--err)}
+.banner.err{background:var(--err-soft);color:var(--err)}
 .banner b{color:inherit;font-weight:650}
 .banner .nb{white-space:nowrap}
 </style>
@@ -210,6 +282,19 @@ table.tb th.leave{color:var(--warn)}
     </div>
   </section>
 
+  <details class="help">
+    <summary>符号说明</summary>
+    <ul>
+      <li><b>x1, x2 …</b><span class="d">决策变量，就是你要决定的量。</span></li>
+      <li><b>s1, s2 …</b><span class="d">松弛 / 剩余变量。≤ 约束里加进去，表示「还剩多少没用完」；≥ 约束里减掉，表示「比要求多出多少」。作用是先把不等式变成等式，才能套用单纯形法。</span></li>
+      <li><b>a1, a2 …</b><span class="d">人工变量。约束里出现 ≥ 或 = 时凑不出初始单位基，于是人为添一个变量顶上。最优解中它必须退到 0，否则说明原问题无可行解。</span></li>
+      <li><b>M</b><span class="d">形式上「无穷大」的正数。人工变量在目标函数里带 −M 的代价，逼它退到 0。表格按教材写法显示为 <span class="mono">3M − 4</span> 这类形式。</span></li>
+      <li><b>σ</b><span class="d">检验数，σⱼ = cⱼ − zⱼ。max 问题里 σⱼ &gt; 0 表示增加 xⱼ 还能让目标函数变好；全部 σⱼ ≤ 0 就达到最优了。</span></li>
+      <li><b>基变量</b><span class="d">当前取非零值的那组变量，就是表格左边「基」那一列；其余非基变量一律取 0。</span></li>
+      <li><b>z</b><span class="d">目标函数的值。</span></li>
+    </ul>
+  </details>
+
   <div id="banners"></div>
   <section id="result"></section>
 
@@ -217,6 +302,9 @@ table.tb th.leave{color:var(--warn)}
 
 <script>
 /*__CORE__*/
+</script>
+<script>
+/*__GRAPH__*/
 </script>
 <script>
 /*__UI__*/
