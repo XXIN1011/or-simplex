@@ -92,7 +92,8 @@ for rec in bank:
                 unchanged_bad += 1
 
 print('\n按场景类型:')
-names = {'c': '改目标系数', 'b': '改右端项', 'add-con': '增加约束', 'add-var': '增加变量'}
+names = {'c': '改目标系数', 'a-basic': '改a_ij(基列)', 'a-nonbasic': '改a_ij(非基列)',
+         'b': '改右端项', 'add-con': '增加约束', 'add-var': '增加变量'}
 for ty, v in by_type.items():
     print(f'  {names.get(ty, ty):10s} 通过 {v["ok"]:4d} / 失败 {v["bad"]}')
 print(f'\nscipy 状态分布: {json.dumps(stats, ensure_ascii=False)}')

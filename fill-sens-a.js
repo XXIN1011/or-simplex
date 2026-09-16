@@ -5,7 +5,7 @@
                     / 'b' 改右端项 / 'var' 增加变量
                     / 'param' 参数线性规划·变量系数 / 'paramb' 参数线性规划·右边系数 */
 (function () {
-  var mode = (window.__SENS_MODE || 'c');
+  var mode = 'a';
   function q(s) { return document.querySelector(s); }
   function fire(el, ev) { el.dispatchEvent(new Event(ev, { bubbles: true })); }
   function click(id) { document.getElementById(id).click(); }

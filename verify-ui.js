@@ -535,15 +535,69 @@ class CDP {
       errors: window.__errors.length
     });
   })()`));
-  check(sf.tabs === 4, '四种分析场景都能选', `标签数=${sf.tabs}`);
+  check(sf.tabs === 6, '六个分析场景都能选', `标签数=${sf.tabs}`);
   check(sf.base.indexOf('x1 = 6') >= 0 && sf.base.indexOf('z = 12') >= 0,
     '基准题求出最优解 x1=6、z=12');
-  check(sf.out.indexOf('σ′₂') >= 0 && sf.out.indexOf('故最优解改变') >= 0,
-    '改目标系数后给出教材式判断：σ′₂ = c′₂ − z₂ = 1 > 0');
+  /* 教材把「改系数」按非基变量(2.5.2) / 基变量(2.5.4)拆成两小节，这里 x2 是非基变量 */
+  check(sf.out.indexOf('非基变量的系数') >= 0 && sf.out.indexOf('σ′₂') >= 0
+        && sf.out.indexOf('能进基') >= 0,
+    '改目标系数后按教材 2.5.2 给出判断：σ′₂ = c′₂ − z₂ = 1 > 0');
   check(sf.tables >= 1, '变化后的表接着在原最优表上迭代', `迭代表数=${sf.tables}`);
   check(sf.out.indexOf('x1 = 8/3') >= 0 && sf.out.indexOf('z = 46/3') >= 0,
     '结论与新最优解 x1=8/3、x2=10/3、z=46/3 一致');
   check(sf.errors === 0, '灵敏度分析模块无 JS 错误');
+
+  /* ---- 新增的两个场景：技术系数 a_ij（2.5 的列系数）与参数线性规划（2.6） ---- */
+  const nx = JSON.parse(await evl(`(function(){
+    function q(s){ return document.querySelector(s); }
+    function fire(el, ev){ el.dispatchEvent(new Event(ev, {bubbles:true})); }
+    function click(id){ document.getElementById(id).click(); }
+    function set(sel, v){ var el = q(sel); if(el){ el.value = v; fire(el,'input'); } }
+    var r = {};
+
+    /* ① 改技术系数：x1 在最优基里，所以走「基变量列」那条分支（整张表重算） */
+    q('#sensTabs button[data-t="a"]').click();
+    var con = q('[data-f="a-con"]'), vr = q('[data-f="a-var"]');
+    con.value = '0'; fire(con,'change');
+    vr.value = '0'; fire(vr,'change');
+    r.aDefault = q('[data-f="a-val"]').value;
+    var opts = document.querySelectorAll('[data-f="a-con"] option').length
+             + document.querySelectorAll('[data-f="a-var"] option').length;
+    r.aOpts = opts;
+    set('[data-f="a-val"]','3');
+    click('sensGo');
+    r.aOut = ((document.getElementById('sensOut')||{}).textContent||'').replace(/\\\\s+/g,' ');
+    r.aTables = document.querySelectorAll('#sensOut table').length;
+
+    /* ② 参数线性规划 2.6.1：给 c1 加 λ 系数 1，即 c1(λ) = 2 + λ */
+    q('#sensTabs button[data-t="param"]').click();
+    r.pKindBtns = document.querySelectorAll('#pKind button').length;
+    set('[data-f="pd"][data-j="0"]','1');
+    click('sensGo');
+    r.pOut = ((document.getElementById('sensOut')||{}).textContent||'').replace(/\\\\s+/g,' ');
+    r.pRows = document.querySelectorAll('#sensOut table.sens tbody tr').length;
+
+    /* ③ 2.6.2 右边系数：切到 b 那一边，确认输入表跟着换 */
+    q('#pKind button[data-k="b"]').click();
+    r.pInputsB = document.querySelectorAll('[data-f="pe"]').length;
+    r.pInputsC = document.querySelectorAll('[data-f="pd"]').length;
+
+    r.errors = window.__errors.length;
+    return JSON.stringify(r);
+  })()`));
+  check(nx.aDefault === '1', '改技术系数时自动带出当前系数值', `a11 初值=${nx.aDefault}`);
+  check(nx.aOpts === 2 + 3, '约束与变量下拉项的个数与题目一致', `选项数=${nx.aOpts}`);
+  check(nx.aOut.indexOf('基变量') >= 0 && nx.aOut.indexOf('都要重算') >= 0,
+    '改基变量列的系数时说明「整张表都要重算」（而不是只看一列）');
+  check(nx.aOut.indexOf('a₁₁') >= 0, '推导里点明改的是哪个系数');
+  check(nx.aTables >= 1, '改技术系数后接上迭代表', `表数=${nx.aTables}`);
+  check(nx.pKindBtns === 2, '参数线性规划分变量系数 / 右边系数两种');
+  check(nx.pOut.indexOf('12 + 6λ') >= 0 && nx.pOut.indexOf('λ ≥') >= 0,
+    '参数线性规划给出 λ 分段与 x(λ)、z(λ)＝12+6λ');
+  check(nx.pRows >= 2, '参数线性规划切出多段 λ 区间', `分段行数=${nx.pRows}`);
+  check(nx.pInputsB === 2 && nx.pInputsC === 0,
+    '切到右边系数后输入表换成 b_i 的 λ 系数', `b 输入=${nx.pInputsB} c 输入=${nx.pInputsC}`);
+  check(nx.errors === 0, '新场景无 JS 错误');
 
   console.log(`\n合计: ${pass} 通过 / ${fail} 失败`);
   ws.close(); child.kill();

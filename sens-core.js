@@ -2,15 +2,21 @@
    场景式灵敏度分析（教材做法）
    -------------------------------------------------------------------------
    教材的灵敏度分析不是"把题改掉从头再解一遍"，而是在**原来的最优表**上做局部修改
-   再继续迭代。四类常考场景：
+   再继续迭代。按徐玖平《运筹学（第四版）》第 2 章的小节，常考的是这几类：
 
-     ① 目标函数系数变化 c → 只有检验数行变，用 σ′ⱼ = c′ⱼ − c_B·Pⱼ 判断
-     ② 右端项变化 b       → 只有右端列变，用 x′_B = B⁻¹b′ 判断
-     ③ 增加一个约束       → 新行并入原表，看当前最优解是否满足它
-     ④ 增加一个变量       → 新增一列，用 σ′新 = c′新 − c_B·P新 判断
+     ① 目标函数系数变化 c（2.5.2 非基变量系数 / 2.5.4 基变量系数）
+          · 非基变量：只重算它自己那一列的 σ′_j = c′_j − z_j
+          · 基变量  ：进了 c_B，σ 的**整行**都要重算
+     ② 技术系数变化 a_ij（列系数）
+          · x_j 非基：B 不含 P_j → 只重算这一列
+          · x_j 是基：B 的第 k 列就是 P_j → **整张表重算**
+     ③ 右端项变化 b       → 只有右端列变，用 x′_B = B⁻¹b′ 判断
+     ④ 增加一个约束       → 新行并入原表，看当前最优解是否满足它
+     ⑤ 增加一个变量       → 新增一列，用 σ′新 = c′新 − c_B·P新 判断
 
    判断通过 → 最优基不变，直接给出新解与新目标值；
-   判断不通过 → 继续迭代：检验数越界走**原始单纯形法**，右端项越界走**对偶单纯形法**。
+   判断不通过 → 继续迭代：检验数越界走**原始单纯形法**，右端项越界走**对偶单纯形法**，
+   两者同时越界时两种局部迭代法都不适用（教材的做法是重新求解，见 sensChangeA）。
    ========================================================================= */
 'use strict';
 
@@ -342,7 +348,20 @@ function sensFinish(model, T, judgement, kind, title, extra) {
   return res;
 }
 
-/* ---- ① 目标函数系数变化 ---- */
+/* ---- ① 目标函数系数变化（教材 2.5.2 非基变量系数 / 2.5.4 基变量系数） ----
+   教材把这一类按「改的是谁的系数」拆成两小节，因为**判据完全不同**：
+
+     · 改的是**非基变量**的 c_j —— 它只出现在自己那一列的检验数里：
+         σ′_j = c′_j − z_j ,  z_j = c_B·(B⁻¹P_j)
+       c_B 没动，z_j 原封不动，所以**只需重算那一列**。
+
+     · 改的是**基变量**的 c_j —— 它进的是 c_B，而 z_j = c_B·(B⁻¹P_j) 里每一项都含 c_B，
+       所以**σ 的整行都要重算**：σ′_j = σ_j − Δ·(B⁻¹P_j)_k 。
+       （被改的那一列是特例：c′_j 自己也加了 Δ，与 z′_j 里的 Δ 正好抵消，仍有 σ′_j = 0。）
+
+   两种情形有个共同结论：**右端项 B⁻¹b 与 c 无关**，所以只要基仍然最优，
+   **解本身不变**，变的只是目标值；若改的是非基变量，它还取 0，连目标值也不变。
+   ========================================================================= */
 function sensChangeC(baseProblem, scenario) {
   var newProb = sensClone(baseProblem);
   newProb.c = scenario.c.map(Number);
@@ -353,36 +372,74 @@ function sensChangeC(baseProblem, scenario) {
   var baseNames = sensBasisNames(baseRes);
 
   var basisCols = sensMapBasis(model, baseNames);
-  if (basisCols === null) return sensFail('原最优基在改动后无法构造（基矩阵奇异）');
+  if (basisCols === null) return sensFail('原最优基在改动后无法定位（变量名对不上）');
   var T = sensTableau(model, basisCols);
   if (!T) return sensFail('原最优基在改动后无法构造（基矩阵奇异）');
+  var baseT = sensTableau(baseModel, basisCols);
+  if (!baseT) return sensFail('原最优表构造失败');
 
-  /* 教材式判断：逐个非基变量算新检验数 */
-  var lines = [], changed = false;
+  /* 逐个数一变，基数按「是不是基变量」归到两个块里 */
+  var nbLines = [], bLines = [], changed = false, hasBasic = false, hasNonBasic = false;
   for (var j = 0; j < model.n; j++) {
-    if (T.basis.indexOf(j) !== -1) continue;
-    var newC = model.cObj[j];
-    var zj = sensZj(model, T, j);
-    var sig = pSub(newC, zj);
-    var oldSig = sensZjOf(baseModel, baseRes, j);
-    if (pIsPos(sig)) {
-      changed = true;
-      lines.push('σ′' + sub(j + 1) + ' = c′' + sub(j + 1) + ' − z' + sub(j + 1) + ' = '
-        + fmtPair(newC) + ' − ' + fmtPair(zj) + ' = ' + fmtPair(sig) + ' > 0，故最优解改变');
-    } else if (oldSig && pCmp(sig, oldSig) !== 0) {
-      lines.push('σ′' + sub(j + 1) + ' = ' + fmtPair(sig) + ' ≤ 0，' + nm(j) + ' 仍不进基');
+    var oldC = Number(baseProblem.c[j]), newC = Number(newProb.c[j]);
+    if (Math.abs(newC - oldC) < 1e-12) continue;      // 这个系数没动
+    var d = newC - oldC;
+    var k = basisCols.indexOf(j);
+
+    if (k === -1) {
+      /* --- 非基变量：只影响它自己那一列的检验数 --- */
+      hasNonBasic = true;
+      var zj = sensZj(model, T, j);
+      var sig = T.obj[j];                              // 新表里已经算好的 σ′_j
+      var l = 'x' + (j + 1) + '：c' + sub(j + 1) + ' 由 ' + fmtNum(oldC) + ' 改为 ' + fmtNum(newC)
+        + '　→　σ′' + sub(j + 1) + ' = c′' + sub(j + 1) + ' − z' + sub(j + 1) + ' = '
+        + fmtPair(model.cObj[j]) + ' − ' + fmtPair(zj) + ' = ' + fmtPair(sig);
+      if (pIsPos(sig)) { changed = true; l += ' > 0 → 这一列能进基，最优解要改'; }
+      else { l += ' ≤ 0 → 仍不进基'; }
+      nbLines.push(l);
+    } else {
+      /* --- 基变量：c_B 变了 → σ 整行重算 --- */
+      hasBasic = true;
+      var who = [];
+      for (var jj = 0; jj < model.N; jj++) if (pIsPos(T.obj[jj])) who.push('x' + (jj + 1));
+      var l2 = 'x' + (j + 1) + '：c' + sub(j + 1) + ' 由 ' + fmtNum(oldC) + ' 改为 ' + fmtNum(newC)
+        + '，Δ = ' + fmtNum(d) + '。它是第 ' + (k + 1) + ' 个基变量，进了 c_B，'
+        + '所以**σ 的整行都要重算**：σ′ⱼ = σⱼ − Δ·(B⁻¹Pⱼ)' + sub(k + 1) + '。';
+      l2 += who.length
+        ? '重算后 σ′ 变正的列有 ' + who.join('、') + ' → 最优解要改'
+        : '重算后所有 σ′ⱼ ≤ 0 → 原基仍是最优基';
+      bLines.push(l2);
+      if (who.length) changed = true;
     }
   }
-  if (!changed) {
-    lines.push('所有非基变量的检验数 σ′ⱼ ≤ 0，最优基不变；最优解不变，只有目标值变化');
+
+  var blocks = [];
+  if (nbLines.length) blocks.push({ label: '非基变量的系数（教材 2.5.2）', lines: nbLines });
+  if (bLines.length) blocks.push({ label: '基变量的系数（教材 2.5.4）', lines: bLines });
+
+  var lines = [];
+  if (!blocks.length) lines.push('这次没有改动任何目标函数系数，最优解与目标值都不变。');
+
+  var concl;
+  if (changed) {
+    concl = '最优基改变，在原最优表上继续迭代（用原始单纯形法）';
+  } else if (blocks.length) {
+    /* B⁻¹b 与 c 无关：只要基还最优，解就不动 */
+    concl = '最优基不变；右端项 B⁻¹b 与 c 无关，所以最优解不变'
+      + (hasNonBasic && !hasBasic
+          ? '，而且改的是非基变量、它仍取 0，目标值也不变'
+          : '，只有目标值随新系数变化');
+  } else {
+    concl = '没有变化';
   }
 
   var judgement = {
     changed: changed,
     title: '检验数检验',
-    head: '把新系数代入原最优表，重算检验数 σ′ⱼ = c′ⱼ − zⱼ：',
+    head: '把新系数代回原最优表，检查检验数 σ′ⱼ = c′ⱼ − zⱼ 有没有变正：',
+    blocks: blocks,
     lines: lines,
-    conclusion: changed ? '最优基改变，需在原最优表上继续迭代' : '最优基不变'
+    conclusion: concl
   };
   return sensFinish(model, T, judgement, 'c', '目标函数系数变化', { newProblem: newProb });
 }
@@ -426,6 +483,137 @@ function sensChangeB(baseProblem, scenario) {
     conclusion: neg ? '最优基不变，但基取值越界 → 对偶单纯形法继续' : '最优基不变，直接得到新解'
   };
   return sensFinish(model, T, judgement, 'b', '右端项变化', { newProblem: newProb });
+}
+
+/* ---- ② 技术系数 a_ij 变化 ----
+   判据的差别比改 c 还大，教材同样分成两种情形：
+
+     · x_j 是**非基变量** → 基矩阵 B 的列全是基变量的列，P_j 不在其中，
+       所以 B、B⁻¹、x_B、z **全都不变**，只有 P_j 那一列变 → 只有 σ_j 会动：
+         σ′_j = c_j − c_B·(B⁻¹P′_j)
+       又因为 x_j = 0，它在约束里的那一项恒等于 0 —— 连约束都没被改动。
+
+     · x_j 是**基变量**（设在第 k 行）→ B 的第 k 列**正是** P_j，它一变 B 就变、
+       B⁻¹ 跟着变，于是**整张表（每一行、x_B、σ 全部）都要重算**。
+       重算后：x′_B 出现负分量 → 失去可行性（该用对偶单纯形法）；
+                 σ′ 出现正分量 → 失去最优性（该用原始单纯形法）。
+       **两者同时坏掉时，两种局部迭代法都不适用**，只能重新求解。
+   ========================================================================= */
+function sensChangeA(baseProblem, scenario) {
+  var i = Number(scenario.con), j = Number(scenario.v), val = Number(scenario.value);
+  var newProb = sensClone(baseProblem);
+  var oldA = Number(baseProblem.constraints[i].coef[j]);
+  newProb.constraints[i].coef[j] = val;
+  var model = sensBuildModel(newProb);
+
+  var baseRes = simplexSolve(baseProblem);
+  var baseNames = sensBasisNames(baseRes);
+  var basisCols = sensMapBasis(model, baseNames);
+  if (basisCols === null) return sensFail('原最优基在新问题里无法定位（变量名对不上）');
+
+  var k = basisCols.indexOf(j);
+  var isBasic = (k !== -1);
+  var lines = [], changed, restart = false, negRow = -1, posCol = -1;
+
+  var T = sensTableau(model, basisCols);
+  if (T === null) {
+    /* 改完之后原基的基矩阵奇异（列变得线性相关）→ 局部修改法无从谈起 */
+    if (!isBasic) return sensFail('改完之后原最优基的基矩阵变成奇异矩阵，这个基不能再用，需要重新求解');
+    lines.push('x' + (j + 1) + ' 是**基变量**，改的是它自己的列。重算后发现'
+      + '原最优基的基矩阵 B 已经**奇异**（列之间线性相关），它不再能充当一组基 —— '
+      + '局部修改法（原始/对偶单纯形二选一）无从谈起，只能重新求解。');
+    lines.push('下面从标准初始基（松弛/剩余变量 + 人工变量）重跑一遍大 M 法。');
+    var T0 = sensTableau(model, model.basis0);
+    if (!T0) return sensFail('重新求解时无法构造初始表');
+    return sensFinish(model, T0, {
+      changed: true, title: '技术系数检验',
+      head: '把 a' + sub(i + 1) + sub(j + 1) + '（第 ' + (i + 1) + ' 条约束里 x' + (j + 1)
+        + ' 的系数）由 ' + fmtNum(oldA) + ' 改成 ' + fmtNum(val) + '，看它对原最优表的影响：',
+      lines: lines, conclusion: '原最优基被破坏（基矩阵奇异），改为重新求解'
+    }, 'a', '技术系数 a_ij 变化',
+      { newProblem: newProb, restart: true, aInfo: { i: i, j: j, oldA: oldA, newA: val } });
+  }
+
+  if (!isBasic) {
+    /* ---------- 非基变量的列：只动这一列 ---------- */
+    var colNums = [];
+    for (var r = 0; r < model.m; r++) colNums.push(T.rows[r][j]);
+    var zj = sensZj(model, T, j);
+    var sig = pSub(model.cObj[j], zj);
+    changed = pIsPos(sig);
+
+    lines.push('x' + (j + 1) + ' 是**非基变量**，它的列 P' + sub(j + 1)
+      + ' 不在基矩阵 B 里 → B、B⁻¹、x_B、z 全都不变，**只有这一列要换**，'
+      + '所以只需重算它自己的检验数：');
+    lines.push('σ′' + sub(j + 1) + ' = c' + sub(j + 1) + ' − c_B·(B⁻¹P′' + sub(j + 1) + ') = '
+      + fmtPair(model.cObj[j]) + ' − ' + fmtPair(zj) + ' = ' + fmtPair(sig));
+    lines.push('其中 B⁻¹P′' + sub(j + 1) + ' = ' + vecStr(colNums)
+      + '（原来的第 ' + (i + 1) + ' 行系数由 ' + fmtNum(oldA) + ' 改成 ' + fmtNum(val) + '，'
+      + '这一列的值随之变化）');
+    lines.push(changed
+      ? 'σ′' + sub(j + 1) + ' > 0 → 这一列能进基，最优解要改，接**原始单纯形法**继续迭代。'
+      : 'σ′' + sub(j + 1) + ' ≤ 0 → 这一列仍不进基。又因为 x' + (j + 1) + ' = 0，'
+        + '它在约束 ' + (i + 1) + ' 里的那一项 a·x' + (j + 1) + ' 恒等于 0，'
+        + '**约束其实一点没被改动** → 最优解与目标值都不变。');
+  } else {
+    /* ---------- 基变量的列：整张表重算 ---------- */
+    lines.push('x' + (j + 1) + ' 是**基变量**（第 ' + (k + 1) + ' 行的基变量），'
+      + '基矩阵 B 的第 ' + (k + 1) + ' 列**正是** P' + sub(j + 1) + '。'
+      + '它一变 B 就变、B⁻¹ 跟着变，所以**整张表（每一行、x_B、σ 全部）都要重算**，'
+      + '不能只看这一列。');
+    if (model.m <= 4) lines.push('重算后 B⁻¹ = ' + matrixStr(T.Binv));
+
+    var xB = [];
+    for (var r2 = 0; r2 < model.m; r2++) {
+      xB.push(T.rows[r2][model.N]);
+      if (T.rows[r2][model.N] < -1e-9 && negRow === -1) negRow = r2;
+    }
+    for (var c2 = 0; c2 < model.N; c2++) if (pIsPos(T.obj[c2])) { posCol = c2; break; }
+
+    lines.push('新右端项 x′_B = B⁻¹b = ' + vecStr(xB)
+      + (negRow === -1
+          ? ' ≥ 0 → 可行性没坏'
+          : '，其中第 ' + (negRow + 1) + ' 行 = ' + fmtNum(xB[negRow]) + ' < 0 → **原基不再可行**'));
+    lines.push('新检验数行 σ′ = c − c_B·B⁻¹A′：'
+      + (posCol === -1
+          ? '全部 σ′ⱼ ≤ 0 → 最优性没坏'
+          : 'σ′' + sub(posCol + 1) + ' = ' + fmtPair(T.obj[posCol]) + ' > 0 → **原基不再最优**'));
+
+    changed = (negRow !== -1 || posCol !== -1);
+    if (negRow !== -1 && posCol !== -1) {
+      restart = true;
+      lines.push('两个条件**同时**被破坏：表既不可行又不最优。'
+        + '原始单纯形法要求右端项非负、对偶单纯形法要求检验数非正，'
+        + '**两种局部迭代法都用不上** —— 教材的做法是重新求解。'
+        + '下面从标准初始基（松弛/剩余变量 + 人工变量）重跑一遍大 M 法。');
+    } else if (negRow !== -1) {
+      lines.push('只有可行性被破坏（检验数仍全 ≤ 0）→ 用**对偶单纯形法**在原表上继续迭代。');
+    } else if (posCol !== -1) {
+      lines.push('只有最优性被破坏（右端项仍全 ≥ 0）→ 用**原始单纯形法**在原表上继续迭代。');
+    } else {
+      lines.push('两个条件都没坏 → 原基仍是新问题的最优基，直接读出新解。');
+    }
+  }
+
+  var Tuse = T;
+  if (restart) {
+    Tuse = sensTableau(model, model.basis0);          // 标准初始基（B = 单位阵）
+    if (!Tuse) return sensFail('重新求解时无法构造初始表');
+  }
+
+  var judgement = {
+    changed: changed,
+    title: '技术系数检验',
+    head: '把 a' + sub(i + 1) + sub(j + 1) + '（第 ' + (i + 1) + ' 条约束里 x' + (j + 1)
+      + ' 的系数）由 ' + fmtNum(oldA) + ' 改成 ' + fmtNum(val)
+      + '，看它对原最优表的影响：',
+    lines: lines,
+    conclusion: !changed ? '最优解与目标值都不变'
+      : (restart ? '原表可行性与最优性同时被破坏，改为重新求解'
+                 : '最优基改变，在原最优表上继续迭代')
+  };
+  return sensFinish(model, Tuse, judgement, 'a', '技术系数 a_ij 变化',
+    { newProblem: newProb, restart: restart, aInfo: { i: i, j: j, oldA: oldA, newA: val } });
 }
 
 /* ---- ③ 增加一个约束 ---- */
@@ -556,7 +744,324 @@ function sensAddVar(baseProblem, scenario) {
 }
 
 /* =========================================================================
-   6. 工具
+   6. 参数线性规划（教材 2.6）
+   -------------------------------------------------------------------------
+   前面几类都是「把某个系数改成一个新数」，这里改成一个**参数 λ**，
+   要求的是「λ 在什么范围内最优基不变」，以及 λ 越过临界值后最优解怎么接着变。
+
+     2.6.1 变量系数：c_j(λ) = c_j + λ·d_j
+           σ_j(λ) = σ_j + λ·τ_j ，其中 τ_j = d_j − d_B·(B⁻¹P_j)
+           要求所有 σ_j(λ) ≤ 0 → 交出一段 λ 区间。
+           区间端点处某列的 σ 恰好为 0，让它入基即可（右端项 B⁻¹b 与 λ 无关、
+           始终非负，所以用**原始单纯形法**，只需处理最小比值）。
+
+     2.6.2 右边系数：b_i(λ) = b_i + λ·e_i
+           此时 c 没变 → 检验数行与 λ 完全无关，σ ≤ 0 一路保持。
+           x_B(λ) = B⁻¹b + λ·B⁻¹e ，要求所有分量 ≥ 0 → 交出一段 λ 区间。
+           区间端点处某行取值恰好为 0，让它出基（检验数已经全部非正，
+           所以用**对偶单纯形法**选入基列）。
+   ========================================================================= */
+
+/* λ 的零容差：比它小就当作 0 */
+var LAM_EPS = 1e-9;
+function co0(v) { return Math.abs(v) < LAM_EPS ? 0 : v; }
+
+/* 把 a + b·λ 显示成「2 − 1/2λ」的样子 */
+function fmtAff(p) {
+  var a = co0(p.a), b = co0(p.b);
+  if (b === 0) return fmtNum(a);
+  var bs = (Math.abs(Math.abs(b) - 1) < LAM_EPS ? '' : fmtNum(Math.abs(b))) + 'λ';
+  if (a === 0) return (b < 0 ? '−' : '') + bs;
+  return fmtNum(a) + (b > 0 ? ' + ' : ' − ') + bs;
+}
+
+/* 把若干条限制（a + b·λ ≤ 0 或 ≥ 0）交成一个 λ 区间；交不出来返回 null。
+   b > 0 的式子给上界，b < 0 的给下界，b = 0 的要求自身成立。 */
+function lamInterval(list, sense) {
+  var lo = -Infinity, hi = Infinity;
+  for (var i = 0; i < list.length; i++) {
+    var a = list[i].a, b = list[i].b;
+    if (sense === 'ge') { a = -a; b = -b; }
+    if (Math.abs(b) < LAM_EPS) {
+      if (a > LAM_EPS) return null;                 // 与 λ 无关却恒大于 0
+    } else if (b > 0) {
+      var t = -a / b;
+      if (t < hi) hi = t;
+    } else {
+      var t2 = -a / b;
+      if (t2 > lo) lo = t2;
+    }
+  }
+  if (hi < lo - 1e-7) return null;
+  return { lo: lo, hi: hi };
+}
+
+/* σ(λ) 的 λ 系数：τ_j = d_j − d_B·(B⁻¹P_j)。
+   松弛/人工变量的目标系数里没有参数，所以 d_B 对它们取 0。 */
+function paramTau(model, T, basis, d, j) {
+  var acc = (j < model.n ? d[j] : 0);
+  for (var i = 0; i < model.m; i++) {
+    var bc = basis[i];
+    if (bc >= model.n) continue;
+    acc -= d[bc] * T.rows[i][j];
+  }
+  return co0(acc);
+}
+
+/* B⁻¹·v */
+function matVec(M, v) {
+  var out = [];
+  for (var i = 0; i < M.length; i++) {
+    var s = 0;
+    for (var k = 0; k < v.length; k++) s += M[i][k] * v[k];
+    out.push(Math.abs(s) < 1e-12 ? 0 : s);
+  }
+  return out;
+}
+
+/* 对偶单纯形法的入基选择：比值 |σ_j ÷ a_rj|。
+   σ 可能带 M 项，而 M 是形式上的无穷大 —— 必须先比 M 的系数、再比常数项，
+   否则会挑中人工变量（那样既不是教材做法，中间解也不再可行）。 */
+function paramDualEnter(model, T, r) {
+  var N = model.N, best = null, col = -1;
+  for (var j = 0; j < N; j++) {
+    if (T.rows[r][j] >= -EPS) continue;
+    var key = { a: Math.abs(T.obj[j].a / T.rows[r][j]),
+                b: Math.abs(T.obj[j].b / T.rows[r][j]) };
+    if (best === null || key.b < best.b - 1e-12 ||
+        (Math.abs(key.b - best.b) <= 1e-12 && key.a < best.a - 1e-12)) {
+      best = key; col = j;
+    }
+  }
+  return col;
+}
+
+/* 把「这一组基在 λ 上成立的那一段」整理成一条记录 */
+function paramSeg(model, T, basis, kind, data, iv, edge) {
+  var n = model.n;
+  var be = (kind === 'b') ? matVec(T.Binv, data) : null;
+  var xAff = [], i, j;
+  for (j = 0; j < n; j++) xAff.push({ a: 0, b: 0 });
+  for (i = 0; i < model.m; i++) {
+    if (basis[i] < n) xAff[basis[i]] = { a: T.rows[i][model.N], b: be ? be[i] : 0 };
+  }
+  /* z(λ) = Σ c_j(λ)·x_j(λ)，只累加决策变量（松弛/人工变量目标系数为 0）。
+     这里算的是**内部**目标值（min 问题在建表时已被取负），最后由调用方换算回去。 */
+  var zAff = { a: 0, b: 0 };
+  for (j = 0; j < n; j++) {
+    var cInt = model.cObj[j].a;                  // 决策变量不带 M 项
+    var xj = xAff[j];
+    zAff.a += cInt * xj.a;
+    if (kind === 'c') zAff.b += data[j] * xj.a;
+    else zAff.b += cInt * xj.b;
+  }
+  return {
+    lo: iv.lo, hi: iv.hi, edge: edge,
+    basisNames: basis.map(function (c) { return model.vars[c].name; }),
+    x: xAff, z: zAff,
+    entering: null, leaving: null, note: ''
+  };
+}
+
+/* 从某一组基出发，沿 λ 增大（dir=+1）或减小（dir=-1）方向逐段走下去 */
+function walkParam(model, startBasis, kind, data, dir) {
+  var basis = startBasis.slice();
+  var segs = [];
+  var cur = 0;
+
+  for (var it = 0; it < 80; it++) {
+    var T = sensTableau(model, basis);
+    if (!T) return { segs: segs, broken: '基矩阵奇异' };
+
+    /* 把所有「必须 ≤ 0」或「必须 ≥ 0」的量写成 a + b·λ */
+    var list = [], i, j, be = null;
+    if (kind === 'c') {
+      for (j = 0; j < model.N; j++) {
+        if (Math.abs(T.obj[j].b) > EPS) continue;   // 带 M 项 → 对 λ 不构成限制
+        list.push({ a: T.obj[j].a, b: paramTau(model, T, basis, data, j), col: j });
+      }
+    } else {
+      be = matVec(T.Binv, data);
+      for (i = 0; i < model.m; i++) {
+        list.push({ a: T.rows[i][model.N], b: be[i], row: i });
+      }
+      /* 还有一条容易被忽略的限制：右端项为负的约束在建表时被「整行取负」过，
+         只有取负之后仍然非负，同一套标准化形式才一直成立。
+         一旦 b_i(λ) 变号，这套形式就整体换了 —— 所以把「内部右端项保持非负」
+         也当成 λ 的限制加进来。它给出的边界不是换基点，而是本模块的适用边界。 */
+      for (i = 0; i < model.m; i++) {
+        if (Math.abs(data[i]) < LAM_EPS) continue;
+        list.push({ a: model.b0[i], b: data[i], norm: true, row: i });
+      }
+    }
+
+    var iv = lamInterval(list, kind === 'c' ? 'le' : 'ge');
+    if (!iv) return { segs: segs, broken: 'λ = 0 处原基就不满足条件（数值上不该发生）' };
+
+    /* 基里如果残留取值为 0 的人工变量，它在新条件下必须**仍然是 0**：
+         变正 → 原约束并没有被真正满足（无可行解），这个方向一步都不能走；
+         变负 → 原基失去可行性，但可以用对偶单纯形一步把它顶出基，方向可以走。
+       （只把它当作「≥ 0」是不够的 —— 那样会把无可行解的区域算进允许范围。） */
+    var artBlock = '';
+    if (kind === 'b') {
+      for (i = 0; i < model.m; i++) {
+        if (model.vars[basis[i]].kind !== 'a') continue;
+        var ab = be[i];
+        if (Math.abs(ab) < LAM_EPS) continue;
+        if (dir > 0 ? ab > 0 : ab < 0) {
+          if (dir > 0) iv.hi = Math.min(iv.hi, 0); else iv.lo = Math.max(iv.lo, 0);
+          artBlock = '基里残留的人工变量 ' + model.vars[basis[i]].name
+            + ' 沿着这个方向会变成正值，而人工变量取正值意味着原约束并没有被满足'
+            + '（新条件下无可行解）—— 所以这个方向只能分析到 λ = 0 为止。';
+        }
+      }
+    }
+
+    segs.push(paramSeg(model, T, basis, kind, data, iv, cur));
+    if (artBlock) { segs[segs.length - 1].note = artBlock; return { segs: segs, ended: artBlock }; }
+
+    /* 这个方向走到头了？ */
+    if (dir > 0 ? (iv.hi === Infinity) : (iv.lo === -Infinity)) return { segs: segs };
+
+    var edge = dir > 0 ? iv.hi : iv.lo;
+
+    /* 找出在边界上恰好取 0 的那一条 → 它决定谁进谁出 */
+    var hits = [];
+    for (i = 0; i < list.length; i++) {
+      if (Math.abs(list[i].b) < LAM_EPS) continue;
+      if (Math.abs(-list[i].a / list[i].b - edge) > 1e-7) continue;
+      var good = (kind === 'c')
+        ? (dir > 0 ? list[i].b > 0 : list[i].b < 0)     // σ 上界来自 b>0 的列
+        : (dir > 0 ? list[i].b < 0 : list[i].b > 0);    // x_B 下界来自 b<0 的行
+      if (good) hits.push(list[i]);
+    }
+    if (!hits.length) return { segs: segs };             // 退化：边界没有可动的列
+
+    /* 撞上的是「标准化适用边界」就不能当换基点处理 —— 直接停，并说明原因。
+       （越过它之后建表用的整行取负会翻转，后面算出来的东西没有意义。） */
+    var normHit = hits.filter(function (h) { return h.norm; })[0];
+    if (normHit) {
+      segs[segs.length - 1].note = 'λ 越过这个值后，约束 ' + (normHit.row + 1)
+        + ' 的右端项会变号，标准化形式随之改变 —— 本模块在此停止，越界部分请手工复核';
+      return { segs: segs, ended: '右端项变号' };
+    }
+    var pick = hits[0];
+
+    var ent = -1, lv = -1, why = '';
+    if (kind === 'c') {
+      ent = pick.col;
+      var bestR = Infinity;
+      for (i = 0; i < model.m; i++) {
+        if (T.rows[i][ent] > EPS) {
+          var th = T.rows[i][model.N] / T.rows[i][ent];
+          if (th < bestR - EPS) { bestR = th; lv = i; }
+        }
+      }
+      if (lv === -1) { why = '该列在表中没有正分量，λ 越界后目标值无界'; }
+    } else {
+      lv = pick.row;
+      ent = paramDualEnter(model, T, lv);
+      if (ent === -1) { why = '该行在表中没有负系数，对偶比值算不出来 → λ 越界后无可行解'; }
+    }
+
+    var last = segs[segs.length - 1];
+    last.edge = edge; last.entering = ent; last.leaving = lv;
+    if (why) { last.note = why; return { segs: segs, ended: why }; }
+
+    /* 防止原地打转（退化时边界值可能等于当前 λ） */
+    if (dir > 0 ? (edge <= cur + 1e-9) : (edge >= cur - 1e-9)) {
+      return { segs: segs, ended: '临界值处出现退化，λ 不再前进（该基与相邻基在这一点上重合）' };
+    }
+    cur = edge;
+    var nb = basis.slice();
+    nb[lv] = ent;
+    basis = nb;
+  }
+  return { segs: segs, ended: '段数超过上限，提前停止' };
+}
+
+/* 统一入口：参数线性规划（2.6.1 变量系数 / 2.6.2 右边系数） */
+function sensParam(baseProblem, scenario) {
+  var kind = scenario.kind;                     // 'c' 或 'b'
+  var res0 = simplexSolve(baseProblem);
+  if (res0.status !== 'optimal') {
+    return sensFail('λ = 0 时基准题没有最优解，参数线性规划要从一张最优表出发。');
+  }
+  var model = sensBuildModel(baseProblem);
+  var startBasis = sensMapBasis(model, sensBasisNames(res0));
+  if (startBasis === null) return sensFail('λ = 0 的最优基无法定位。');
+
+  var data, warn = '';
+  if (kind === 'c') {
+    var dUser = (scenario.d || []).map(Number);
+    if (dUser.length !== model.n) return sensFail('λ 的系数个数要和变量个数一致。');
+    if (!dUser.some(function (v) { return Math.abs(v) > 1e-12; })) {
+      return sensFail('至少要给一个变量的系数填上 λ 的系数，否则 λ 不影响任何东西。');
+    }
+    /* 内部问题统一按 max 处理（min 已取负），所以 λ 的系数也要跟着取负 */
+    data = dUser.map(function (v) { return model.swapSign * v; });
+  } else {
+    var eUser = (scenario.e || []).map(Number);
+    if (eUser.length !== model.m) return sensFail('λ 的系数个数要和约束条数一致。');
+    if (!eUser.some(function (v) { return Math.abs(v) > 1e-12; })) {
+      return sensFail('至少要给一个右端项填上 λ 的系数，否则 λ 不影响任何东西。');
+    }
+    /* 右端项为负的约束会被整行取负，参数方向也要跟着换算回去 */
+    data = eUser.map(function (v, i) { return model.flipSign[i] * v; });
+  }
+
+  var up = walkParam(model, startBasis, kind, data, +1);
+  var down = walkParam(model, startBasis, kind, data, -1);
+
+  /* 向上走的第一段与向下走的第一段是同一组基，合并时去掉一个 */
+  var segs = down.segs.slice().reverse().concat(up.segs.slice(1));
+  if (!segs.length) return sensFail('没能算出任何 λ 区间。');
+
+  /* 换算回用户口径：解不变；目标值在 min 方向要反号 */
+  var sign = model.swapSign;
+  segs.forEach(function (s) {
+    s.z = { a: co0(sign * s.z.a), b: co0(sign * s.z.b) };
+    s.x.forEach(function (v) { v.a = co0(v.a); v.b = co0(v.b); });
+  });
+
+  /* 右端项含参数时的两条提醒（只对 2.6.2 有意义）：
+     ① 原始右端项为负的约束在标准化时被整行取负过，λ 的方向已换算，但要让学生知道；
+     ② 若某条约束的右端项在算出的 λ 范围内会变号，那么「整行取负」这个规范化动作
+        本身会随 λ 切换，本模块只按 λ = 0 的形式处理 —— 这种情况必须明说，不能假装没发生。 */
+  if (kind === 'b') {
+    var LO = segs[0].lo, HI = segs[segs.length - 1].hi;
+    var notes = [];
+    for (var i3 = 0; i3 < model.m; i3++) {
+      var bb = Number(baseProblem.constraints[i3].rhs), ee = eUser[i3];
+      if (Math.abs(ee) < 1e-12) continue;
+      if (bb < -EPS) {
+        notes.push('约束 ' + (i3 + 1) + ' 的原始右端项是负的（' + fmtNum(bb)
+          + '），标准化时被整行取负过，λ 的系数已按同一方向换算。');
+      }
+      var cross = -bb / ee;                       // b_i(λ) 变号的位置
+      if (cross > LO + 1e-7 && cross < HI - 1e-7) {
+        notes.push('约束 ' + (i3 + 1) + ' 的右端项在 λ ≈ ' + fmtNum(cross)
+          + ' 处变号，而它正好落在下面算出的 λ 范围内 —— 标准化时的「整行取负」'
+          + '在该点前后会切换，本模块只按 λ = 0 的形式处理，越界部分请手工复核。');
+      }
+    }
+    if (notes.length) warn = '注意：' + notes.join('；');
+  }
+
+  return {
+    ok: true, kind: kind, parameter: true,
+    nDecision: model.n, mConstraints: model.m, N: model.N,
+    vars: model.vars, direction: baseProblem.direction, swapSign: sign,
+    varNames: (kind === 'c' ? dUser : eUser),
+    segments: segs,
+    warn: warn,
+    upEnded: up.ended || null, downEnded: down.ended || null,
+    broken: up.broken || down.broken || null
+  };
+}
+
+/* =========================================================================
+   7. 工具
    ========================================================================= */
 function sensClone(p) {
   return {
@@ -624,6 +1129,7 @@ function sensAnalyze(baseProblem, scenario) {
   if (!scenario || !scenario.type) return { ok: false, message: '请选择要分析的变化类型。' };
   var r;
   if (scenario.type === 'c') r = sensChangeC(baseProblem, scenario);
+  else if (scenario.type === 'a') r = sensChangeA(baseProblem, scenario);
   else if (scenario.type === 'b') r = sensChangeB(baseProblem, scenario);
   else if (scenario.type === 'add-con') r = sensAddConstraint(baseProblem, scenario);
   else if (scenario.type === 'add-var') r = sensAddVar(baseProblem, scenario);
@@ -636,9 +1142,11 @@ function sensAnalyze(baseProblem, scenario) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     sensAnalyze: sensAnalyze,
+    sensParam: sensParam,
     sensBuildModel: sensBuildModel,
     sensTableau: sensTableau,
     sensIterate: sensIterate,
-    sensReadOut: sensReadOut
+    sensReadOut: sensReadOut,
+    fmtAff: fmtAff
   };
 }
