@@ -334,17 +334,72 @@ a.back{
   font-size:13px;font-weight:600;color:var(--accent);text-decoration:none;
 }
 a.back:active{opacity:.6}
+
+/* 首页头部做成一块「品牌区」：图标 + 标题 + 一句话定位 + 特性标签。
+   渐变只铺在左上角、右下角收到全透明，于是正文始终落在纯 --card 上 —— 副标题按
+   --fg2 对 --card 算对比度（浅色 5.3:1、深色 6.6:1），不会被渐变稀释掉。
+   只作用于 .hero，其它模块的 header 保持原样。 */
+.hero{
+  background-color:var(--card);
+  background-image:linear-gradient(135deg,var(--accent-soft) 0%,rgba(0,0,0,0) 58%);
+  border-radius:12px;padding:18px;margin:0 0 12px;
+}
+.hero .mark{display:block;margin-bottom:11px}
+.hero .mark svg{display:block;width:44px;height:44px}
+.hero h1{font-size:22px}
+.hero .feats{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0;padding:0;list-style:none}
+.hero .feats li{
+  /* 12px 是审查脚本的「过小字号」下限，别再往下调 */
+  font-size:12px;color:var(--fg2);background:var(--soft);
+  border-radius:999px;padding:3px 9px;
+}
+
+/* 首页模块卡：图标 + 标题 + 说明 + 圆形箭头。
+   图标底色与强调色按模块区分（蓝 / 琥珀 / 绿），全部取自 :root 里已有的变量，
+   这样浅色、深色两套配色自动跟着走，不用再写一份深色规则。 */
 a.modcard{
-  display:block;text-decoration:none;
-  background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;
+  display:flex;align-items:flex-start;gap:12px;
+  text-decoration:none;
+  background:var(--card);border-radius:12px;padding:15px 16px;margin-bottom:11px;
+  box-shadow:0 1px 2px rgba(0,0,0,.05);
+  transition:box-shadow .14s,background .14s,transform .14s;
 }
 a.modcard:active{background:var(--soft)}
-a.modcard .mt{
-  display:flex;align-items:center;justify-content:space-between;
-  font-size:16px;font-weight:650;color:var(--fg);
+/* 悬停效果只在真有指针的设备上给：手机上 :hover 会「粘」在最后点过的那张卡上 */
+@media (hover:hover){
+  a.modcard:hover{box-shadow:0 5px 16px rgba(0,0,0,.08);transform:translateY(-1px)}
+  a.modcard:hover .go{background:var(--accent);color:#fff}
 }
-a.modcard .mt .go{color:var(--accent);font-weight:400}
-a.modcard .md{display:block;margin-top:6px;font-size:12.5px;color:var(--fg2);line-height:1.65}
+a.modcard .mi{
+  flex:none;width:40px;height:40px;border-radius:11px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--mi-bg);color:var(--mi);
+}
+a.modcard .mi svg{display:block;width:22px;height:22px}
+a.modcard.m-simplex{--mi:var(--accent);--mi-bg:var(--accent-soft)}
+a.modcard.m-sens{--mi:var(--warn);--mi-bg:var(--warn-soft)}
+a.modcard.m-ip{--mi:var(--ok);--mi-bg:var(--ok-soft)}
+a.modcard .mb{display:block;flex:1;min-width:0}
+a.modcard .mt{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  font-size:16.5px;font-weight:650;color:var(--fg);
+}
+a.modcard .go{
+  flex:none;display:inline-flex;align-items:center;justify-content:center;
+  width:26px;height:26px;border-radius:50%;
+  background:var(--accent-soft);color:var(--accent);
+  transition:background .14s,color .14s;
+}
+a.modcard .go svg{display:block;width:13px;height:13px}
+a.modcard .md{display:block;margin-top:5px;font-size:12.5px;color:var(--fg2);line-height:1.65}
+
+/* 首页底部提示：手机上「添加到桌面」才是主要入口，值得占一行 */
+.foottip{
+  display:flex;align-items:flex-start;gap:9px;
+  margin:16px 2px 0;padding-top:15px;border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--fg2);line-height:1.7;
+}
+.foottip svg{flex:none;width:17px;height:17px;margin-top:2px;color:var(--fg3)}
 
 /* ---------- 灵敏度分析模块 ---------- */
 /* 一共 6 个场景，两列排开比自动换行整齐（小屏上也不会挤成一团） */
@@ -471,19 +526,55 @@ input.num.sm{width:52px}
 
   <!-- ===================== 首页 ===================== -->
   <div class="mod" id="mod-home">
-    <header>
+    <header class="hero">
+      <span class="mark" aria-hidden="true">
+        <!-- 与 favicon / 添加到桌面后的图标同一套图形，形成识别记号：
+             四格里有一格是琥珀色，正对单纯形表里被选中的枢轴元素 -->
+        <svg viewBox="0 0 64 64">
+          <rect width="64" height="64" rx="15" fill="#2563eb"/>
+          <rect x="11" y="11" width="18" height="18" rx="4" fill="#fff"/>
+          <rect x="35" y="11" width="18" height="18" rx="4" fill="#fff" fill-opacity=".45"/>
+          <rect x="11" y="35" width="18" height="18" rx="4" fill="#fff" fill-opacity=".45"/>
+          <rect x="35" y="35" width="18" height="18" rx="4" fill="#fbbf24"/>
+        </svg>
+      </span>
       <h1>运筹学计算器</h1>
       <p>线性规划 · 灵敏度分析 · 整数规划</p>
+      <ul class="feats">
+        <li>单文件</li>
+        <li>零依赖</li>
+        <li>可离线</li>
+      </ul>
     </header>
 
-    <a class="modcard" href="#/simplex">
-      <span class="mt">单纯形法<span class="go">→</span></span>
-      <span class="md">输入线性规划，逐步展示每一张单纯形表、对偶解，以及保持最优基不变时各系数允许的变化范围。</span>
+    <a class="modcard m-simplex" href="#/simplex">
+      <span class="mi" aria-hidden="true">
+        <!-- 单纯形表：整格填色的那一格就是枢轴元素 -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <rect x="3" y="4" width="18" height="16" rx="2.5"/>
+          <path d="M3 9.5h18M9 9.5V20M15 9.5V20"/>
+          <rect x="9" y="9.5" width="6" height="10.5" fill="currentColor" stroke="none"/>
+        </svg>
+      </span>
+      <span class="mb">
+        <span class="mt">单纯形法<span class="go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></span>
+        <span class="md">输入线性规划，逐步展示每一张单纯形表、对偶解，以及保持最优基不变时各系数允许的变化范围。</span>
+      </span>
     </a>
 
-    <a class="modcard" href="#/sens">
-      <span class="mt">灵敏度分析<span class="go">→</span></span>
-      <span class="md">在已求得的最优解上，分析「改目标函数系数 / 改右端项 / 增加约束 / 增加变量」的影响，并按教材做法在原最优表上继续迭代。</span>
+    <a class="modcard m-sens" href="#/sens">
+      <span class="mi" aria-hidden="true">
+        <!-- 灵敏度分析：三根滑杆，滑块停在不同高度 —— 表示「参数在允许范围内可调」。
+             滑块画成横杠而不是圆环：22px 下圆环会糊成一团，横杠还看得出来。 -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+          <path d="M7 3.5v17M12 3.5v17M17 3.5v17"/>
+          <path d="M4.6 9.5h4.8M9.6 14h4.8M14.6 7.5h4.8"/>
+        </svg>
+      </span>
+      <span class="mb">
+        <span class="mt">灵敏度分析<span class="go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></span>
+        <span class="md">在已求得的最优解上，分析「改目标函数系数 / 改右端项 / 增加约束 / 增加变量」的影响，并按教材做法在原最优表上继续迭代。</span>
+      </span>
     </a>
 
     <!-- 动态规划模块暂不从首页露出：它还是「预置教材题型」那套形式，
@@ -491,10 +582,35 @@ input.num.sm{width:52px}
          代码、路由（#/dp）与页面容器都原样保留，直接访问 /#/dp 仍然可用，
          以后改造成同样的形式再放回首页即可。 -->
 
-    <a class="modcard" href="#/ip">
-      <span class="mt">整数规划<span class="go">→</span></span>
-      <span class="md">输入任意整数规划（每个变量可选连续 / 整数 / 0-1），自动判定分枝定界法、割平面法、隐枚举法、图解法各有哪几种能用，能用的把完整计算过程全部输出。</span>
+    <a class="modcard m-ip" href="#/ip">
+      <span class="mi" aria-hidden="true">
+        <!-- 整数规划：整数格点阵，正中间那个大的就是整数最优解 ——
+             和图解法里画出来的「格点 + 绿色最优点」是同一个意象 -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="none">
+          <circle cx="6" cy="6" r="1.4" fill="currentColor"/>
+          <circle cx="12" cy="6" r="1.4" fill="currentColor"/>
+          <circle cx="18" cy="6" r="1.4" fill="currentColor"/>
+          <circle cx="6" cy="12" r="1.4" fill="currentColor"/>
+          <circle cx="18" cy="12" r="1.4" fill="currentColor"/>
+          <circle cx="6" cy="18" r="1.4" fill="currentColor"/>
+          <circle cx="12" cy="18" r="1.4" fill="currentColor"/>
+          <circle cx="18" cy="18" r="1.4" fill="currentColor"/>
+          <circle cx="12" cy="12" r="3.2" fill="currentColor"/>
+        </svg>
+      </span>
+      <span class="mb">
+        <span class="mt">整数规划<span class="go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></span>
+        <span class="md">输入任意整数规划（每个变量可选连续 / 整数 / <span class="nowrap">0-1</span>），自动判定分枝定界法、割平面法、隐枚举法、图解法各有哪几种能用，能用的把完整计算过程全部输出。</span>
+      </span>
     </a>
+
+    <div class="foottip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="6" y="2.5" width="12" height="19" rx="2.5"/>
+        <path d="M10.5 18.5h3"/>
+      </svg>
+      <span>手机上打开后，用浏览器菜单「添加到桌面」，即可全屏、离线使用。</span>
+    </div>
   </div>
 
   <!-- ===================== 单纯形法 ===================== -->
