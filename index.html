@@ -159,6 +159,26 @@ button.btn.primary:active{background:var(--accent);filter:brightness(.9)}
 }
 .dlist .dv{color:var(--accent)}
 
+/* ---------- 标准化卡片 ---------- */
+.std-h{
+  font-size:12px;font-weight:650;color:var(--fg2);
+  letter-spacing:.02em;margin-bottom:6px;
+}
+.std-line{
+  font-size:12.5px;line-height:1.8;color:var(--fg);
+  font-variant-numeric:tabular-nums;
+  white-space:pre-wrap;word-break:break-word;
+}
+.std-arrow{
+  font-size:11.5px;color:var(--fg3);
+  margin:9px 0;padding-top:9px;border-top:1px solid var(--soft);
+}
+.std-note{
+  margin-top:11px;padding-top:10px;border-top:1px solid var(--soft);
+  font-size:12px;color:var(--fg2);line-height:1.7;
+}
+.std-note b{color:var(--fg);font-weight:650}
+
 /* ---------- 图解法 ---------- */
 .graph{margin:2px 0 10px}
 .graph svg{display:block;width:100%;height:auto}
@@ -1185,6 +1205,7 @@ if (typeof module !== 'undefined' && module.exports) {
     if (res.swapped) legend += '　·　<span class="nb">min 问题已取负转为 max，z 已还原</span>';
     html += '<div class="banner">' + legend + '</div>';
 
+    html += standardCard(prob, res);
     html += graphCard(prob, res);
 
     html += '<h2 class="sec">迭代过程（共 ' + (res.steps.length - 1) + ' 次迭代）</h2>';
@@ -1272,6 +1293,103 @@ if (typeof module !== 'undefined' && module.exports) {
             + (loose.length > 1 ? '它们' : '它') + '还有余量、没被用尽，放宽也不会改变最优值。'
           : '这里全是紧约束：每条约束都被用尽了，放宽任何一条都会改变最优值。')
       + '</div></div>';
+  }
+
+  /* 关系符显示成数学符号 */
+  function relSym(rel) {
+    return rel === '<=' ? '≤' : (rel === '>=' ? '≥' : '=');
+  }
+
+  /* 把 Σ c_j·name_j 渲染成可读表达式：系数 1 省略，系数 0 默认跳过 */
+  function linExpr(coeffs, names, keepZero) {
+    var out = '';
+    for (var j = 0; j < coeffs.length; j++) {
+      var c = coeffs[j];
+      if (Math.abs(c) < 1e-12 && !keepZero) continue;
+      var a = Math.abs(c);
+      var cs = (Math.abs(a - 1) < 1e-12) ? '' : fmtNum(a);
+      var term = cs + names[j];
+      if (!out) out = (c < 0 ? '-' : '') + term;
+      else out += (c < 0 ? ' - ' : ' + ') + term;
+    }
+    return out || '0';
+  }
+
+  /* 标准化卡片：把「原问题 → 标准型」的变换摊开给学生看。
+     原问题用用户输入的形式；标准型取自算法第一张表（即标准化后的约束矩阵）。 */
+  function standardCard(prob, res) {
+    var names = res.vars.map(function (v) { return v.name; });
+    var kinds = res.vars.map(function (v) { return v.kind; });
+    var N = names.length;
+    var n = prob.c.length;
+    var xNames = names.slice(0, n);
+    var cons = prob.constraints || [];
+    var init = res.steps[0];
+    var pad = '       ';
+
+    /* ---- ① 原问题 ---- */
+    var orig = ['<div class="std-line">' + prob.direction + ' z = ' + linExpr(prob.c, xNames) + '</div>'];
+    cons.forEach(function (k, i) {
+      orig.push('<div class="std-line">' + (i === 0 ? 's.t.  ' : pad)
+        + linExpr(k.coef, xNames) + ' ' + relSym(k.rel) + ' ' + fmtNum(k.rhs) + '</div>');
+    });
+    orig.push('<div class="std-line">' + (cons.length ? pad : 's.t.  ') + xNames.join(', ') + ' ≥ 0</div>');
+
+    /* ---- ② 标准型的目标函数（人工变量带 M，松弛变量系数为 0） ----
+       显示顺序按「决策变量 → 松弛/剩余 → 人工变量」分组，否则 s 和 a 交织会很乱 */
+    var order = [];
+    ['x', 's', 'a'].forEach(function (kind) {
+      kinds.forEach(function (k, i) { if (k === kind) order.push(i); });
+    });
+    var zStr = '';
+    order.forEach(function (j) {
+      var c, isM = false;
+      if (kinds[j] === 'a') { isM = true; c = 0; }
+      else if (kinds[j] === 'x') { c = res.swapped ? -prob.c[j] : prob.c[j]; }
+      else { c = 0; }
+      var abs = Math.abs(c);
+      var cs = isM ? 'M' : (abs < 1e-12 ? '0' : (Math.abs(abs - 1) < 1e-12 ? '' : fmtNum(abs)));
+      var neg = isM ? true : (c < 0);
+      var term = cs + names[j];
+      if (!zStr) zStr = (neg ? '-' : '') + term;
+      else zStr += (neg ? ' - ' : ' + ') + term;
+    });
+    if (!zStr) zStr = '0';
+
+    /* ---- ② 标准型的约束（等式形式） ---- */
+    var std = ['<div class="std-line">max z' + (res.swapped ? "'" : '') + ' = ' + zStr + '</div>'];
+    for (var i2 = 0; i2 < res.mConstraints; i2++) {
+      var row = init.rows[i2];
+      std.push('<div class="std-line">' + (i2 === 0 ? 's.t.  ' : pad)
+        + linExpr(row.slice(0, N), names) + ' = ' + fmtNum(row[N]) + '</div>');
+    }
+    std.push('<div class="std-line">' + (res.mConstraints ? pad : 's.t.  ') + names.join(', ') + ' ≥ 0</div>');
+
+    /* ---- 变换说明 ---- */
+    var notes = [];
+    if (res.swapped) {
+      notes.push('原问题是 <b>min</b> 型，先把目标函数整体取负转成 max 型（记 z′ = −z），结果再还原回 z。');
+    }
+    if (kinds.indexOf('s') >= 0) {
+      notes.push('不等式约束通过加减<b>松弛 / 剩余变量</b> s 化成等式：≤ 加 s，≥ 减 s。s 在目标函数里系数为 0。');
+    }
+    if (kinds.indexOf('a') >= 0) {
+      notes.push('出现人工变量 a：≥ 约束减去剩余变量后要再补一个 a，= 约束直接补 a，'
+        + '目的是凑出初始单位基。a 在目标函数里带 <b>−M</b>（M 是形式上无穷大的正数），逼它退到 0。');
+    }
+    if (cons.some(function (k) { return k.rhs < 0; })) {
+      notes.push('有约束的右端项为负，已整行取负并翻转关系符，使右端项非负。');
+    }
+
+    return '<h2 class="sec">标准化</h2>'
+      + '<div class="card stdcard">'
+      + '<div class="std-h">① 原问题</div>'
+      + orig.join('')
+      + '<div class="std-arrow">↓ 引入松弛 / 剩余 / 人工变量，化为等式</div>'
+      + '<div class="std-h">② 标准型</div>'
+      + std.join('')
+      + (notes.length ? '<div class="std-note">' + notes.join('<br>') + '</div>' : '')
+      + '</div>';
   }
 
   /* 图解法：仅当决策变量恰好 2 个、且不是无可行解时才画 */

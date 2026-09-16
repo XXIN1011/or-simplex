@@ -267,6 +267,40 @@ class CDP {
     bg: getComputedStyle(document.body).backgroundColor })`));
   check(lum(lt.bg) > 200, '切回浅色后背景恢复为浅色', `body=${lt.bg}`);
 
+  /* ---------- 6.5 标准化卡片 ---------- */
+  console.log('\n--- 标准化卡片 ---');
+  const std = JSON.parse(await evl(`(function(){
+    window.__T.reset(2,3); window.__T.setDir('min');
+    window.__T.setC(0,4); window.__T.setC(1,1);
+    window.__T.setA(0,0,3); window.__T.setA(0,1,1); window.__T.setB(0,3); window.__T.setRel(0,'=');
+    window.__T.setA(1,0,4); window.__T.setA(1,1,3); window.__T.setB(1,6); window.__T.setRel(1,'>=');
+    window.__T.setA(2,0,1); window.__T.setA(2,1,2); window.__T.setB(2,4); window.__T.setRel(2,'<=');
+    document.getElementById('solveBtn').click();
+    var lines = Array.prototype.map.call(document.querySelectorAll('.std-line'), function(e){ return e.textContent; });
+    return JSON.stringify({
+      all: lines.join(' ~ '),
+      note: (document.querySelector('.std-note')||{}).textContent || '',
+      secs: Array.prototype.map.call(document.querySelectorAll('#result h2.sec'), function(e){ return e.textContent; }),
+      errors: window.__errors.length
+    });
+  })()`));
+  check(std.all.indexOf('min z = 4x1 + x2') >= 0, '① 原问题按输入的 min 型显示');
+  check(std.all.indexOf('-4x1 - x2 + 0s2 + 0s3 - Ma1 - Ma2') >= 0,
+    '② 标准型目标函数：取负转 max，并按「决策变量→松弛→人工」分组');
+  check(std.all.indexOf('3x1 + x2 + a1 = 3') >= 0
+     && std.all.indexOf('4x1 + 3x2 - s2 + a2 = 6') >= 0
+     && std.all.indexOf('x1 + 2x2 + s3 = 4') >= 0,
+    '② 约束化为等式：= 补人工变量、≥ 减剩余并补人工、≤ 加松弛');
+  check(std.note.indexOf('min') >= 0 && std.note.indexOf('人工变量') >= 0 && std.note.indexOf('松弛') >= 0,
+    '变换说明覆盖 min 转换 / 松弛变量 / 人工变量');
+  const iStd = std.secs.indexOf('标准化');
+  const iGraph = std.secs.indexOf('图解法');
+  const iIter = std.secs.findIndex(function (s) { return s.indexOf('迭代过程') >= 0; });
+  check(iStd >= 0 && iStd < iGraph && iGraph < iIter,
+    '位置顺序：标准化 → 图解法 → 迭代过程',
+    std.secs.join(' / '));
+  check(std.errors === 0, '标准化渲染无 JS 错误');
+
   /* ---------- 7. 0 变量 0 约束 ---------- */
   console.log('\n--- 0 变量 0 约束 ---');
   const zero = JSON.parse(await evl(`(function(){
