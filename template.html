@@ -370,10 +370,31 @@ a.modcard .md{display:block;margin-top:6px;font-size:12.5px;color:var(--fg2);lin
 .judge .row.blk:first-child{margin-top:0}
 .judge b{color:var(--fg);font-weight:650}
 table.sens th{
-  padding:0 0 6px;font-size:11.5px;font-weight:600;color:var(--fg3);
+  /* 表头是会被读的内容，必须过 WCAG AA 的 4.5:1 —— 所以用 --fg2 而不是更淡的 --fg3 */
+  padding:0 0 6px;font-size:11.5px;font-weight:600;color:var(--fg2);
   text-align:left;white-space:nowrap;border-bottom:1px solid var(--line);
 }
 .nowrap{white-space:nowrap}
+
+/* ---------- 动态规划模块 ---------- */
+/* 加减按钮中间那个当前值，固定宽度免得数字一变整行就跳 */
+.fv{
+  display:inline-block;min-width:28px;text-align:center;
+  font-size:14.5px;font-weight:650;color:var(--fg);
+  font-variant-numeric:tabular-nums;
+}
+.btn.sm{min-width:44px;min-height:44px;padding:0 12px;font-size:16px;line-height:1}
+.seg.sm button{min-height:44px;padding:0 11px;font-size:12.5px}
+/* 动态规划的输入表：第一列是行首（节点名/项目序号），列头是各种取值 */
+table.inp.dm th{
+  font-size:11.5px;font-weight:600;color:var(--fg2);
+  text-align:center;padding:0 3px 7px;white-space:nowrap;
+}
+table.inp.dm th.rowh{text-align:right;padding-right:9px;color:var(--fg2)}
+/* 递推表：状态列次要一点，让 f 与 u* 更醒目 */
+table.sens.dpt td{padding:6px 9px 6px 0;vertical-align:top}
+table.sens.dpt td:first-child{color:var(--fg2)}
+.muted{color:var(--fg2)}
 /* 场景参数输入行 */
 .fh{display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-bottom:8px}
 .fl{font-size:12.5px;color:var(--fg2);min-width:82px;font-weight:600}
@@ -399,6 +420,11 @@ input.num.sm{width:52px}
     <a class="modcard" href="#/sens">
       <span class="mt">灵敏度分析<span class="go">→</span></span>
       <span class="md">在已求得的最优解上，分析「改目标函数系数 / 改右端项 / 增加约束 / 增加变量」的影响，并按教材做法在原最优表上继续迭代。</span>
+    </a>
+
+    <a class="modcard" href="#/dp">
+      <span class="mt">动态规划<span class="go">→</span></span>
+      <span class="md">最短路线、资源分配、背包、生产与存储、设备更新五类题型，逐阶段列出 f<sub>k</sub>(s) 与最优决策，逆序与顺序两种解法可对照。</span>
     </a>
   </div>
 
@@ -474,6 +500,25 @@ input.num.sm{width:52px}
     <div id="sScenario"></div>
   </div>
 
+  <!-- ===================== 动态规划 ===================== -->
+  <div class="mod" id="mod-dp">
+    <header>
+      <a class="back" href="#/">← 返回首页</a>
+      <h1>动态规划</h1>
+      <p>分阶段决策 · 逐阶段递推</p>
+    </header>
+
+    <section class="card">
+      <div id="dpInput"></div>
+      <div class="actions">
+        <button type="button" class="btn primary" id="dpSolveBtn">求　解</button>
+      </div>
+    </section>
+
+    <div id="dpBanners"></div>
+    <section id="dpOut"></section>
+  </div>
+
 </div>
 
 <script>
@@ -493,6 +538,12 @@ input.num.sm{width:52px}
 </script>
 <script>
 /*__SENS_UI__*/
+</script>
+<script>
+/*__DP_CORE__*/
+</script>
+<script>
+/*__DP_UI__*/
 </script>
 <script>
 /*__ROUTER__*/

@@ -108,6 +108,21 @@ const SENS_SETUP = `(function(){
   return 'sens-setup-done';
 })()`;
 
+/* 动态规划：把五种题型各跑一遍，让递推表、策略卡、顺序解法对照都出现在页面上，
+   这样审查到的才是真实渲染出来的内容，而不只是空表单。 */
+const DP_SETUP = `(function(){
+  function q(s){ return document.querySelector(s); }
+  ['shortest','resource','knapsack','prodinv','replace'].forEach(function(t){
+    var tab = q('#dpTabs button[data-t="' + t + '"]');
+    if (tab) tab.click();
+    document.getElementById('dpSolveBtn').click();
+  });
+  var tab = q('#dpTabs button[data-t="shortest"]');
+  if (tab) tab.click();
+  document.getElementById('dpSolveBtn').click();
+  return 'dp-setup-done';
+})()`;
+
 const AUDIT = `(function(){
   function rgb(s){
     if(!s) return null;
@@ -159,7 +174,9 @@ const AUDIT = `(function(){
   var sels = ['.sol','.vsum','.explain','.dlist','.std-note','.std-line','.std-h',
               '.graph','.help','.empty-tip','.scroll-hint','.iter-head','.hint','header p',
               /* 灵敏度分析模块与首页新增的部分 */
-              '.judge','.sens-note','.sens-warn','.sens-h','a.modcard .md','a.back','.fl','.fe','.fx'];
+              '.judge','.sens-note','.sens-warn','.sens-h','a.modcard .md','a.back','.fl','.fe','.fx',
+              /* 动态规划模块新增的部分 */
+              '.fv','.muted','table.inp.dm th','table.sens.dpt td','.verdict .vtitle'];
   var lows = [], seen = {};
   sels.forEach(function(s){
     var el = document.querySelector(s);
@@ -248,7 +265,8 @@ const AUDIT = `(function(){
   await cdp.send('Page.navigate', { url: pageUrl }, sessionId);
   await sleep(1200);
   await cdp.send('Runtime.evaluate',
-    { expression: wantHash === '#/sens' ? SENS_SETUP : SETUP }, sessionId);
+    { expression: wantHash === '#/sens' ? SENS_SETUP
+                : (wantHash === '#/dp' ? DP_SETUP : SETUP) }, sessionId);
   await sleep(900);
 
   const r = await cdp.send('Runtime.evaluate', { expression: AUDIT, returnByValue: true }, sessionId);

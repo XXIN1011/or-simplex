@@ -484,8 +484,8 @@ class CDP {
     sens: document.getElementById('mod-sens').classList.contains('on'),
     cards: document.querySelectorAll('#mod-home a.modcard').length
   })`));
-  check(routeBefore.simp === true && routeBefore.home === false && routeBefore.cards === 2,
-    '进 #/simplex 时只显示单纯形法模块，首页有 2 个模块入口',
+  check(routeBefore.simp === true && routeBefore.home === false && routeBefore.cards === 3,
+    '进 #/simplex 时只显示单纯形法模块，首页有 3 个模块入口',
     `home=${routeBefore.home} simplex=${routeBefore.simp} 卡片=${routeBefore.cards}`);
 
   await evl(`location.hash = '#/sens'; 'ok'`);
@@ -598,6 +598,68 @@ class CDP {
   check(nx.pInputsB === 2 && nx.pInputsC === 0,
     '切到右边系数后输入表换成 b_i 的 λ 系数', `b 输入=${nx.pInputsB} c 输入=${nx.pInputsC}`);
   check(nx.errors === 0, '新场景无 JS 错误');
+
+  /* ---------- 6.6 动态规划模块 ---------- */
+  console.log('\n--- 动态规划模块 ---');
+  await evl(`location.hash = '#/dp'; 'ok'`);
+  await sleep(220);
+
+  const dp = JSON.parse(await evl(`(function(){
+    function q(s){ return document.querySelector(s); }
+    function text(el){ return ((el||{}).textContent||'').replace(/\\\\s+/g,' '); }
+    var r = {};
+    r.route = { dp: document.getElementById('mod-dp').classList.contains('on'),
+                home: document.getElementById('mod-home').classList.contains('on') };
+    r.tabs = document.querySelectorAll('#dpTabs button').length;
+
+    /* 默认那一题就是最短路线例题，直接求解 */
+    document.getElementById('dpSolveBtn').click();
+    r.out = text(document.getElementById('dpOut'));
+    r.stages = document.querySelectorAll('#dpOut table.sens.dpt').length;
+    r.policy = text(document.querySelector('#dpOut .verdict .sol'));
+
+    /* 换成背包 */
+    q('#dpTabs button[data-t="knapsack"]').click();
+    r.kItems = document.querySelectorAll('[data-kw]').length;
+    document.getElementById('dpSolveBtn').click();
+    r.kOut = text(document.getElementById('dpOut'));
+    r.kPolicy = text(document.querySelector('#dpOut .verdict .sol'));
+
+    /* 换成资源分配 */
+    q('#dpTabs button[data-t="resource"]').click();
+    document.getElementById('dpSolveBtn').click();
+    r.rOut = text(document.getElementById('dpOut'));
+
+    /* 换成生产与存储、设备更新，确认这两种也能出结果 */
+    q('#dpTabs button[data-t="prodinv"]').click();
+    document.getElementById('dpSolveBtn').click();
+    r.pOut = text(document.getElementById('dpOut'));
+    q('#dpTabs button[data-t="replace"]').click();
+    document.getElementById('dpSolveBtn').click();
+    r.vOut = text(document.getElementById('dpOut'));
+
+    r.errors = window.__errors.length;
+    return JSON.stringify(r);
+  })()`));
+  check(dp.route.dp === true && dp.route.home === false, '进 #/dp 时只显示动态规划模块');
+  check(dp.tabs === 5, '动态规划有五个题型标签', `标签数=${dp.tabs}`);
+  check(dp.out.indexOf('14') >= 0 && dp.policy.indexOf('B1') >= 0
+        && dp.policy.indexOf('C2') >= 0 && dp.policy.indexOf('D1') >= 0,
+    '最短路线例题：最优值 14、策略 B1→C2→D1→E');
+  check(dp.stages >= 8, '逆序与顺序两套递推表都渲染出来', `表数=${dp.stages}`);
+  check(dp.out.indexOf('顺序解法') >= 0 && dp.out.indexOf('一致') >= 0,
+    '给出顺序解法对照并确认两种解法结论一致');
+  check(dp.out.indexOf('f₁') >= 0 && dp.out.indexOf('s₁') >= 0,
+    '递推表表头用了真下标（f₁、s₁）而不是 f_1');
+  check([dp.out, dp.kOut, dp.rOut, dp.pOut, dp.vOut].every(function (x) {
+    return x.indexOf('**') < 0;
+  }), '五种题型渲染后的正文里都没有残留 ** 加粗标记');
+  check(dp.kItems === 3, '切到背包问题后输入表换成物品表', `物品行=${dp.kItems}`);
+  check(dp.kPolicy.length > 0 && dp.kOut.indexOf('背包') >= 0, '背包问题能求解并给出策略', dp.kPolicy);
+  check(dp.rOut.indexOf('资源分配') >= 0 && dp.rOut.indexOf('最优策略') >= 0, '资源分配能求解');
+  check(dp.pOut.indexOf('生产与存储') >= 0 && dp.pOut.indexOf('最优策略') >= 0, '生产与存储能求解');
+  check(dp.vOut.indexOf('设备更新') >= 0 && dp.vOut.indexOf('最优策略') >= 0, '设备更新能求解');
+  check(dp.errors === 0, '动态规划模块无 JS 错误');
 
   console.log(`\n合计: ${pass} 通过 / ${fail} 失败`);
   ws.close(); child.kill();

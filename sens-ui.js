@@ -145,7 +145,7 @@
       for (ci = 0; ci < m; ci++) copts += '<option value="' + ci + '">约束 ' + (ci + 1) + '</option>';
       for (vj = 0; vj < n; vj++) vopts += '<option value="' + (vj) + '">x' + (vj + 1) + '</option>';
       h += '<div class="sens-note">选一个技术系数 a<sub>ij</sub>（第 i 条约束里 x<sub>j</sub> 的系数）改成新值。'
-        + '改的是**非基变量**的列还是**基变量**的列，判据完全不同。</div>'
+        + '改的是<b>非基变量</b>的列还是<b>基变量</b>的列，判据完全不同。</div>'
         + '<div class="fh"><span class="fl">第</span>'
         + '<select class="rel" data-f="a-con">' + copts + '</select>'
         + '<span class="fx">条约束里的</span></div>'
