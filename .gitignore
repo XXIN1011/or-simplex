@@ -7,7 +7,6 @@ poll-token.py
 random-bank.json
 dual-bank.json
 __pycache__/
-deploy/
 
 # 本地截图
 *.png

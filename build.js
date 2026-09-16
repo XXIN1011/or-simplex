@@ -1,4 +1,4 @@
-/* 构建：template.html + simplex-core.js + ui.js  ->  index.html（单文件、零依赖） */
+/* 构建：template.html + simplex-core.js + graph.js + ui.js  ->  index.html（单文件、零依赖） */
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -21,14 +21,8 @@ let out = tpl.replace('/*__CORE__*/', () => core);
 out = out.replace('/*__GRAPH__*/', () => graph);
 out = out.replace('/*__UI__*/', () => ui);
 
+/* 只产出根目录这一个 index.html：GitHub Pages 以仓库根为发布目录（main / /），
+   推送即上线，不限次也不计量。不再产出 deploy/ 副本（那是给 Netlify 用的，已弃用）。 */
 fs.writeFileSync(path.join(root, 'index.html'), out, 'utf8');
 
-// 部署副本（可直接拖到 Netlify Drop：index.html + netlify.toml）
-const dep = path.join(root, 'deploy');
-fs.mkdirSync(dep, { recursive: true });
-fs.writeFileSync(path.join(dep, 'index.html'), out, 'utf8');
-const ntl = path.join(root, 'netlify.toml');
-if (fs.existsSync(ntl)) fs.copyFileSync(ntl, path.join(dep, 'netlify.toml'));
-
 console.log('构建完成 index.html :', (out.length / 1024).toFixed(1), 'KB');
-console.log('部署副本 deploy/index.html');
