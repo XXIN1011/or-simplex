@@ -2054,24 +2054,32 @@ function walkParam(model, startBasis, kind, data, dir) {
     var iv = lamInterval(list, kind === 'c' ? 'le' : 'ge');
     if (!iv) return { segs: segs, broken: 'λ = 0 处原基就不满足条件（数值上不该发生）' };
 
-    /* 基里如果残留取值为 0 的人工变量，它在新条件下必须**仍然是 0**：
-         变正 → 原约束并没有被真正满足（无可行解），这个方向一步都不能走；
-         变负 → 原基失去可行性，但可以用对偶单纯形一步把它顶出基，方向可以走。
-       （只把它当作「≥ 0」是不够的 —— 那样会把无可行解的区域算进允许范围。） */
+    /* 基里残留取值为 0 的人工变量：它在新条件下必须**仍然恰好是 0**。
+       这个限制与「往哪个方向走」无关，而且必须是**等式**而不是不等式：
+         · 变成正值 → 原约束并没有被真正满足（新条件下无可行解）；
+         · 变成负值 → 原基不再可行（理论上能用对偶单纯形把它顶出基，但这条路径未实现）。
+       所以只要它随 λ 会变（ab ≠ 0），这组基就**只在 λ = 0 这一点上成立** —— 把区间钉住。
+
+       ★ 两个坑：
+       ① 必须同时把 lo 和 hi 都钉到 0，不能只夹当前行走方向。同一个基会被「向上」和
+          「向下」两次行走各记录一遍，只夹一个方向的话，另一个方向记下来的那份仍带着过宽
+          的区间，合并时取的是它 —— 夹好的那份被丢掉，于是把「无可行解」的 λ 区间
+          当成最优区间报了出去。（真实踩过：随机题里约一半的运行会失败。）
+       ② 底下立刻要判一次空区间：钉完之后可能落在原区间之外。 */
     var artBlock = '';
     if (kind === 'b') {
       for (i = 0; i < model.m; i++) {
         if (model.vars[basis[i]].kind !== 'a') continue;
         var ab = be[i];
         if (Math.abs(ab) < LAM_EPS) continue;
-        if (dir > 0 ? ab > 0 : ab < 0) {
-          if (dir > 0) iv.hi = Math.min(iv.hi, 0); else iv.lo = Math.max(iv.lo, 0);
-          artBlock = '基里残留的人工变量 ' + model.vars[basis[i]].name
-            + ' 沿着这个方向会变成正值，而人工变量取正值意味着原约束并没有被满足'
-            + '（新条件下无可行解）—— 所以这个方向只能分析到 λ = 0 为止。';
-        }
+        iv.lo = Math.max(iv.lo, 0);
+        iv.hi = Math.min(iv.hi, 0);
+        artBlock = '基里残留的人工变量 ' + model.vars[basis[i]].name
+          + ' 会随 λ 变成非零值，而人工变量必须恒为 0（它一旦取正值，就说明原约束并没有'
+          + '被真正满足）。因此这组基只在 λ = 0 处成立，这个方向只能分析到这一点为止。';
       }
     }
+    if (iv.hi < iv.lo - 1e-9) return { segs: segs, ended: artBlock || '区间为空' };
 
     segs.push(paramSeg(model, T, basis, kind, data, iv, cur));
     if (artBlock) { segs[segs.length - 1].note = artBlock; return { segs: segs, ended: artBlock }; }
