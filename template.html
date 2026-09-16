@@ -12,7 +12,9 @@
 <title>单纯形法</title>
 <style>
 :root{
-  --fg:#18181b; --fg2:#71717a; --fg3:#a1a1aa;
+  /* --fg2 承担绝大部分次要文字（副标题、章节标题、说明）。浅色下要过 WCAG AA 的 4.5:1，
+     原来的 #71717a 在灰底 #f4f4f5 上只有 4.40，故整体压深一档。 */
+  --fg:#18181b; --fg2:#6b6b74; --fg3:#a1a1aa;
   --line:#e4e4e7; --line2:#d4d4d8;
   --bg:#f4f4f5; --card:#fff; --input:#fff; --soft:#f4f4f5;
   --accent:#2563eb; --accent-soft:#eff6ff;
@@ -50,7 +52,7 @@ body{
 /* ---------- 头部 ---------- */
 header{margin:0 2px 16px}
 h1{margin:0;font-size:21px;font-weight:650;letter-spacing:-.01em}
-header p{margin:3px 0 0;font-size:12.5px;color:var(--fg3);letter-spacing:.02em}
+header p{margin:3px 0 0;font-size:12.5px;color:var(--fg2);letter-spacing:.02em}
 
 /* ---------- 卡片 ---------- */
 .card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:12px}
@@ -93,7 +95,7 @@ header p{margin:3px 0 0;font-size:12.5px;color:var(--fg3);letter-spacing:.02em}
 /* ---------- 输入表 ---------- */
 .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -14px;padding:0 14px}
 .scroll-hint{
-  font-size:11.5px;color:var(--fg3);text-align:center;
+  font-size:11.5px;color:var(--fg2);text-align:center;
   margin:-3px 0 8px;transition:opacity .2s;
 }
 .scroll-hint.hide{opacity:0}
@@ -128,7 +130,7 @@ select.rel{
 select.rel:focus{outline:none;border-color:var(--accent)}
 .delvar{
   border:0;background:transparent;color:var(--fg3);font-size:17px;
-  padding:8px 4px;cursor:pointer;line-height:1;
+  padding:13px 9px;min-width:36px;cursor:pointer;line-height:1;
 }
 .delvar:active{color:var(--err)}
 
@@ -149,7 +151,7 @@ button.btn.primary{
 button.btn.primary:active{background:var(--accent);filter:brightness(.9)}
 /* 输入表里的空状态提示 */
 .inp td.empty-tip{
-  font-size:12px;color:var(--fg3);text-align:left;
+  font-size:12px;color:var(--fg2);text-align:left;
   padding-left:8px;white-space:nowrap;
 }
 .verdict .muted{color:var(--fg3);font-size:14px;font-weight:400}
@@ -172,7 +174,7 @@ button.btn.primary:active{background:var(--accent);filter:brightness(.9)}
   white-space:pre-wrap;word-break:break-word;
 }
 .std-arrow{
-  font-size:11.5px;color:var(--fg3);
+  font-size:11.5px;color:var(--fg2);
   margin:9px 0;padding-top:9px;border-top:1px solid var(--soft);
 }
 .std-note{
@@ -192,16 +194,16 @@ button.btn.primary:active{background:var(--accent);filter:brightness(.9)}
 .graph .g-contour{stroke:var(--pivot);stroke-width:1.1;stroke-dasharray:5 4;opacity:.5}
 .graph .g-contour-hi{opacity:1;stroke-width:1.4}
 .graph .g-opt{fill:var(--pivot)}
-.graph text{font-size:8.5px;fill:var(--fg3)}
-.graph .g-lbl{font-size:10px;fill:var(--fg2);font-weight:600}
-.graph .g-optlbl{font-size:9.5px;fill:var(--pivot);font-weight:600}
+.graph text{font-size:12px;fill:var(--fg2)}
+.graph .g-lbl{font-size:13.5px;fill:var(--fg2);font-weight:600}
+.graph .g-optlbl{font-size:12.5px;fill:var(--pivot);font-weight:600}
 
 /* ---------- 结果 ---------- */
 #result{display:none}
 #result.show{display:block}
 #result.stale{opacity:.38;transition:opacity .15s}
 h2.sec{
-  font-size:13px;font-weight:600;color:var(--fg3);
+  font-size:13px;font-weight:600;color:var(--fg2);
   margin:22px 2px 9px;letter-spacing:.03em;
 }
 h2.sec:first-child{margin-top:14px}

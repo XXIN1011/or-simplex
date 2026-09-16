@@ -234,8 +234,16 @@
     if (res.status === 'optimal' && res.solution && res.solution.length === 2) {
       var ox = sx(res.solution[0]), oy = sy(res.solution[1]);
       out.push('<circle class="g-opt" cx="' + n1(ox) + '" cy="' + n1(oy) + '" r="4"/>');
-      out.push('<text class="g-optlbl" x="' + n1(ox + 7) + '" y="' + n1(oy - 6) + '">(' +
-               fmtNum(res.solution[0]) + ', ' + fmtNum(res.solution[1]) + ')</text>');
+
+      /* 标注默认放在顶点右上方。可最优解常常正好落在右上角，那样标注会被画布裁掉，
+         所以先按字数估一下宽度：顶到右边界就翻到左侧改右对齐，顶到上边界就挪到下方。 */
+      var lbl = '(' + fmtNum(res.solution[0]) + ', ' + fmtNum(res.solution[1]) + ')';
+      var estW = lbl.length * 6.5;      /* 12.5px 字号下每字符约 6.5px，故意估宽一点留余量 */
+      var lx = ox + 7, ly = oy - 6, tail = false;
+      if (ox + 7 + estW > W - 2) { lx = ox - 7; tail = true; }
+      if (ly - 12 < 2) { ly = oy + 15; }
+      out.push('<text class="g-optlbl" x="' + n1(lx) + '" y="' + n1(ly) + '"'
+        + (tail ? ' text-anchor="end"' : '') + '>' + lbl + '</text>');
     }
 
     out.push('</svg>');
