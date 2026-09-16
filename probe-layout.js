@@ -15,6 +15,8 @@ const PORT = 9300 + Math.floor(Math.random() * 600);
 const url = /^https?:\/\//i.test(pageFile)
   ? pageFile
   : 'file:///' + path.resolve(__dirname, pageFile).replace(/\\/g, '/');
+/* 应用现在有首页：这些检查都针对「单纯形法」模块，先进去，否则元素隐藏、量不到尺寸 */
+const pageUrl = url.indexOf('#') === -1 ? url + '#/simplex' : url;
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'orprobe-'));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -108,7 +110,7 @@ const PROBE = `(function(){
   await cdp.send('Runtime.enable', {}, sessionId);
   await cdp.send('Emulation.setDeviceMetricsOverride',
     { width: 390, height: 844, deviceScaleFactor: 2, mobile: true }, sessionId);
-  await cdp.send('Page.navigate', { url }, sessionId);
+  await cdp.send('Page.navigate', { url: pageUrl }, sessionId);
   await sleep(1200);
   await cdp.send('Runtime.evaluate', { expression: SETUP }, sessionId);
   await sleep(900);

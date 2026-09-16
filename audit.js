@@ -10,7 +10,11 @@ const CHROME = fs.existsSync('C:/Program Files/Google/Chrome/Application/chrome.
   ? 'C:/Program Files/Google/Chrome/Application/chrome.exe'
   : 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 
-const pageFile = process.argv[2] || 'index.html';
+/* 允许在文件名后带模块 hash，例如 `node audit.js "index.html#/sens"` */
+const rawTarget = process.argv[2] || 'index.html';
+const hashAt = rawTarget.indexOf('#');
+const pageFile = hashAt >= 0 ? rawTarget.slice(0, hashAt) : rawTarget;
+const wantHash = hashAt >= 0 ? rawTarget.slice(hashAt) : '';
 const dark = (process.argv[3] || '') === 'dark';
 const WIDTH = 390;
 
@@ -18,6 +22,9 @@ const PORT = 9200 + Math.floor(Math.random() * 700);
 const url = /^https?:\/\//i.test(pageFile)
   ? pageFile
   : 'file:///' + path.resolve(__dirname, pageFile).replace(/\\/g, '/');
+/* 应用现在有首页：默认检查「单纯形法」模块，否则元素隐藏、量不到尺寸。
+   想查其它模块就带上 hash，例如 "index.html#/sens" */
+const pageUrl = url.indexOf('#') === -1 ? url + (wantHash || '#/simplex') : url;
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'oraudit-'));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -69,6 +76,38 @@ const SETUP = `(function(){
   return 'setup-done';
 })()`;
 
+/* 灵敏度分析模块的布置：填基准题 → 求基准解 → 选「增加一个约束」→ 填参数 → 分析。
+   走的是教材那道考研题，能把判断推导、对偶单纯形迭代表、结论都渲染出来。 */
+const SENS_SETUP = `(function(){
+  function q(s){ return document.querySelector(s); }
+  function fire(el, ev){ el.dispatchEvent(new Event(ev, {bubbles:true})); }
+  function click(id){ document.getElementById(id).click(); }
+  function set(sel, v){ var el = q(sel); if(el){ el.value = v; fire(el,'input'); } }
+
+  click('sAddVar'); click('sAddVar'); click('sAddVar');
+  click('sAddCon'); click('sAddCon');
+  set('#sInTbl input[data-k="c"][data-j="0"]', '2');
+  set('#sInTbl input[data-k="c"][data-j="1"]', '-7');
+  set('#sInTbl input[data-k="c"][data-j="2"]', '1');
+  set('#sInTbl input[data-k="a"][data-i="0"][data-j="0"]', '1');
+  set('#sInTbl input[data-k="a"][data-i="0"][data-j="1"]', '1');
+  set('#sInTbl input[data-k="a"][data-i="0"][data-j="2"]', '1');
+  set('#sInTbl input[data-k="b"][data-i="0"]', '6');
+  set('#sInTbl input[data-k="a"][data-i="1"][data-j="0"]', '-1');
+  set('#sInTbl input[data-k="a"][data-i="1"][data-j="1"]', '2');
+  set('#sInTbl input[data-k="b"][data-i="1"]', '4');
+  click('sSolveBtn');
+
+  q('#sensTabs button[data-t="add-con"]').click();
+  set('[data-f="ac-a"][data-j="0"]', '-1');
+  set('[data-f="ac-a"][data-j="2"]', '2');
+  q('[data-f="ac-rel"]').value = '>=';
+  fire(q('[data-f="ac-rel"]'), 'change');
+  set('[data-f="ac-b"]', '2');
+  click('sensGo');
+  return 'sens-setup-done';
+})()`;
+
 const AUDIT = `(function(){
   function rgb(s){
     if(!s) return null;
@@ -118,7 +157,9 @@ const AUDIT = `(function(){
 
   /* 2) 文字对比度：正文需 >= 4.5，大字号 >= 3 */
   var sels = ['.sol','.vsum','.explain','.dlist','.std-note','.std-line','.std-h',
-              '.graph','.help','.empty-tip','.scroll-hint','.iter-head','.hint','header p'];
+              '.graph','.help','.empty-tip','.scroll-hint','.iter-head','.hint','header p',
+              /* 灵敏度分析模块与首页新增的部分 */
+              '.judge','.sens-note','.sens-warn','.sens-h','a.modcard .md','a.back','.fl','.fe','.fx'];
   var lows = [], seen = {};
   sels.forEach(function(s){
     var el = document.querySelector(s);
@@ -204,9 +245,10 @@ const AUDIT = `(function(){
       { features: [{ name: 'prefers-color-scheme', value: 'dark' }] }, sessionId);
   }
 
-  await cdp.send('Page.navigate', { url }, sessionId);
+  await cdp.send('Page.navigate', { url: pageUrl }, sessionId);
   await sleep(1200);
-  await cdp.send('Runtime.evaluate', { expression: SETUP }, sessionId);
+  await cdp.send('Runtime.evaluate',
+    { expression: wantHash === '#/sens' ? SENS_SETUP : SETUP }, sessionId);
   await sleep(900);
 
   const r = await cdp.send('Runtime.evaluate', { expression: AUDIT, returnByValue: true }, sessionId);

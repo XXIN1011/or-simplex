@@ -319,12 +319,79 @@ table.tb th.leave{color:var(--warn)}
 .banner.err{background:var(--err-soft);color:var(--err)}
 .banner b{color:inherit;font-weight:650}
 .banner .nb{white-space:nowrap}
+
+/* ---------- 模块页面与首页 ---------- */
+.mod{display:none}
+.mod.on{display:block}
+a.back{
+  display:inline-flex;align-items:center;
+  min-height:44px;margin-bottom:4px;padding:0 2px;
+  font-size:13px;font-weight:600;color:var(--accent);text-decoration:none;
+}
+a.back:active{opacity:.6}
+a.modcard{
+  display:block;text-decoration:none;
+  background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;
+}
+a.modcard:active{background:var(--soft)}
+a.modcard .mt{
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:16px;font-weight:650;color:var(--fg);
+}
+a.modcard .mt .go{color:var(--accent);font-weight:400}
+a.modcard .md{display:block;margin-top:6px;font-size:12.5px;color:var(--fg2);line-height:1.65}
+
+/* ---------- 灵敏度分析模块 ---------- */
+.scen-tabs{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.scen-tabs button{
+  border:1px solid var(--line2);background:var(--input);color:var(--fg2);
+  font:inherit;font-size:13px;font-weight:500;
+  padding:8px 11px;border-radius:8px;cursor:pointer;transition:.12s;
+  min-height:44px;display:inline-flex;align-items:center;
+}
+.scen-tabs button:active{background:var(--soft)}
+.scen-tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+/* 教材式判断那一段推导 */
+.judge{
+  margin-top:9px;padding:11px 13px;border-radius:9px;
+  background:var(--soft);
+  font-size:13px;color:var(--fg2);line-height:1.85;
+  font-variant-numeric:tabular-nums;word-break:break-word;
+}
+.judge .row{display:block}
+.judge b{color:var(--fg);font-weight:650}
+/* 场景参数输入行 */
+.fh{display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.fl{font-size:12.5px;color:var(--fg2);min-width:82px;font-weight:600}
+.fe,.fx{font-size:13px;color:var(--fg2)}
+input.num.sm{width:52px}
 </style>
 </head>
 <body>
 <div class="wrap">
 
+  <!-- ===================== 首页 ===================== -->
+  <div class="mod" id="mod-home">
+    <header>
+      <h1>运筹学计算器</h1>
+      <p>线性规划 · 逐步迭代 · 灵敏度分析</p>
+    </header>
+
+    <a class="modcard" href="#/simplex">
+      <span class="mt">单纯形法<span class="go">→</span></span>
+      <span class="md">输入线性规划，逐步展示每一张单纯形表、对偶解，以及保持最优基不变时各系数允许的变化范围。</span>
+    </a>
+
+    <a class="modcard" href="#/sens">
+      <span class="mt">灵敏度分析<span class="go">→</span></span>
+      <span class="md">在已求得的最优解上，分析「改目标函数系数 / 改右端项 / 增加约束 / 增加变量」的影响，并按教材做法在原最优表上继续迭代。</span>
+    </a>
+  </div>
+
+  <!-- ===================== 单纯形法 ===================== -->
+  <div class="mod" id="mod-simplex">
   <header>
+    <a class="back" href="#/">← 返回首页</a>
     <h1>单纯形法</h1>
     <p>线性规划 · 大 M 法 · 逐步迭代</p>
   </header>
@@ -361,6 +428,37 @@ table.tb th.leave{color:var(--warn)}
 
   <div id="banners"></div>
   <section id="result"></section>
+  </div><!-- /mod-simplex -->
+
+  <!-- ===================== 灵敏度分析 ===================== -->
+  <div class="mod" id="mod-sens">
+    <header>
+      <a class="back" href="#/">← 返回首页</a>
+      <h1>灵敏度分析</h1>
+      <p>在最优解上分析条件变化 · 教材做法</p>
+    </header>
+
+    <section class="card">
+      <div class="seg" id="sDirSeg">
+        <button type="button" data-dir="max" class="on">max</button>
+        <button type="button" data-dir="min">min</button>
+      </div>
+      <div class="scroll"><table class="inp" id="sInTbl"></table></div>
+      <div class="ctrls">
+        <button type="button" class="btn" id="sAddVar">+ 变量</button>
+        <button type="button" class="btn" id="sDelVar">− 变量</button>
+        <button type="button" class="btn" id="sAddCon">+ 约束</button>
+        <button type="button" class="btn" id="sDelCon">− 约束</button>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn primary" id="sSolveBtn">求基准最优解</button>
+      </div>
+    </section>
+
+    <div id="sBanners"></div>
+    <section id="sBase"></section>
+    <div id="sScenario"></div>
+  </div>
 
 </div>
 
@@ -368,10 +466,22 @@ table.tb th.leave{color:var(--warn)}
 /*__CORE__*/
 </script>
 <script>
+/*__SENS_CORE__*/
+</script>
+<script>
+/*__PANEL__*/
+</script>
+<script>
 /*__GRAPH__*/
 </script>
 <script>
 /*__UI__*/
+</script>
+<script>
+/*__SENS_UI__*/
+</script>
+<script>
+/*__ROUTER__*/
 </script>
 </body>
 </html>

@@ -4,161 +4,23 @@
 (function () {
   'use strict';
 
-  var MAXN = 6, MAXM = 8;
-
-  /* 默认打开即为空状态：0 个决策变量、0 个约束，题目全部由用户自己搭建 */
-  var state = { dir: 'max', n: 0, m: 0, c: [], cons: [] };
+  /* 默认打开即为空状态：0 个决策变量、0 个约束，题目全部由用户自己搭建。
+     输入表逻辑抽在 input-panel.js，单纯形法与灵敏度分析两个模块共用一份实现。 */
+  var panel = createInputPanel({
+    tbl: 'inTbl', dirSeg: 'dirSeg',
+    addVar: 'addVar', delVar: 'delVar', addCon: 'addCon', delCon: 'delCon',
+    maxN: 6, maxM: 8,
+    state: { dir: 'max', n: 0, m: 0, c: [], cons: [] },
+    onChange: function () { markStale(); }
+  });
+  var state = panel.state;
 
   /* ---------------- 工具 ---------------- */
   function $(id) { return document.getElementById(id); }
-  /* 输入框取值：0（含从来没填过）一律返回空串，交给 placeholder 显示一个灰色的 0。
-     这样新增变量/约束后点进去就是空白，可以直接打字，不必先删掉那个 0；
-     什么都不填时读取逻辑仍按 0 处理，结果与以前完全一致。 */
-  function fmtIn(v) {
-    if (v === undefined || v === null || isNaN(v)) return '';
-    if (Math.abs(v) < 1e-9) return '';
-    return (Math.abs(v - Math.round(v)) < 1e-9) ? String(Math.round(v)) : String(v);
-  }
   function esc(s) {
     return String(s).replace(/[&<>"]/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
     });
-  }
-
-  /* 表格横向溢出时给一句提示：手机上看不见滚动条，不说一声用户不知道右边还有内容。
-     只在真的溢出（scrollWidth > clientWidth）时才插入，且不重复插入。 */
-  function addScrollHints(root) {
-    Array.prototype.forEach.call(root.querySelectorAll('.scroll'), function (box) {
-      if (box.scrollWidth <= box.clientWidth + 1) return;
-      var next = box.nextElementSibling;
-      if (next && next.className === 'scroll-hint') return;
-      var hint = document.createElement('div');
-      hint.className = 'scroll-hint';
-      hint.textContent = '← 左右滑动查看完整表格 →';
-      box.parentNode.insertBefore(hint, box.nextSibling);
-      box.addEventListener('scroll', function () {
-        hint.classList.toggle('hide', box.scrollLeft > 6);
-      }, { passive: true });
-    });
-  }
-
-  /* ---------------- 渲染输入表 ---------------- */
-  function renderInput() {
-    var n = state.n, m = state.m, html = '';
-    /* 完全没有变量也没有约束时不渲染表头，否则会留下一个孤零零的 "b" 悬在中间 */
-    if (n > 0 || m > 0) {
-      html += '<thead><tr><th></th>';
-      for (var j = 0; j < n; j++) html += '<th class="var">x' + (j + 1) + '</th>';
-      if (m > 0) {
-        html += '<th></th><th class="rhs">b</th><th></th>';
-      } else {
-        /* 没有约束行时，关系符 / b / 删除 这三列不存在，表头留空占位以保持列数一致 */
-        html += '<th colspan="3"></th>';
-      }
-      html += '</tr></thead>';
-    }
-    html += '<tbody>';
-
-    /* 目标函数行 */
-    html += '<tr><td class="lbl">z =</td>';
-    for (var j2 = 0; j2 < n; j2++) {
-      html += '<td><input class="num" type="text" inputmode="decimal" placeholder="0" '
-        + 'data-k="c" data-j="' + j2 + '" value="' + esc(fmtIn(state.c[j2])) + '"></td>';
-    }
-    if (n === 0) {
-      html += '<td colspan="3" class="empty-tip">还没有变量，点下方「+ 变量」添加</td>';
-    } else {
-      html += '<td></td><td></td><td></td>';
-    }
-    html += '</tr>';
-
-    /* 约束行 */
-    if (m === 0) {
-      html += '<tr><td class="lbl">&mdash;</td><td colspan="' + (n + 3)
-        + '" class="empty-tip">没有约束条件，点下方「+ 约束」添加</td></tr>';
-    }
-    for (var i = 0; i < m; i++) {
-      var k = state.cons[i];
-      html += '<tr><td class="lbl">' + (i + 1) + '</td>';
-      for (var j3 = 0; j3 < n; j3++) {
-        html += '<td><input class="num" type="text" inputmode="decimal" placeholder="0" '
-          + 'data-k="a" data-i="' + i + '" data-j="' + j3 + '" value="' + esc(fmtIn(k.coef[j3])) + '"></td>';
-      }
-      html += '<td><select class="rel" data-i="' + i + '">'
-        + ['<=', '>=', '='].map(function (r) {
-          return '<option value="' + r + '"' + (k.rel === r ? ' selected' : '') + '>' + r + '</option>';
-        }).join('')
-        + '</select></td>';
-      html += '<td><input class="num" type="text" inputmode="decimal" placeholder="0" '
-        + 'data-k="b" data-i="' + i + '" value="' + esc(fmtIn(k.rhs)) + '"></td>';
-      html += '<td><button type="button" class="delvar" data-i="' + i + '">&times;</button></td>';
-      html += '</tr>';
-    }
-    html += '</tbody>';
-    $('inTbl').innerHTML = html;
-    bindInputs();
-    $('delVar').disabled = (state.n < 1);
-    $('delCon').disabled = (state.m < 1);
-    $('addVar').disabled = (state.n >= MAXN);
-    $('addCon').disabled = (state.m >= MAXM);
-    addScrollHints(document);
-  }
-
-  function bindInputs() {
-    var t = $('inTbl');
-    Array.prototype.forEach.call(t.querySelectorAll('input.num'), function (inp) {
-      inp.addEventListener('input', function () {
-        /* 空白的格子（用户什么都没填）按 0 处理；只敲了 "-" / "." 这种中间状态也先当 0，等输完再说 */
-        var v = parseFloat(inp.value.replace(/[^0-9.\-]/g, ''));
-        if (isNaN(v)) v = 0;
-        var k = inp.dataset.k;
-        if (k === 'c') state.c[+inp.dataset.j] = v;
-        else if (k === 'a') state.cons[+inp.dataset.i].coef[+inp.dataset.j] = v;
-        else if (k === 'b') state.cons[+inp.dataset.i].rhs = v;
-        markStale();
-      });
-    });
-    Array.prototype.forEach.call(t.querySelectorAll('select.rel'), function (sel) {
-      sel.addEventListener('change', function () {
-        state.cons[+sel.dataset.i].rel = sel.value;
-        markStale();
-      });
-    });
-    Array.prototype.forEach.call(t.querySelectorAll('button.delvar'), function (b) {
-      b.addEventListener('click', function () {
-        if (state.m < 1) return;
-        state.cons.splice(+b.dataset.i, 1);
-        state.m--;
-        renderInput();
-      });
-    });
-  }
-
-  /* ---------------- 变量数 / 约束数（下限放宽到 0） ---------------- */
-  function setN(n) {
-    n = Math.max(0, Math.min(MAXN, n));
-    if (n === state.n) return;
-    var j;
-    while (state.c.length < n) state.c.push(0);
-    state.c.length = n;
-    for (var i = 0; i < state.cons.length; i++) {
-      while (state.cons[i].coef.length < n) state.cons[i].coef.push(0);
-      state.cons[i].coef.length = n;
-    }
-    state.n = n;
-    renderInput();
-  }
-  function setM(m) {
-    m = Math.max(0, Math.min(MAXM, m));
-    if (m === state.m) return;
-    while (state.cons.length < m) {
-      var coef = [];
-      for (var j = 0; j < state.n; j++) coef.push(0);
-      state.cons.push({ coef: coef, rel: '<=', rhs: 0 });
-    }
-    state.cons.length = m;
-    state.m = m;
-    renderInput();
   }
 
   /* ---------------- 迭代表渲染 ---------------- */
@@ -531,33 +393,18 @@
 
   /* ---------------- 求解 ---------------- */
   function doSolve() {
-    var prob = {
-      direction: state.dir,
-      c: state.c.slice(0, state.n),
-      constraints: state.cons.slice(0, state.m).map(function (k) {
-        return { coef: k.coef.slice(0, state.n), rel: k.rel, rhs: k.rhs };
-      })
-    };
+    var prob = panel.getProblem();
     var res = simplexSolve(prob);
     renderResult(res, prob);
   }
 
-  /* ---------------- 事件绑定 ---------------- */
-  Array.prototype.forEach.call($('dirSeg').querySelectorAll('button'), function (b) {
-    b.addEventListener('click', function () {
-      state.dir = b.dataset.dir;
-      Array.prototype.forEach.call($('dirSeg').querySelectorAll('button'), function (x) {
-        x.classList.toggle('on', x === b);
-      });
-    });
-  });
-  $('addVar').addEventListener('click', function () { setN(state.n + 1); });
-  $('delVar').addEventListener('click', function () { setN(state.n - 1); });
-  $('addCon').addEventListener('click', function () { setM(state.m + 1); });
-  $('delCon').addEventListener('click', function () { setM(state.m - 1); });
+  /* ---------------- 事件绑定与启动 ---------------- */
+  /* 输入表（按钮、max/min 切换、首屏渲染）全部交给共用组件 */
+  panel.init();
   $('solveBtn').addEventListener('click', doSolve);
 
-  /* ---------------- 启动 ---------------- */
-  /* 打开即是空状态（0 变量 0 约束），用户点「+ 变量」「+ 约束」自行搭建题目 */
-  renderInput();
+  /* 迭代表与讲解的渲染给灵敏度分析模块复用 —— 两个模块的表格长得一模一样，
+     没有理由各写一份。 */
+  window.renderTable = renderTable;
+  window.explain = explain;
 })();

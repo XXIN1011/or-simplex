@@ -515,12 +515,16 @@ function simplexSolve(problem) {
   };
 }
 
-/* Node 下导出（浏览器里 module 不存在，自动跳过） */
+/* Node 下导出（浏览器里 module 不存在，自动跳过）。
+   sens-core.js 也要用这些，所以一并导出，避免两套实现。 */
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     simplexSolve: simplexSolve,
     fmtNum: fmtNum,
     fmtPair: fmtPair,
-    asFraction: asFraction
+    asFraction: asFraction,
+    EPS: EPS,
+    pAdd: pAdd, pSub: pSub, pMul: pMul, pCmp: pCmp, pIsPos: pIsPos, pIsZero: pIsZero,
+    matInverse: matInverse
   };
 }

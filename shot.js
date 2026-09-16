@@ -10,7 +10,11 @@ const CHROME = fs.existsSync('C:/Program Files/Google/Chrome/Application/chrome.
   ? 'C:/Program Files/Google/Chrome/Application/chrome.exe'
   : 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 
-const pageFile = process.argv[2] || 'index.html';
+/* 允许在文件名后带模块 hash，例如 `node shot.js "index.html#/sens" ...` */
+const rawTarget = process.argv[2] || 'index.html';
+const hashAt = rawTarget.indexOf('#');
+const pageFile = hashAt >= 0 ? rawTarget.slice(0, hashAt) : rawTarget;
+const wantHash = hashAt >= 0 ? rawTarget.slice(hashAt) : '';
 const outPng   = process.argv[3] || 'shot.png';
 const width    = parseInt(process.argv[4] || '390', 10);
 const doClick  = (process.argv[5] || '1') === '1';
@@ -20,6 +24,9 @@ const PORT = 9000 + Math.floor(Math.random() * 900);
 const url = /^https?:\/\//i.test(pageFile)
   ? pageFile
   : 'file:///' + path.resolve(__dirname, pageFile).replace(/\\/g, '/');
+/* 应用现在有首页：默认进「单纯形法」模块，否则元素是隐藏的、量不到尺寸。
+   想截其它模块就在文件名后带上 hash，例如 index.html#/sens */
+const pageUrl = url.indexOf('#') === -1 ? url + (wantHash || '#/simplex') : url;
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'orchrome-'));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -82,7 +89,7 @@ class CDP {
             'window.addEventListener("unhandledrejection",function(e){window.__errors.push("promise:"+e.reason)});'
   }, sessionId);
 
-  await cdp.send('Page.navigate', { url }, sessionId);
+  await cdp.send('Page.navigate', { url: pageUrl }, sessionId);
   await sleep(1000);
 
   if (doClick) {

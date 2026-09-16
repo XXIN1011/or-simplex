@@ -22,6 +22,8 @@ const target = process.argv[2] || 'index.html';
 const url = /^https?:\/\//i.test(target)
   ? target
   : 'file:///' + path.resolve(__dirname, target).replace(/\\/g, '/');
+/* 应用现在有首页：回归测试要先进到「单纯形法」模块，否则元素是隐藏的、量不到尺寸 */
+const pageUrl = url.indexOf('#') === -1 ? url + '#/simplex' : url;
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'orverify-'));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -101,7 +103,7 @@ class CDP {
   await cdp.send('Page.addScriptToEvaluateOnNewDocument', {
     source: 'window.__errors=[];window.addEventListener("error",function(e){window.__errors.push(String(e.message))});'
   }, sessionId);
-  await cdp.send('Page.navigate', { url }, sessionId);
+  await cdp.send('Page.navigate', { url: pageUrl }, sessionId);
   await sleep(1100);
 
   const evl = async expr => {
@@ -473,6 +475,75 @@ class CDP {
   check(zero.vars === 0 && zero.cons === 0 && zero.errors === 0 && zero.verdict === '最优解',
     '0 变量 0 约束下求解不报错',
     `结论=${zero.verdict} 解=${zero.sol}`);
+
+  /* ---------- 8. 灵敏度分析模块 ---------- */
+  console.log('\n--- 灵敏度分析模块（含路由）---');
+  const routeBefore = JSON.parse(await evl(`JSON.stringify({
+    home: document.getElementById('mod-home').classList.contains('on'),
+    simp: document.getElementById('mod-simplex').classList.contains('on'),
+    sens: document.getElementById('mod-sens').classList.contains('on'),
+    cards: document.querySelectorAll('#mod-home a.modcard').length
+  })`));
+  check(routeBefore.simp === true && routeBefore.home === false && routeBefore.cards === 2,
+    '进 #/simplex 时只显示单纯形法模块，首页有 2 个模块入口',
+    `home=${routeBefore.home} simplex=${routeBefore.simp} 卡片=${routeBefore.cards}`);
+
+  await evl(`location.hash = '#/sens'; 'ok'`);
+  await sleep(300);
+  const routeAfter = JSON.parse(await evl(`JSON.stringify({
+    home: document.getElementById('mod-home').classList.contains('on'),
+    simp: document.getElementById('mod-simplex').classList.contains('on'),
+    sens: document.getElementById('mod-sens').classList.contains('on')
+  })`));
+  check(routeAfter.sens === true && routeAfter.home === false && routeAfter.simp === false,
+    '切到 #/sens 后只显示灵敏度分析模块',
+    `home=${routeAfter.home} simplex=${routeAfter.simp} sens=${routeAfter.sens}`);
+
+  const sf = JSON.parse(await evl(`(function(){
+    function q(s){ return document.querySelector(s); }
+    function fire(el, ev){ el.dispatchEvent(new Event(ev, {bubbles:true})); }
+    function click(id){ document.getElementById(id).click(); }
+    function set(sel, v){ var el = q(sel); if(el){ el.value = v; fire(el,'input'); } }
+
+    /* 教材那道考研题：max 2x1-7x2+x3 ; x1+x2+x3<=6, -x1+2x2<=4 */
+    click('sAddVar'); click('sAddVar'); click('sAddVar');
+    click('sAddCon'); click('sAddCon');
+    set('#sInTbl input[data-k="c"][data-j="0"]','2');
+    set('#sInTbl input[data-k="c"][data-j="1"]','-7');
+    set('#sInTbl input[data-k="c"][data-j="2"]','1');
+    set('#sInTbl input[data-k="a"][data-i="0"][data-j="0"]','1');
+    set('#sInTbl input[data-k="a"][data-i="0"][data-j="1"]','1');
+    set('#sInTbl input[data-k="a"][data-i="0"][data-j="2"]','1');
+    set('#sInTbl input[data-k="b"][data-i="0"]','6');
+    set('#sInTbl input[data-k="a"][data-i="1"][data-j="0"]','-1');
+    set('#sInTbl input[data-k="a"][data-i="1"][data-j="1"]','2');
+    set('#sInTbl input[data-k="b"][data-i="1"]','4');
+    click('sSolveBtn');
+
+    var base = (document.getElementById('sBase').textContent||'').replace(/\\s+/g,' ');
+    var tabs = document.querySelectorAll('#sensTabs button').length;
+
+    q('#sensTabs button[data-t="c"]').click();
+    set('[data-f="c"][data-j="0"]','2');
+    set('[data-f="c"][data-j="1"]','3');
+    set('[data-f="c"][data-j="2"]','1');
+    click('sensGo');
+    var out = ((document.getElementById('sensOut')||{}).textContent||'').replace(/\\s+/g,' ');
+    return JSON.stringify({
+      base: base, tabs: tabs, out: out,
+      tables: document.querySelectorAll('#sensOut table').length,
+      errors: window.__errors.length
+    });
+  })()`));
+  check(sf.tabs === 4, '四种分析场景都能选', `标签数=${sf.tabs}`);
+  check(sf.base.indexOf('x1 = 6') >= 0 && sf.base.indexOf('z = 12') >= 0,
+    '基准题求出最优解 x1=6、z=12');
+  check(sf.out.indexOf('σ′₂') >= 0 && sf.out.indexOf('故最优解改变') >= 0,
+    '改目标系数后给出教材式判断：σ′₂ = c′₂ − z₂ = 1 > 0');
+  check(sf.tables >= 1, '变化后的表接着在原最优表上迭代', `迭代表数=${sf.tables}`);
+  check(sf.out.indexOf('x1 = 8/3') >= 0 && sf.out.indexOf('z = 46/3') >= 0,
+    '结论与新最优解 x1=8/3、x2=10/3、z=46/3 一致');
+  check(sf.errors === 0, '灵敏度分析模块无 JS 错误');
 
   console.log(`\n合计: ${pass} 通过 / ${fail} 失败`);
   ws.close(); child.kill();
