@@ -301,6 +301,63 @@ class CDP {
     std.secs.join(' / '));
   check(std.errors === 0, '标准化渲染无 JS 错误');
 
+  /* ---------- 6.6 输入框默认值交互 ---------- */
+  console.log('\n--- 输入框默认值：留空即 0 ---');
+  const ph = JSON.parse(await evl(`(function(){
+    window.__T.reset(2, 2);
+    window.__T.setDir('max');
+    var ins = document.querySelectorAll('#inTbl input.num');
+    var empty = 0, phOk = 0;
+    for (var i = 0; i < ins.length; i++) {
+      if (ins[i].value === '') empty++;
+      if (ins[i].placeholder === '0') phOk++;
+    }
+    /* 只填非零系数、其余格子全部留空，等价于手机上「点进去直接打字」 */
+    window.__T.setC(0, 3); window.__T.setC(1, 2);
+    window.__T.setA(0, 0, 1); window.__T.setB(0, 4);
+    window.__T.setA(1, 1, 1); window.__T.setB(1, 3);
+    document.getElementById('solveBtn').click();
+    var sol = (document.querySelector('.verdict .sol') || {}).textContent || '';
+    var z   = (document.querySelectorAll('.verdict .sol')[1] || {}).textContent || '';
+    /* 显式填 0 应当与留空完全等价 */
+    window.__T.setA(0, 1, 0); window.__T.setA(1, 0, 0);
+    document.getElementById('solveBtn').click();
+    var sol0 = (document.querySelector('.verdict .sol') || {}).textContent || '';
+    /* 重新渲染（加一条约束）后，已经填过的数字必须还在 */
+    document.getElementById('addCon').click();
+    var kept = document.querySelector('#inTbl input[data-k="c"][data-j="0"]').value;
+    var newb = document.querySelector('#inTbl input[data-k="b"][data-i="2"]').value;
+    return JSON.stringify({ total: ins.length, empty: empty, phOk: phOk,
+      sol: sol, z: z, sol0: sol0, kept: kept, newb: newb,
+      errors: window.__errors.length });
+  })()`));
+  check(ph.total > 0 && ph.empty === ph.total && ph.phOk === ph.total,
+    '新增变量/约束后输入框是空的，只显示灰色 0 占位',
+    `共 ${ph.total} 格：空白 ${ph.empty}，占位正确 ${ph.phOk}`);
+  check(ph.sol === 'x1 = 4　　x2 = 3' && ph.z === 'z = 18',
+    '留空的格子按 0 参与计算（只填非零系数即可求解）',
+    `解=${ph.sol} ${ph.z}`);
+  check(ph.sol0 === ph.sol, '显式填 0 与留空结果完全一致', `填 0 后=${ph.sol0}`);
+  check(ph.kept === '3', '重新渲染后已填数字保留', `x1 系数="${ph.kept}"`);
+  check(ph.newb === '', '新加的那一行同样是空白', `新行 b 格="${ph.newb}"`);
+  check(ph.errors === 0, '输入交互过程无 JS 错误');
+
+  /* 用 CDP 真敲键盘：聚焦后直接输入，不该得到 "02" 这种结果（旧版就是这个问题） */
+  await evl(`(function(){
+    window.__T.reset(1, 1);
+    document.querySelector('#inTbl input[data-k="c"][data-j="0"]').focus();
+    return 'focused';
+  })()`);
+  await cdp.send('Input.insertText', { text: '2' }, sessionId);
+  await sleep(150);
+  const typed = JSON.parse(await evl(`(function(){
+    var el = document.querySelector('#inTbl input[data-k="c"][data-j="0"]');
+    return JSON.stringify({ val: el.value, focused: document.activeElement === el });
+  })()`));
+  check(typed.val === '2' && typed.focused,
+    '点一下格子直接打字就是干净数字（旧版会变成 "02"）',
+    `键入 "2" 后实际值="${typed.val}"`);
+
   /* ---------- 7. 0 变量 0 约束 ---------- */
   console.log('\n--- 0 变量 0 约束 ---');
   const zero = JSON.parse(await evl(`(function(){

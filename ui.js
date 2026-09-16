@@ -11,8 +11,12 @@
 
   /* ---------------- 工具 ---------------- */
   function $(id) { return document.getElementById(id); }
+  /* 输入框取值：0（含从来没填过）一律返回空串，交给 placeholder 显示一个灰色的 0。
+     这样新增变量/约束后点进去就是空白，可以直接打字，不必先删掉那个 0；
+     什么都不填时读取逻辑仍按 0 处理，结果与以前完全一致。 */
   function fmtIn(v) {
-    if (v === undefined || v === null || isNaN(v)) return '0';
+    if (v === undefined || v === null || isNaN(v)) return '';
+    if (Math.abs(v) < 1e-9) return '';
     return (Math.abs(v - Math.round(v)) < 1e-9) ? String(Math.round(v)) : String(v);
   }
   function esc(s) {
@@ -58,7 +62,7 @@
     /* 目标函数行 */
     html += '<tr><td class="lbl">z =</td>';
     for (var j2 = 0; j2 < n; j2++) {
-      html += '<td><input class="num" type="text" inputmode="decimal" '
+      html += '<td><input class="num" type="text" inputmode="decimal" placeholder="0" '
         + 'data-k="c" data-j="' + j2 + '" value="' + esc(fmtIn(state.c[j2])) + '"></td>';
     }
     if (n === 0) {
@@ -77,7 +81,7 @@
       var k = state.cons[i];
       html += '<tr><td class="lbl">' + (i + 1) + '</td>';
       for (var j3 = 0; j3 < n; j3++) {
-        html += '<td><input class="num" type="text" inputmode="decimal" '
+        html += '<td><input class="num" type="text" inputmode="decimal" placeholder="0" '
           + 'data-k="a" data-i="' + i + '" data-j="' + j3 + '" value="' + esc(fmtIn(k.coef[j3])) + '"></td>';
       }
       html += '<td><select class="rel" data-i="' + i + '">'
@@ -85,7 +89,7 @@
           return '<option value="' + r + '"' + (k.rel === r ? ' selected' : '') + '>' + r + '</option>';
         }).join('')
         + '</select></td>';
-      html += '<td><input class="num" type="text" inputmode="decimal" '
+      html += '<td><input class="num" type="text" inputmode="decimal" placeholder="0" '
         + 'data-k="b" data-i="' + i + '" value="' + esc(fmtIn(k.rhs)) + '"></td>';
       html += '<td><button type="button" class="delvar" data-i="' + i + '">&times;</button></td>';
       html += '</tr>';
@@ -104,6 +108,7 @@
     var t = $('inTbl');
     Array.prototype.forEach.call(t.querySelectorAll('input.num'), function (inp) {
       inp.addEventListener('input', function () {
+        /* 空白的格子（用户什么都没填）按 0 处理；只敲了 "-" / "." 这种中间状态也先当 0，等输完再说 */
         var v = parseFloat(inp.value.replace(/[^0-9.\-]/g, ''));
         if (isNaN(v)) v = 0;
         var k = inp.dataset.k;
