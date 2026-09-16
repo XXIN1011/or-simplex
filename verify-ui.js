@@ -358,6 +358,28 @@ class CDP {
     '点一下格子直接打字就是干净数字（旧版会变成 "02"）',
     `键入 "2" 后实际值="${typed.val}"`);
 
+  /* ---------- 6.7 结论块与对偶解块之间必须有间距 ---------- */
+  console.log('\n--- 结论区两块之间的间距 ---');
+  const gap = JSON.parse(await evl(`(function(){
+    window.__T.reset(2, 2); window.__T.setDir('max');
+    window.__T.setC(0, 3); window.__T.setC(1, 2);
+    window.__T.setA(0, 0, 1); window.__T.setB(0, 4);
+    window.__T.setA(1, 1, 1); window.__T.setB(1, 3);
+    document.getElementById('solveBtn').click();
+    var v = document.querySelector('.verdict');
+    var nx = v ? v.nextElementSibling : null;
+    return JSON.stringify({
+      mb: v ? parseFloat(getComputedStyle(v).marginBottom) : -1,
+      gap: (v && nx) ? Math.round(nx.getBoundingClientRect().top - v.getBoundingClientRect().bottom) : -1,
+      next: nx ? (nx.className || '') : '',
+      errors: window.__errors.length
+    });
+  })()`));
+  check(gap.gap >= 8 && gap.next.indexOf('card') >= 0,
+    '结论块与对偶解块之间留有可见间距（不再贴成一整块）',
+    `实时间距=${gap.gap}px（margin-bottom=${gap.mb}px，下一块="${gap.next}"）`);
+  check(gap.errors === 0, '结论区渲染无 JS 错误');
+
   /* ---------- 7. 0 变量 0 约束 ---------- */
   console.log('\n--- 0 变量 0 约束 ---');
   const zero = JSON.parse(await evl(`(function(){

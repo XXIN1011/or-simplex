@@ -258,7 +258,9 @@ table.tb th.leave{color:var(--warn)}
 .explain .row{display:block}
 
 /* ---------- 结论 ---------- */
-.verdict{border-radius:12px;padding:16px;background:var(--card)}
+/* 结论块下方必须留出与 .card 一致的外边距：它和对偶解块背景同为 --card，
+   不留缝的话两块白底会贴成一整块，看不出是两张卡片。 */
+.verdict{border-radius:12px;padding:16px;background:var(--card);margin-bottom:12px}
 .verdict .vtitle{font-size:13px;font-weight:650;margin-bottom:10px}
 .verdict.opt .vtitle{color:var(--ok)}
 .verdict.no .vtitle{color:var(--err)}
