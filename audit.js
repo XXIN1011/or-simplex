@@ -263,11 +263,15 @@ const AUDIT = `(function(){
   }
 
   await cdp.send('Page.navigate', { url: pageUrl }, sessionId);
-  await sleep(1200);
+  /* 审查远程 URL 时要多等一会儿：CDN 慢的时候元素还没渲染完就量尺寸，
+     会量出一堆「触摸目标过小」的假警（本地从不出现，线上偶发）。
+     所以本地 1200ms、远程 2600ms。 */
+  const isRemote = /^https?:/i.test(url);
+  await sleep(isRemote ? 2600 : 1200);
   await cdp.send('Runtime.evaluate',
     { expression: wantHash === '#/sens' ? SENS_SETUP
                 : (wantHash === '#/dp' ? DP_SETUP : SETUP) }, sessionId);
-  await sleep(900);
+  await sleep(isRemote ? 1400 : 900);
 
   const r = await cdp.send('Runtime.evaluate', { expression: AUDIT, returnByValue: true }, sessionId);
   const data = JSON.parse(r.result.value);
