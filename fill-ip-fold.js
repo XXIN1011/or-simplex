@@ -5,7 +5,7 @@
      minbin  —— min 的 0-1 问题（就是隐枚举报错答案的那个 bug 的复现题）
      mix     —— 第一个变量连续、第二个整数（割平面与隐枚举都不可用） */
 (function () {
-  var mode = 'mix';
+  var mode = 'classic';
   if (window.__ipDone) return 'already';
   window.__ipDone = true;
 
@@ -64,5 +64,12 @@
     setVT(0, 'cont'); setVT(1, 'int');
   }
   click('ipSolveBtn');
+
+  /* 求解后收起第 2 张算法卡，方便看收纳状态 */
+  setTimeout(function () {
+    var m = document.querySelectorAll('#ipMethods details.meth');
+    if (m[1]) m[1].querySelector('summary').click();
+    if (m[3]) m[3].querySelector('summary').click();
+  }, 30);
   return 'done';
 })()

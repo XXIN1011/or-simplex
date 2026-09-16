@@ -107,10 +107,11 @@
   /* ===================== 输出 ===================== */
   function render(prob, r) {
     var h = '';
+    picked = null;        // 每次重新求解都回到「全部输出」
 
     /* ① 松弛问题 */
     h += '<h2 class="sec">松弛问题（先不管整数限制）</h2><div class="card">';
-    h += '<div class="sens-note">整数规划的可行域是松弛问题可行域里**那些取整的点**。'
+    h += '<div class="sens-note">整数规划的可行域是松弛问题可行域里<b>那些取整的点</b>。'
       + '所以第一步总是先把整数限制去掉，解这个普通线性规划 —— 它给出的是'
       + '「界限」（max 问题是最优值的上界），也是后面几种方法的出发点。</div>';
     if (r.noOptimum) {
@@ -140,10 +141,12 @@
     /* ② 各方法的适用性一览 */
     h += renderApplicability(prob, r);
 
-    /* ③ 按适用性输出（或按用户勾选输出） */
-    h += renderMethods(prob, r);
+    /* ③ 按适用性输出（或按用户勾选输出）。这一块单独占一个容器：
+         勾选框一变就整体重渲染它，比对着一堆兄弟节点做增删稳得多。 */
+    h += '<div id="ipMethods"></div>';
 
     $('ipOut').innerHTML = h;
+    renderMethods(prob, r);
     wireMethodPick(prob, r);
     addScrollHints(document);
   }
@@ -187,7 +190,7 @@
       h += '<div class="sens-warn">本题的规模较大：'
         + applicable(r).filter(function (m) { return m.tooBig; })
             .map(function (m) { return m.name + '（' + m.reason + '）'; }).join('；')
-        + '。为了避免卡顿，下面**不默认全部输出**，请勾选要看的解法。</div>';
+        + '。为了避免卡顿，下面<b>不默认全部输出</b>，请勾选要看的解法。</div>';
       h += '<div id="ipPick" class="pickbox">'
         + applicable(r).filter(function (m) { return !m.tooBig; }).map(function (m) {
             return '<label class="pick"><input type="checkbox" value="' + m.key + '" checked> '
@@ -210,61 +213,91 @@
   }
 
   /* ===================== 各方法的详细输出 ===================== */
+  /* ---- 算法输出的收纳卡 ----
+     picked = null 表示「全部输出」（没有勾选框时）；非 null 时是用户勾选的方法 key。
+     勾选一变就整体重渲染 #ipMethods，而不是对着兄弟节点做增删 ——
+     收纳卡本身是 <details>，嵌进去之后原来那套「找 nextElementSibling 逐个删」会变得很脆。 */
+  var picked = null;
+
   function renderMethods(prob, r) {
-    var picks = pickedKeys();
-    var h = '';
+    var box = $('ipMethods');
+    if (!box) return;
+    box.innerHTML = buildMethods(prob, r);
+    addScrollHints(document);
+  }
+
+  function buildMethods(prob, r) {
+    var h = '', n = 0;
     applicable(r).forEach(function (m) {
       if (m.tooBig) return;                        // 规模过大的：只在上面的提示里说明
-      if (picks && picks.indexOf(m.key) < 0) return;
-      if (m.key === 'graph') h += viewGraph(prob, r, m);
-      else if (m.key === 'bnb') h += viewBnb(prob, r, m);
-      else if (m.key === 'cut') h += viewCut(prob, r, m);
-      else if (m.key === 'enum') h += viewEnum(prob, r, m);
+      if (picked && picked.indexOf(m.key) < 0) return;
+      n++;
+      var inner = '';
+      if (m.key === 'graph') inner = viewGraph(prob, r, m);
+      else if (m.key === 'bnb') inner = viewBnb(prob, r, m);
+      else if (m.key === 'cut') inner = viewCut(prob, r, m);
+      else if (m.key === 'enum') inner = viewEnum(prob, r, m);
+      h += methodSection(n, m.name, chipOf(prob, r, m), inner);
     });
-    if (!h) h = '<h2 class="sec">结果</h2><div class="card"><div class="sens-note">'
-      + '没有勾选任何解法。</div></div>';
+    if (!h) {
+      h = '<div class="card"><div class="sens-note">没有勾选任何解法。</div></div>';
+    }
     return h;
   }
-  function pickedKeys() {
-    var box = $('ipPick');
-    if (!box) return null;                          // 没有勾选框 = 全部输出
-    var out = [];
-    Array.prototype.forEach.call(box.querySelectorAll('input:checked'), function (i) {
-      out.push(i.value);
-    });
-    return out;
+
+  /* 标题栏右侧那句结论：卡片收起来时也还能一眼看到这个算法算出了什么 */
+  function chipOf(prob, r, m) {
+    if (m.key === 'graph') {
+      var best = ipSolutionOf(r);
+      return best ? '最优 z = ' + num(ipObjective(prob, best)) : '';
+    }
+    if (m.key === 'bnb') {
+      if (!m.complete) return '未跑完（' + m.nodes.length + ' 个结点）';
+      return m.best ? m.nodes.length + ' 个结点 · 最优 z = ' + num(m.bestZ) : '无可行整数解';
+    }
+    if (m.key === 'cut') {
+      return m.converged
+        ? m.cuts.length + ' 刀 · 最优 z = ' + num(m.objective)
+        : '未收敛（已割 ' + m.cuts.length + ' 刀）';
+    }
+    if (m.key === 'enum') {
+      return m.best ? m.total + ' 个点 · 最优 z = ' + num(m.bestZ) : '无可行解';
+    }
+    return '';
   }
+
+  /* 每个算法一个可收纳卡片。标题栏刻意做得比正文突出：
+     编号徽章 + 加大的名称 + 一句结论 + 会旋转的箭头；点标题栏整行即可收起/展开。 */
+  function methodSection(idx, name, chip, inner) {
+    return '<details class="meth" open>'
+      + '<summary class="meth-h">'
+      + '<span class="meth-i">' + idx + '</span>'
+      + '<span class="meth-n">' + esc(name) + '</span>'
+      + (chip ? '<span class="meth-c">' + chip + '</span>' : '')
+      + '<span class="meth-x"></span>'
+      + '</summary>'
+      + '<div class="meth-body">' + inner + '</div>'
+      + '</details>';
+  }
+
   function wireMethodPick(prob, r) {
     var box = $('ipPick');
     if (!box) return;
     Array.prototype.forEach.call(box.querySelectorAll('input'), function (i) {
       i.addEventListener('change', function () {
-        var keep = box.parentNode;                  // 保住勾选状态，只重画后面的结果
-        var checked = pickedKeys();
-        var h = '';
-        applicable(r).forEach(function (m) {
-          if (m.tooBig || checked.indexOf(m.key) < 0) return;
-          if (m.key === 'graph') h += viewGraph(prob, r, m);
-          else if (m.key === 'bnb') h += viewBnb(prob, r, m);
-          else if (m.key === 'cut') h += viewCut(prob, r, m);
-          else if (m.key === 'enum') h += viewEnum(prob, r, m);
+        picked = [];
+        Array.prototype.forEach.call(box.querySelectorAll('input:checked'), function (x) {
+          picked.push(x.value);
         });
-        var toRemove = [];
-        var node = $('ipPick').parentNode.parentNode.nextElementSibling;
-        while (node) { toRemove.push(node); node = node.nextElementSibling; }
-        toRemove.forEach(function (x) { x.parentNode.removeChild(x); });
-        var box2 = document.createElement('div');
-        box2.innerHTML = h;
-        var anchor = $('ipPick').parentNode.parentNode;
-        while (box2.firstChild) anchor.parentNode.insertBefore(box2.firstChild, anchor.nextSibling);
-        addScrollHints(document);
+        renderMethods(prob, r);
       });
     });
   }
 
   /* ---------------- 图解法 ---------------- */
   function viewGraph(prob, r, m) {
-    var h = '<h2 class="sec">图解法</h2><div class="card">';
+    /* 标题不再写在这里 —— 由外层的可收纳卡片（methodSection）统一生成 */
+    var h = '<div class="card">';
     var ipBest = ipSolutionOf(r);
     var g = (typeof renderGraph === 'function')
       ? renderGraph(ipWithVarBounds(prob), r.relax, ipBest ? { best: ipBest } : null) : null;
@@ -313,7 +346,7 @@
 
   /* ---------------- 分枝定界法 ---------------- */
   function viewBnb(prob, r, m) {
-    var h = '<h2 class="sec">分枝定界法</h2><div class="card">';
+    var h = '<div class="card">';
     h += '<div class="sens-note">做法：反复解松弛问题。只要最优解里还有非整数变量，就把它劈成'
       + '「x<sub>j</sub> ≤ ⌊v⌋」与「x<sub>j</sub> ≥ ⌈v⌉」两支分别再解 —— '
       + '这样既不漏掉任何整数解，又能让每支的范围变小。同时手里攥着当前最好的整数解当「界」，'
@@ -371,7 +404,7 @@
 
   /* ---------------- 割平面法 ---------------- */
   function viewCut(prob, r, m) {
-    var h = '<h2 class="sec">割平面法</h2><div class="card">';
+    var h = '<div class="card">';
     h += '<div class="sens-note">做法：先解松弛问题得到最优表。如果某个基变量取的是分数，'
       + '就<b>直接从那一行</b>读出一条新的约束（割）加进模型 —— 这条约束把当前这个分数解割掉，'
       + '但任何一个整数可行解都仍然满足它。加完之后右端项变成负的，用<b>对偶单纯形法</b>重新求最优。'
@@ -453,7 +486,7 @@
 
   /* ---------------- 隐枚举法 ---------------- */
   function viewEnum(prob, r, m) {
-    var h = '<h2 class="sec">隐枚举法</h2><div class="card">';
+    var h = '<div class="card">';
     if (m.tooBig) {
       h += '<div class="sens-note">' + esc(m.reason) + '</div></div>';
       return h;

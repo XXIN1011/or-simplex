@@ -697,6 +697,30 @@ class CDP {
     r.latticeDots = document.querySelectorAll('#ipOut .g-int').length;
     r.ipOptDots = document.querySelectorAll('#ipOut .g-ipopt').length;
 
+    /* 算法收纳卡：数量、编号、名称、结论标签、默认是否展开、字号是否比正文大 */
+    r.meths = document.querySelectorAll('#ipMethods details.meth').length;
+    r.methIdx = Array.prototype.slice.call(document.querySelectorAll('#ipMethods .meth-i'))
+      .map(function (el){ return el.textContent.trim(); });
+    r.methNames = Array.prototype.slice.call(document.querySelectorAll('#ipMethods .meth-n'))
+      .map(function (el){ return el.textContent.trim(); });
+    r.methChips = Array.prototype.slice.call(document.querySelectorAll('#ipMethods .meth-c'))
+      .map(function (el){ return el.textContent.trim(); });
+    r.methAllOpen = Array.prototype.slice.call(document.querySelectorAll('#ipMethods details.meth'))
+      .every(function (d){ return d.open; });
+    var nameEl = document.querySelector('#ipMethods .meth-n');
+    var noteEl = document.querySelector('#ipMethods .sens-note');
+    r.namePx = nameEl ? parseFloat(getComputedStyle(nameEl).fontSize) : 0;
+    r.notePx = noteEl ? parseFloat(getComputedStyle(noteEl).fontSize) : 0;
+    r.nameWeight = nameEl ? String(getComputedStyle(nameEl).fontWeight) : '';
+    /* 点标题栏应收起，再点应展开 */
+    var firstMeth = document.querySelector('#ipMethods details.meth');
+    if (firstMeth) {
+      firstMeth.querySelector('summary').click();
+      r.openAfterFirstClick = firstMeth.open;
+      firstMeth.querySelector('summary').click();
+      r.openAfterSecondClick = firstMeth.open;
+    }
+
     /* 把两个变量都改成 0-1，隐枚举就应当变成可用（只改一个是没用的：
        隐枚举要求**所有**变量都是 0-1） */
     q('[data-vt="0"] button[data-t="bin"]').click();
@@ -747,6 +771,22 @@ class CDP {
   check(ip.out.indexOf('第 1 刀') >= 0 && ip.out.indexOf('Gomory 割') >= 0,
     '割平面法输出了割的推导与每一刀');
   check(ip.tables >= 8, '各方法的迭代表都渲染出来了', `表数=${ip.tables}`);
+  /* 算法收纳卡 */
+  check(ip.meths === 3 && ip.methNames.join('|') === '图解法|分枝定界法|割平面法',
+    '三个适用的算法各有一张收纳卡，顺序与名称正确',
+    `卡片=${ip.meths} 名称=${ip.methNames.join('/')}`);
+  check(ip.methIdx.join('|') === '1|2|3', '每张卡左侧有编号徽章', `编号=${ip.methIdx.join('/')}`);
+  check(ip.methChips.length === 3 && ip.methChips.every(function (c) {
+    return c.indexOf('z = 14') >= 0;
+  }), '每张卡右侧都有结论标签（收起时也能看到结果）', `标签=${ip.methChips.join(' / ')}`);
+  check(ip.methAllOpen === true, '算法卡默认全部展开（不会突然藏起内容）');
+  check(ip.openAfterFirstClick === false && ip.openAfterSecondClick === true,
+    '点标题栏能收起、再点能展开',
+    `点一次 open=${ip.openAfterFirstClick}，点两次 open=${ip.openAfterSecondClick}`);
+  check(ip.namePx >= ip.notePx * 1.2 && /^(700|bold)$/.test(ip.nameWeight),
+    '算法名称明显比正文突出（字号更大且加粗）',
+    `名称 ${ip.namePx}px/${ip.nameWeight} vs 正文 ${ip.notePx}px`);
+  check(ip.out.indexOf('**') < 0, '算法输出里没有残留 ** 加粗标记');
   /* 把 x2 改成 0-1 后隐枚举应变为可用 */
   check(ip.outBin.indexOf('✓ 隐枚举法') >= 0 && ip.outBin.indexOf('隐枚举') >= 0,
     '把变量改成 0-1 后，隐枚举法自动变成可用并输出');

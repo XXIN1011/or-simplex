@@ -5,7 +5,7 @@
      minbin  —— min 的 0-1 问题（就是隐枚举报错答案的那个 bug 的复现题）
      mix     —— 第一个变量连续、第二个整数（割平面与隐枚举都不可用） */
 (function () {
-  var mode = 'mix';
+  var mode = 'minbin';
   if (window.__ipDone) return 'already';
   window.__ipDone = true;
 

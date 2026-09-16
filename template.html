@@ -416,6 +416,49 @@ table.sens.dpt td:first-child{color:var(--fg2)}
 /* 隐枚举的枚举表：数字多，字号放小一点、各行紧凑些 */
 table.sens.en td{font-size:12.5px;padding:4px 8px 4px 0}
 table.sens.en td.nm{color:var(--fg2);font-variant-numeric:tabular-nums}
+
+/* ---------- 整数规划：每种算法的收纳卡 ---------- */
+/* 标题栏刻意做得比正文醒目：编号徽章 + 加大的名称 + 一句结论 + 会旋转的箭头。
+   整行都是 <summary>，点哪儿都能收起/展开；min-height 保证触摸目标够大。 */
+.meth{margin-bottom:14px}
+.meth-h{
+  list-style:none;cursor:pointer;
+  display:flex;align-items:center;flex-wrap:wrap;gap:5px 10px;
+  min-height:52px;padding:10px 14px;border-radius:12px;
+  background:var(--card);
+  border-left:4px solid var(--accent);
+  box-shadow:0 1px 3px rgba(0,0,0,.06);
+  transition:background .12s;
+}
+.meth-h::-webkit-details-marker{display:none}
+.meth-h:active{background:var(--soft)}
+.meth[open]>.meth-h{border-radius:12px 12px 0 0;box-shadow:none}
+.meth-i{
+  flex:0 0 auto;line-height:1;
+  display:inline-flex;align-items:center;justify-content:center;
+  width:23px;height:23px;border-radius:50%;
+  background:var(--accent);color:#fff;
+  font-size:13px;font-weight:700;
+}
+.meth-n{
+  flex:1 1 auto;min-width:0;
+  font-size:16.5px;font-weight:700;color:var(--fg);
+  letter-spacing:.01em;
+}
+.meth-c{
+  flex:0 1 auto;min-width:0;
+  font-size:12px;font-weight:600;color:var(--accent);
+  background:var(--accent-soft);
+  padding:3px 9px;border-radius:999px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.meth-x{
+  flex:0 0 auto;width:9px;height:9px;margin-left:2px;
+  border-right:2px solid var(--fg2);border-bottom:2px solid var(--fg2);
+  transform:rotate(45deg);transition:transform .16s;
+}
+.meth[open]>.meth-h .meth-x{transform:rotate(-135deg)}
+.meth-body{margin-top:9px}
 /* 场景参数输入行 */
 .fh{display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-bottom:8px}
 .fl{font-size:12.5px;color:var(--fg2);min-width:82px;font-weight:600}
