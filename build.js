@@ -18,6 +18,8 @@ const SLOTS = {
   '/*__SENS_UI__*/': 'sens-ui.js',          // 灵敏度分析界面
   '/*__DP_CORE__*/': 'dp-core.js',          // 动态规划核心（通用引擎 + 五种题型）
   '/*__DP_UI__*/': 'dp-ui.js',              // 动态规划界面
+  '/*__IP_CORE__*/': 'ip-core.js',          // 整数规划核心（四种方法 + 适用性判定）
+  '/*__IP_UI__*/': 'ip-ui.js',              // 整数规划界面
   '/*__ROUTER__*/': 'router.js'             // 首页/模块路由
 };
 

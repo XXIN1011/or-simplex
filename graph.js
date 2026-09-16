@@ -99,7 +99,9 @@
   function n1(v) { return (+v).toFixed(1); }
 
   /* 主入口：返回 { svg, caption } ；不适用（非 2 变量 / 无约束 / 无可行解）时返回 null */
-  function renderGraph(prob, res) {
+  /* ip 是可选参数：整数规划模块用它把「整数格点」和「最优整数解」一起画出来。
+     ip = { best: [x1, x2] }，给了就在可行域上叠加格点，并把最优整数解单独标出。 */
+  function renderGraph(prob, res, ip) {
     var cons = prob.constraints || [];
     if (prob.c.length !== 2 || cons.length === 0) return null;
     if (res.status === 'infeasible') return null;
@@ -205,6 +207,19 @@
                '" x2="' + n1(sx(verts[1].x)) + '" y2="' + n1(sy(verts[1].y)) + '"/>');
     }
 
+    /* ⑤.5 整数格点：整数规划的可行解只能落在这些点上，所以先把可行域里的格点全标出来。
+       点数设上限，避免变量取值范围很大时把 SVG 撑爆。 */
+    if (ip) {
+      var dotCount = 0;
+      for (var gx = 0; gx <= xmax + 1e-9 && dotCount < 600; gx += 1) {
+        for (var gy = 0; gy <= ymax + 1e-9 && dotCount < 600; gy += 1) {
+          if (!feasible({ x: gx, y: gy }, cons)) continue;
+          out.push('<circle class="g-int" cx="' + n1(sx(gx)) + '" cy="' + n1(sy(gy)) + '" r="2.6"/>');
+          dotCount++;
+        }
+      }
+    }
+
     /* ⑥ 目标函数等值线：过原点的与过最优点的各一条 */
     var c1 = prob.c[0], c2 = prob.c[1];
     if (Math.abs(c1) > 1e-12 || Math.abs(c2) > 1e-12) {
@@ -246,11 +261,29 @@
         + (tail ? ' text-anchor="end"' : '') + '>' + lbl + '</text>');
     }
 
+    /* ⑧.5 最优整数解：和松弛问题的最优解（橙点）分开标，一眼能看出两者的差距 ——
+       这正是「为什么要用整数规划而不能直接对松弛解四舍五入」的直观理由。 */
+    if (ip && ip.best && ip.best.length === 2) {
+      var ix = sx(ip.best[0]), iy = sy(ip.best[1]);
+      out.push('<circle class="g-ipopt" cx="' + n1(ix) + '" cy="' + n1(iy) + '" r="5.5"/>');
+      var ilbl = '整数最优 (' + fmtNum(ip.best[0]) + ', ' + fmtNum(ip.best[1]) + ')';
+      var iw = ilbl.length * 6.5;
+      var ix2 = ix + 8, iy2 = iy + 15, itail = false;
+      if (ix + 8 + iw > W - 2) { ix2 = ix - 8; itail = true; }
+      if (iy2 > H - 3) iy2 = iy - 8;
+      out.push('<text class="g-ipoptlbl" x="' + n1(ix2) + '" y="' + n1(iy2) + '"'
+        + (itail ? ' text-anchor="end"' : '') + '>' + ilbl + '</text>');
+    }
+
     out.push('</svg>');
 
     var caption = '蓝色区域 = 可行域　橙色虚线 = 目标函数等值线（越靠外 z 越大）'
       + (res.status === 'optimal' ? '　橙点 = 最优解（等值线平移到可行域边界时取到）' : '')
       + (res.status === 'unbounded' ? '　本例可行域无界，等值线可以一直外移 → 无界解' : '');
+    if (ip) {
+      caption += '　灰点 = 可行域里的整数格点（整数解只能从这些点里挑）'
+        + (ip.best ? '　绿点 = 最优整数解' : '');
+    }
 
     return { svg: out.join(''), caption: caption };
   }

@@ -245,7 +245,8 @@ console.log('\n════════ 背包问题 ════════');
 /* ---------- 5. 生产与存储问题 ---------- */
 function prodBrute(cfg, k, s, bound) {
   const n = cfg.demands.length;
-  if (k > n) return s === 0 ? 0 : Infinity;
+  const end0 = cfg.endStock || 0;
+  if (k > n) return s === end0 ? 0 : Infinity;
   let best = Infinity;
   for (let u = 0; u <= cfg.maxProd; u++) {
     const end = s + u - cfg.demands[k - 1];
@@ -260,6 +261,20 @@ function prodBrute(cfg, k, s, bound) {
 
 console.log('\n════════ 生产与存储问题 ════════');
 {
+  /* 教材例题（含教材明确列出的「期末库存不为 0」变形）——用标准答案锚定。
+     数据：4 个月需求 2,3,2,4；固定成本 3、单位变动 1、月产能 6、库存费 0.5。
+     标准答案（期初与期末库存均为 0）：x* = (5,0,6,0)，总成本 20.5。 */
+  const textCfg = { demands: [2, 3, 2, 4], setup: 3, unit: 1, hold: 0.5, maxProd: 6 };
+  const tr = D.dpSolve(D.dpProdInv(textCfg));
+  const txs = tr.backward.policy.map(p => p.d).join(',');
+  console.log(`  教材例题（期末库存 0）：x* = (${txs})，总成本 = ${fmt(tr.backward.value)}`
+    + `　标准答案 (5,0,6,0) / 20.5`);
+  if (txs !== '5,0,6,0') bad.push(`教材例题产量方案 (${txs}) ≠ (5,0,6,0)`);
+  if (!eq(tr.backward.value, 20.5)) bad.push(`教材例题总成本 ${tr.backward.value} ≠ 20.5`);
+  if (!eq(tr.forward.value, 20.5)) bad.push(`教材例题（顺序解法）总成本 ${tr.forward.value} ≠ 20.5`);
+  const tbf = prodBrute(textCfg, 1, 0, 11);
+  if (!eq(tbf, 20.5)) bad.push(`教材例题穷举 ${tbf} ≠ 20.5`);
+
   let cases = 0, pruneOk = 0;
   for (let t = 0; t < 120; t++) {
     const n = 2 + Math.floor(Math.random() * 3);            // 2..4 期
@@ -269,39 +284,44 @@ console.log('\n════════ 生产与存储问题 ══════
       setup: Math.round(Math.random() * 8),
       unit: 1 + Math.round(Math.random() * 3),
       hold: 1 + Math.round(Math.random() * 2),
-      maxProd: 5 + Math.floor(Math.random() * 4)
+      maxProd: 5 + Math.floor(Math.random() * 4),
+      /* 教材把「期初库存不为 0」「期末库存不为 0」列为两种变形，随机题也覆盖它们 */
+      initStock: Math.floor(Math.random() * 3),
+      endStock: Math.floor(Math.random() * 3)
     };
     const total = demands.reduce((a, b) => a + b, 0);
+    const bound = total + cfg.endStock;
     const r = D.dpSolve(D.dpProdInv(cfg));
-    const expect = prodBrute(cfg, 1, 0, total);
+    const expect = prodBrute(cfg, 1, cfg.initStock, bound);
     if (expect === Infinity) continue;
     cases++;
     if (!eq(r.backward.value, expect)) { bad.push(`生产存储 ${r.backward.value} vs 穷举 ${expect}`); continue; }
     if (!eq(r.forward.value, expect)) bad.push(`生产存储 顺序解法 ${r.forward.value} vs 穷举 ${expect}`);
     r.backward.cells.forEach(cell => {
       cell.states.forEach(st => {
-        const e2 = prodBrute(cfg, cell.k, st.key, total);
+        const e2 = prodBrute(cfg, cell.k, st.key, bound);
         if (e2 === Infinity) return;
         if (st.best === null || !eq(st.best, e2)) {
           bad.push(`生产存储 f_${cell.k}(${st.key}) = ${st.best}，穷举为 ${e2}`);
         }
       });
     });
-    /* 策略要真的可行：逐期库存非负、期末归零、费用相符 */
-    let inv = 0, cost = 0;
+    /* 策略要真的可行：逐期库存非负、期末等于约定值、费用相符 */
+    let inv = cfg.initStock, cost = 0;
     r.backward.policy.forEach((p, z) => {
       inv = inv + p.d - demands[z];
       if (inv < 0) bad.push('生产存储 策略出现欠货');
       cost += (p.d > 0 ? cfg.setup + cfg.unit * p.d : 0) + cfg.hold * inv;
     });
-    if (inv !== 0) bad.push(`生产存储 期末库存为 ${inv}，应为 0`);
+    if (inv !== cfg.endStock) bad.push(`生产存储 期末库存为 ${inv}，应为 ${cfg.endStock}`);
     if (!eq(cost, r.backward.value)) bad.push(`生产存储 策略费用 ${cost} vs 最优值 ${r.backward.value}`);
-    /* 模型把库存上限收在「总需求」上，确认这个剪枝没有把最优解剪掉 */
-    const wide = prodBrute(cfg, 1, 0, total + 6);
+    /* 模型把库存上限收在「总需求 + 期末存量」上，确认这个剪枝没有把最优解剪掉 */
+    const wide = prodBrute(cfg, 1, cfg.initStock, bound + 6);
     if (eq(wide, expect)) pruneOk++;
     else bad.push(`生产存储 放宽库存上限后最优值变成 ${wide}（原 ${expect}）→ 剪枝掉了最优解`);
   }
-  console.log(`  ${cases} 道，每格 f_k(s) 单独穷举核对；其中 ${pruneOk} 道确认库存剪枝不丢最优解`);
+  console.log(`  另 ${cases} 道随机题（含期初/期末库存不为 0 的变形），`
+    + `每格 f_k(s) 单独穷举核对；其中 ${pruneOk} 道确认库存剪枝不丢最优解`);
 }
 
 /* ---------- 6. 设备更新问题 ---------- */

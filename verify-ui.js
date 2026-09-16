@@ -484,8 +484,8 @@ class CDP {
     sens: document.getElementById('mod-sens').classList.contains('on'),
     cards: document.querySelectorAll('#mod-home a.modcard').length
   })`));
-  check(routeBefore.simp === true && routeBefore.home === false && routeBefore.cards === 3,
-    '进 #/simplex 时只显示单纯形法模块，首页有 3 个模块入口',
+  check(routeBefore.simp === true && routeBefore.home === false && routeBefore.cards === 4,
+    '进 #/simplex 时只显示单纯形法模块，首页有 4 个模块入口',
     `home=${routeBefore.home} simplex=${routeBefore.simp} 卡片=${routeBefore.cards}`);
 
   await evl(`location.hash = '#/sens'; 'ok'`);
@@ -660,6 +660,81 @@ class CDP {
   check(dp.pOut.indexOf('生产与存储') >= 0 && dp.pOut.indexOf('最优策略') >= 0, '生产与存储能求解');
   check(dp.vOut.indexOf('设备更新') >= 0 && dp.vOut.indexOf('最优策略') >= 0, '设备更新能求解');
   check(dp.errors === 0, '动态规划模块无 JS 错误');
+
+  /* ---------- 6.7 整数规划模块 ---------- */
+  console.log('\n--- 整数规划模块 ---');
+  await evl(`location.hash = '#/ip'; 'ok'`);
+  await sleep(220);
+
+  const ip = JSON.parse(await evl(`(function(){
+    function q(s){ return document.querySelector(s); }
+    function text(el){ return ((el||{}).textContent||'').replace(/\\\\s+/g,' '); }
+    function click(id){ document.getElementById(id).click(); }
+    function set(sel, v){ var el = q(sel); if(el){ el.value=v; el.dispatchEvent(new Event('input',{bubbles:true})); } }
+    var r = {};
+    r.route = { ip: document.getElementById('mod-ip').classList.contains('on'),
+                home: document.getElementById('mod-home').classList.contains('on') };
+
+    /* 搭经典例题：max 3x1+2x2，2x1+3x2≤14，2x1+x2≤9，两个变量都取整 */
+    click('ipAddVar'); click('ipAddVar');
+    click('ipAddCon'); click('ipAddCon');
+    if (window.__ipRenderTypes) window.__ipRenderTypes();
+    r.typeBoxes = document.querySelectorAll('[data-vt]').length;
+    set('#ipInTbl input[data-k="c"][data-j="0"]', '3');
+    set('#ipInTbl input[data-k="c"][data-j="1"]', '2');
+    [[0,[2,3],14],[1,[2,1],9]].forEach(function(cfg){
+      var i = cfg[0];
+      cfg[1].forEach(function(v, j){
+        set('#ipInTbl input[data-k="a"][data-i="'+i+'"][data-j="'+j+'"]', String(v));
+      });
+      set('#ipInTbl input[data-k="b"][data-i="'+i+'"]', String(cfg[2]));
+    });
+    /* 两个变量都用默认的「整数」 */
+    click('ipSolveBtn');
+    r.out = text(document.getElementById('ipOut'));
+    r.tables = document.querySelectorAll('#ipOut table').length;
+    r.graphs = document.querySelectorAll('#ipOut .graph svg').length;
+    r.latticeDots = document.querySelectorAll('#ipOut .g-int').length;
+    r.ipOptDots = document.querySelectorAll('#ipOut .g-ipopt').length;
+
+    /* 把两个变量都改成 0-1，隐枚举就应当变成可用（只改一个是没用的：
+       隐枚举要求**所有**变量都是 0-1） */
+    q('[data-vt="0"] button[data-t="bin"]').click();
+    q('[data-vt="1"] button[data-t="bin"]').click();
+    click('ipSolveBtn');
+    r.outBin = text(document.getElementById('ipOut'));
+
+    r.errors = window.__errors.length;
+    return JSON.stringify(r);
+  })()`));
+  check(ip.route.ip === true && ip.route.home === false, '进 #/ip 时只显示整数规划模块');
+  check(ip.typeBoxes === 2, '每个变量各有一组 连续/整数/0-1 选择器', `组数=${ip.typeBoxes}`);
+  check(ip.out.indexOf('13/4') >= 0 && ip.out.indexOf('5/2') >= 0,
+    '先给出松弛问题的最优解（x1=13/4、x2=5/2）');
+  check(ip.out.indexOf('解里有非整数分量') >= 0, '明确指出松弛解不满足整数要求');
+  /* 适用性判定：全整数 2 变量题 → 图解/分枝定界/割平面可用，隐枚举不可用 */
+  check(ip.out.indexOf('✓ 图解法') >= 0 && ip.out.indexOf('✓ 分枝定界法') >= 0
+        && ip.out.indexOf('✓ 割平面法') >= 0 && ip.out.indexOf('✗ 隐枚举法') >= 0,
+    '适用性一览：图解法/分枝定界/割平面打勾、隐枚举打叉');
+  check(ip.out.indexOf('符合教材里割平面法要求的标准形式') >= 0,
+    '割平面法给出了「为什么适用」的理由');
+  check(ip.out.indexOf('要求所有变量都是 0-1 变量') >= 0,
+    '隐枚举法给出了「为什么不能用」的理由');
+  /* 结果本身 */
+  check(ip.out.indexOf('x₁ = 4') >= 0 || ip.out.indexOf('x1 = 4') >= 0, '算出最优整数解 x1=4');
+  check(ip.out.indexOf('14') >= 0, '最优值 z=14');
+  check(ip.graphs === 1 && ip.latticeDots > 0 && ip.ipOptDots === 1,
+    '图解法画出了可行域、整数格点与最优整数解',
+    `图=${ip.graphs} 格点=${ip.latticeDots} 整数最优点=${ip.ipOptDots}`);
+  check(ip.out.indexOf('分枝定界法') >= 0 && ip.out.indexOf('结点 1') >= 0,
+    '分枝定界法输出了逐结点的过程');
+  check(ip.out.indexOf('第 1 刀') >= 0 && ip.out.indexOf('Gomory 割') >= 0,
+    '割平面法输出了割的推导与每一刀');
+  check(ip.tables >= 8, '各方法的迭代表都渲染出来了', `表数=${ip.tables}`);
+  /* 把 x2 改成 0-1 后隐枚举应变为可用 */
+  check(ip.outBin.indexOf('✓ 隐枚举法') >= 0 && ip.outBin.indexOf('隐枚举') >= 0,
+    '把变量改成 0-1 后，隐枚举法自动变成可用并输出');
+  check(ip.errors === 0, '整数规划模块无 JS 错误');
 
   console.log(`\n合计: ${pass} 通过 / ${fail} 失败`);
   ws.close(); child.kill();

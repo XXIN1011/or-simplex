@@ -433,8 +433,10 @@ function dpProdInv(input) {
   var setup = Number(input.setup || 0);        // 准备费
   var unit = Number(input.unit || 0);          // 单位变动成本
   var hold = Number(input.hold || 0);          // 单位存储费
-  var cap = 0;
-  for (var i = 0; i < n; i++) cap += d[i];     // 库存不可能超过总需求（多了纯浪费）
+  var initStock = Number(input.initStock || 0); // 期初库存（教材变形①）
+  var endStock = Number(input.endStock || 0);   // 期末库存（教材变形②）
+  var cap = endStock;
+  for (var i = 0; i < n; i++) cap += d[i];     // 库存不可能超过「总需求 + 期末存量」
   var maxProd = input.maxProd ? Number(input.maxProd) : cap;
 
   var stateKeys = function () {
@@ -451,8 +453,8 @@ function dpProdInv(input) {
       stageLabel: function (k) { return '阶段 ' + k + '（第 ' + k + ' 个时期）'; },
       stateName: '状态 s_k（期初库存）',
       decisionName: '决策 u_k（本期产量）',
-      formula: 'f_k(s) = min_{u} { C(u) + h·(s+u−d_k) + f_{k+1}(s+u−d_k) }　，f_{n+1}(0) = 0',
-      boundary: '期末库存必须为 0：只有 f' + (n + 1) + '(0) = 0 有效'
+      formula: 'f_k(s) = min_{u} { C(u) + h·(s+u−d_k) + f_{k+1}(s+u−d_k) }　，f_{n+1}(' + endStock + ') = 0',
+      boundary: '期末库存必须为 ' + endStock + '：只有 f' + (n + 1) + '(' + endStock + ') = 0 有效'
     },
     stateKeys: function (k) { return stateKeys(); },
     stateLabel: function (k, key) { return String(key); },
@@ -466,12 +468,12 @@ function dpProdInv(input) {
     decisionLabel: function (k, key, d2) { return d2 === 0 ? '不生产' : ('生产 ' + d2); },
     next: function (k, key, d2) { return key + d2 - d[k - 1]; },
     payoff: function (k, key, d2) {
-      var endStock = key + d2 - d[k - 1];
+      var end = key + d2 - d[k - 1];
       var prod = (d2 > 0 ? setup + unit * d2 : 0);
-      return prod + hold * endStock;
+      return prod + hold * end;
     },
-    terminal: function () { var o = {}; o[0] = 0; return o; },
-    startKey: function () { return 0; }
+    terminal: function () { var o = {}; o[endStock] = 0; return o; },
+    startKey: function () { return initStock; }
   };
 }
 

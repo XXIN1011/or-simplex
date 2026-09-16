@@ -236,6 +236,10 @@ table.sens td.eff{color:var(--fg2);text-align:right;white-space:nowrap;padding-l
 .graph text{font-size:12px;fill:var(--fg2)}
 .graph .g-lbl{font-size:13.5px;fill:var(--fg2);font-weight:600}
 .graph .g-optlbl{font-size:12.5px;fill:var(--pivot);font-weight:600}
+/* 整数规划：可行域里的整数格点（灰色），以及最优整数解（绿色，与松弛解区分开） */
+.graph .g-int{fill:var(--fg2);fill-opacity:.5}
+.graph .g-ipopt{fill:#16a34a;stroke:#fff;stroke-width:1.5}
+.graph .g-ipoptlbl{font-size:12.5px;fill:#16a34a;font-weight:650}
 
 /* ---------- 结果 ---------- */
 #result{display:none}
@@ -395,6 +399,23 @@ table.inp.dm th.rowh{text-align:right;padding-right:9px;color:var(--fg2)}
 table.sens.dpt td{padding:6px 9px 6px 0;vertical-align:top}
 table.sens.dpt td:first-child{color:var(--fg2)}
 .muted{color:var(--fg2)}
+
+/* ---------- 整数规划模块 ---------- */
+/* 「规模过大时按勾选输出」的勾选框 */
+.pickbox{
+  display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;
+  padding-top:10px;border-top:1px solid var(--soft);
+}
+.pick{
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:13px;color:var(--fg);cursor:pointer;min-height:44px;
+}
+.pick input{width:19px;height:19px;accent-color:var(--accent)}
+/* 展开后的迭代过程内层 */
+.iter-body{margin-top:4px}
+/* 隐枚举的枚举表：数字多，字号放小一点、各行紧凑些 */
+table.sens.en td{font-size:12.5px;padding:4px 8px 4px 0}
+table.sens.en td.nm{color:var(--fg2);font-variant-numeric:tabular-nums}
 /* 场景参数输入行 */
 .fh{display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-bottom:8px}
 .fl{font-size:12.5px;color:var(--fg2);min-width:82px;font-weight:600}
@@ -425,6 +446,11 @@ input.num.sm{width:52px}
     <a class="modcard" href="#/dp">
       <span class="mt">动态规划<span class="go">→</span></span>
       <span class="md">最短路线、资源分配、背包、生产与存储、设备更新五类题型，逐阶段列出 f<sub>k</sub>(s) 与最优决策，逆序与顺序两种解法可对照。</span>
+    </a>
+
+    <a class="modcard" href="#/ip">
+      <span class="mt">整数规划<span class="go">→</span></span>
+      <span class="md">输入任意整数规划（每个变量可选连续 / 整数 / 0-1），自动判定分枝定界法、割平面法、隐枚举法、图解法各有哪几种能用，能用的把完整计算过程全部输出。</span>
     </a>
   </div>
 
@@ -519,6 +545,36 @@ input.num.sm{width:52px}
     <section id="dpOut"></section>
   </div>
 
+  <!-- ===================== 整数规划 ===================== -->
+  <div class="mod" id="mod-ip">
+    <header>
+      <a class="back" href="#/">← 返回首页</a>
+      <h1>整数规划</h1>
+      <p>分枝定界 · 割平面 · 隐枚举 · 图解</p>
+    </header>
+
+    <section class="card">
+      <div class="seg" id="ipDirSeg">
+        <button type="button" data-dir="max" class="on">max</button>
+        <button type="button" data-dir="min">min</button>
+      </div>
+      <div class="scroll"><table class="inp" id="ipInTbl"></table></div>
+      <div class="ctrls">
+        <button type="button" class="btn" id="ipAddVar">+ 变量</button>
+        <button type="button" class="btn" id="ipDelVar">− 变量</button>
+        <button type="button" class="btn" id="ipAddCon">+ 约束</button>
+        <button type="button" class="btn" id="ipDelCon">− 约束</button>
+      </div>
+      <div id="ipTypes"></div>
+      <div class="actions">
+        <button type="button" class="btn primary" id="ipSolveBtn">求　解</button>
+      </div>
+    </section>
+
+    <div id="ipBanners"></div>
+    <section id="ipOut"></section>
+  </div>
+
 </div>
 
 <script>
@@ -544,6 +600,12 @@ input.num.sm{width:52px}
 </script>
 <script>
 /*__DP_UI__*/
+</script>
+<script>
+/*__IP_CORE__*/
+</script>
+<script>
+/*__IP_UI__*/
 </script>
 <script>
 /*__ROUTER__*/
