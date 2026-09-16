@@ -89,6 +89,8 @@ header p{margin:3px 0 0;font-size:12.5px;color:var(--fg2);letter-spacing:.02em}
   border:0;background:transparent;color:var(--fg2);
   font:inherit;font-size:14px;font-weight:600;
   padding:6px 20px;border-radius:6px;cursor:pointer;transition:.12s;
+  /* max/min 是手机上最高频的开关，原来只有 34px 高，补到 44px 才好点 */
+  min-height:44px;display:inline-flex;align-items:center;justify-content:center;
 }
 .seg button.on{background:var(--card);color:var(--accent);box-shadow:0 1px 2px rgba(0,0,0,.07)}
 
@@ -121,7 +123,8 @@ input.num:focus{outline:none;border-color:var(--accent);background:var(--accent-
 /* 没填的格子显示一个淡灰的 0：既看得出「不填就是 0」，又不会让人以为里面已经有内容 */
 input.num::placeholder{color:var(--fg3);opacity:.7}
 select.rel{
-  width:58px;padding:9px 4px 9px 2px;border:1px solid var(--line2);border-radius:7px;
+  /* 原来 43px，比右边的系数格矮一点；补到 44px 后两者齐高，也好点中 */
+  width:58px;min-height:44px;padding:10px 4px 10px 2px;border:1px solid var(--line2);border-radius:7px;
   font:inherit;font-size:15px;color:var(--fg);background:var(--input);
   -webkit-appearance:none;appearance:none;text-align:center;text-align-last:center;
   background-image:var(--caret);
@@ -130,7 +133,9 @@ select.rel{
 select.rel:focus{outline:none;border-color:var(--accent)}
 .delvar{
   border:0;background:transparent;color:var(--fg3);font-size:17px;
-  padding:13px 9px;min-width:36px;cursor:pointer;line-height:1;
+  /* 触摸目标补满 44×44：高度靠 min-height，宽度靠 min-width。
+     这一列变宽会让表格宽 8px，但手机上本来就横向可滑，换来的是不会误删整行 */
+  padding:13px 9px;min-width:44px;min-height:44px;cursor:pointer;line-height:1;
 }
 .delvar:active{color:var(--err)}
 
@@ -141,6 +146,8 @@ button.btn{
   border:1px solid var(--line2);background:var(--input);color:var(--fg2);
   font:inherit;font-size:13.5px;font-weight:500;
   padding:8px 13px;border-radius:8px;cursor:pointer;transition:.12s;
+  /* 「+ 变量」「+ 约束」等：原来 39px 高，补到 44px */
+  min-height:44px;display:inline-flex;align-items:center;justify-content:center;
 }
 button.btn:active{background:var(--soft)}
 button.btn:disabled{opacity:.35;cursor:default}
