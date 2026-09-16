@@ -704,6 +704,22 @@ class CDP {
     click('ipSolveBtn');
     r.outBin = text(document.getElementById('ipOut'));
 
+    /* ★ 最小化 + 0-1：隐枚举曾经在 min 方向上把「挑最好解」的比较符号写反
+       （标准形永远是求最大），报出来的最优值直接是错的；而且枚举表的 z 列
+       显示的是取负后的值，跟题目对不上。这两个都要盯住。 */
+    q('#ipDirSeg button[data-dir="min"]').click();
+    set('#ipInTbl input[data-k="c"][data-j="0"]', '4');
+    set('#ipInTbl input[data-k="c"][data-j="1"]', '3');
+    set('#ipInTbl input[data-k="a"][data-i="0"][data-j="0"]', '1');
+    set('#ipInTbl input[data-k="a"][data-i="0"][data-j="1"]', '1');
+    var sel0 = q('#ipInTbl select[data-i="0"]');
+    if (sel0) { sel0.value = '>='; sel0.dispatchEvent(new Event('change', {bubbles:true})); }
+    set('#ipInTbl input[data-k="b"][data-i="0"]', '1');
+    click('ipSolveBtn');
+    r.outMin = text(document.getElementById('ipOut'));
+    r.minRowZ = Array.prototype.slice.call(document.querySelectorAll('#ipOut table.sens.en tbody tr'))
+      .map(function (tr){ return tr.children[2] ? tr.children[2].textContent.trim() : ''; });
+
     r.errors = window.__errors.length;
     return JSON.stringify(r);
   })()`));
@@ -734,6 +750,17 @@ class CDP {
   /* 把 x2 改成 0-1 后隐枚举应变为可用 */
   check(ip.outBin.indexOf('✓ 隐枚举法') >= 0 && ip.outBin.indexOf('隐枚举') >= 0,
     '把变量改成 0-1 后，隐枚举法自动变成可用并输出');
+  /* 最小化方向 */
+  check(ip.outMin.indexOf('✓ 隐枚举法') >= 0, '最小化 0-1 题也判出隐枚举法可用');
+  check(ip.outMin.indexOf('整体取负') >= 0 && ip.outMin.indexOf('z（本题）') >= 0,
+    '最小化时说明「先把目标系数整体取负化成求最大」，且表头标明 z 是本题口径');
+  check(ip.outMin.indexOf('z = 3') >= 0,
+    '最小化 0-1 题：最优值 z = 3（曾因比较符号写反而报错）');
+  /* 枚举表里的 z 必须是原题口径（不是取负后的值）——本题所有点的 z 都非负 */
+  check(ip.minRowZ.length > 0 && ip.minRowZ.every(function (v) {
+    return v !== '' && parseFloat(v) >= 0;
+  }), '最小化题枚举表里的 z 都是原题口径（非取负后的负数）',
+    `表内 z 列=${ip.minRowZ.join('/')}`);
   check(ip.errors === 0, '整数规划模块无 JS 错误');
 
   console.log(`\n合计: ${pass} 通过 / ${fail} 失败`);

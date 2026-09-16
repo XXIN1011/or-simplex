@@ -15,6 +15,35 @@ let bad = [];
 const eq = (a, b) => Math.abs(a - b) < 1e-6;
 function fail(m) { bad.push(m); }
 
+/* 分枝定界有结点数上限（防卡顿）。一旦触顶，它给出的只是「目前最好的整数解」，
+   不是「最优解」—— 这时**不能**拿它跟暴力枚举的最优值硬比，只能检查一件事：
+   它交出来的那个解不许比真正的最优解还好（否则就是它错了）。
+   （一开始只在 0-1 那一段做了这个判断，纯整数段与混合段漏了，
+     于是个别随机题偶尔会以「分枝定界 z=… ≠ 枚举 z=…」的形式误报。） */
+let bnbOk = 0, bnbIncomplete = 0;
+function checkBnb(tag, bnb, bf, problem) {
+  if (!bnb || !bnb.applicable) return;
+  if (!bnb.complete) {
+    bnbIncomplete++;
+    if (bnb.best !== null && bf.best !== null) {
+      const better = problem.direction === 'max'
+        ? (bnb.bestZ > bf.bestZ + 1e-6)
+        : (bnb.bestZ < bf.bestZ - 1e-6);
+      if (better) fail(`${tag} 分枝定界没跑完，但它给出的解 ${bnb.bestZ} 竟优于真正最优 ${bf.bestZ}`);
+    }
+    return;
+  }
+  if (bf.best === null) {
+    if (bnb.best !== null) fail(`${tag} 分枝定界 枚举无解却有解`);
+    return;
+  }
+  if (bnb.best === null || !eq(bnb.bestZ, bf.bestZ)) {
+    fail(`${tag} 分枝定界 z=${label(bnb.bestZ)} ≠ 枚举 z=${label(bf.bestZ)}`);
+    return;
+  }
+  bnbOk++;
+}
+
 /* ---------------- 暴力枚举（参照） ----------------
    整数变量逐个枚举；每枚举一个组合，就把它们固定成等式约束、
    交给单纯形法解剩下的（连续）变量。这是最笨但也最不会骗人的做法。 */
@@ -112,7 +141,7 @@ const classic = {
    ========================================================================= */
 console.log('\n════════ 随机纯整数规划（全 ≤、数据为整数）════════');
 {
-  let cases = 0, bnbOk = 0, cutOk = 0, cutFail = 0;
+  let cases = 0, cutOk = 0, cutFail = 0;
   for (let t = 0; t < 200; t++) {
     const n = 2 + Math.floor(Math.random() * 2);           // 2..3 个变量
     const m = 2 + Math.floor(Math.random() * 2);           // 2..3 条约束
@@ -141,20 +170,14 @@ console.log('\n════════ 随机纯整数规划（全 ≤、数据
     const cut = r.methods.find(x => x.key === 'cut');
     const en = r.methods.find(x => x.key === 'enum');
 
-    /* 分枝定界 */
-    if (bnb.applicable) {
-      if (bf.best === null) {
-        if (bnb.best !== null) fail(`分枝定界 枚举无解却有解`);
-      } else if (bnb.best === null || !eq(bnb.bestZ, bf.bestZ)) {
-        fail(`分枝定界 z=${label(bnb.bestZ)} ≠ 枚举 z=${label(bf.bestZ)}`);
-      } else {
-        /* 解向量也要真的可行且目标值对得上 */
-        bnb.best.forEach((v, j) => { if (!IP.ipIsInt(v)) fail(`分枝定界 解里 x${j + 1}=${v} 不是整数`); });
-        let zz = 0; bnb.best.forEach((v, j) => zz += problem.c[j] * v);
-        if (!eq(zz, bnb.bestZ)) fail(`分枝定界 解回代 z=${zz} ≠ ${bnb.bestZ}`);
-        bnbOk++;
-      }
+    /* 分枝定界：先核对它交出来的解确实是整数、且回代目标值对得上，再统一判定 */
+    if (bnb.applicable && bnb.complete && bnb.best && bf.best !== null
+        && eq(bnb.bestZ, bf.bestZ)) {
+      bnb.best.forEach((v, j) => { if (!IP.ipIsInt(v)) fail(`分枝定界 解里 x${j + 1}=${v} 不是整数`); });
+      let zz = 0; bnb.best.forEach((v, j) => zz += problem.c[j] * v);
+      if (!eq(zz, bnb.bestZ)) fail(`分枝定界 解回代 z=${zz} ≠ ${bnb.bestZ}`);
     }
+    checkBnb('纯整数', bnb, bf, problem);
     /* 割平面法 */
     if (cut.applicable) {
       if (!cut.converged) { cutFail++; }
@@ -170,17 +193,18 @@ console.log('\n════════ 随机纯整数规划（全 ≤、数据
     /* 隐枚举：变量不是 0-1，必须判为不适用 */
     if (en.applicable) fail('隐枚举 对非 0-1 问题竟然判成适用');
   }
-  console.log(`  ${cases} 道：分枝定界 ${bnbOk} 道与枚举一致；割平面 ${cutOk} 道一致`
+  console.log(`  ${cases} 道：割平面 ${cutOk} 道与枚举一致`
     + (cutFail ? `，${cutFail} 道未收敛` : ''));
 }
 
 /* =========================================================================
    3. 随机 0-1 规划 —— 隐枚举 + 分枝定界 + 枚举 三方对拍
    ========================================================================= */
-console.log('\n════════ 随机 0-1 规划 ════════');
+console.log('\n════════ 随机 0-1 规划（最大化与最小化各一半）════════');
 {
-  let cases = 0, enOk = 0, bnbOk = 0, bnbIncomplete = 0, filtered = 0, totalPts = 0;
-  for (let t = 0; t < 200; t++) {
+  let cases = 0, enOk = 0, filtered = 0, totalPts = 0;
+  let minCases = 0, minOk = 0;
+  for (let t = 0; t < 240; t++) {
     const n = 3 + Math.floor(Math.random() * 5);           // 3..7 个变量
     const m = 2 + Math.floor(Math.random() * 3);           // 2..4 条约束
     /* 目标系数故意混入负数，逼出 x_j = 1 − y_j 那个替换分支 */
@@ -192,7 +216,13 @@ console.log('\n════════ 随机 0-1 规划 ═══════�
         rel: '<=', rhs: Math.floor(Math.random() * 10)
       });
     }
-    const problem = { direction: 'max', c, constraints, vtypes: new Array(n).fill('bin') };
+    /* ★ 最大化与最小化都要跑。曾经只测了 max，结果 min 方向上
+       「更新最优解」的比较符号写反了（标准形永远是求最大，却在按原题方向比），
+       报出来的最优值直接是错的 —— 而且枚举表里显示的 z 还是取负后的值。 */
+    const isMin = (t % 2 === 1);
+    const problem = { direction: isMin ? 'min' : 'max', c, constraints,
+                      vtypes: new Array(n).fill('bin') };
+    if (isMin) minCases++;
 
     const bf = bruteForce(problem, new Array(n).fill([0, 1]));
     const r = IP.ipSolve(problem);
@@ -208,32 +238,30 @@ console.log('\n════════ 随机 0-1 规划 ═══════�
     if (en.applicable && !en.tooBig) {
       if (bf.best === null) { if (en.best !== null) fail('隐枚举 枚举无解却有解'); }
       else if (en.best === null || !eq(en.bestZ, bf.bestZ)) {
-        fail(`隐枚举 z=${label(en.bestZ)} ≠ 枚举 z=${label(bf.bestZ)}`);
+        fail(`隐枚举(${problem.direction}) z=${label(en.bestZ)} ≠ 枚举 z=${label(bf.bestZ)}`);
       } else {
         en.best.forEach((v, j) => { if (v !== 0 && v !== 1) fail(`隐枚举 解里 x${j + 1}=${v} 不是 0-1`); });
         let zz = 0; en.best.forEach((v, j) => zz += problem.c[j] * v);
         if (!eq(zz, en.bestZ)) fail(`隐枚举 解回代 z=${zz} ≠ ${en.bestZ}`);
         enOk++;
+        if (isMin) minOk++;
+        /* 枚举表里每行的 z 必须是**原题口径**的目标值。
+           最小化时内部取过负，曾经把取负后的值直接显示出来，跟题目对不上。 */
+        en.rows.forEach(row => {
+          let zOrig = 0;
+          problem.c.forEach((v, j) => { zOrig += v * row.x[j]; });
+          if (Math.abs(row.z - zOrig) > 1e-9) {
+            fail(`隐枚举表 z 显示错误（${problem.direction}）：行#${row.idx}`
+              + ` 显示 ${row.z}，该点的原题目标值是 ${zOrig}`);
+          }
+        });
       }
     }
-    if (bnb.applicable && bf.best !== null) {
-      if (!bnb.complete) {
-        /* 结点上限触发时它只保证「目前最好」，不是「最优」——
-           这时只核对它给出来的解确实可行、且目标值没超过真正的最优值（上界不能破）。 */
-        bnbIncomplete++;
-        if (bnb.best !== null) {
-          if (bnb.bestZ > bf.bestZ + 1e-6) {
-            fail(`0-1 分枝定界 未跑完但给出的解 ${bnb.bestZ} 竟然超过真正最优 ${bf.bestZ}`);
-          }
-        }
-      } else if (bnb.best === null || !eq(bnb.bestZ, bf.bestZ)) {
-        fail(`0-1 分枝定界 z=${label(bnb.bestZ)} ≠ 枚举 z=${label(bf.bestZ)}`);
-      } else bnbOk++;
-    }
+    checkBnb('0-1', bnb, bf, problem);
   }
   console.log(`  ${cases} 道（共 ${totalPts} 个待枚举点，其中 ${filtered} 个被过滤条件提前挡掉）`);
-  console.log(`  隐枚举 ${enOk} 道与枚举一致；分枝定界 ${bnbOk} 道与枚举一致`
-    + (bnbIncomplete ? `，${bnbIncomplete} 道没在结点上限内跑完（已核对它给出的解不越界）` : ''));
+  console.log(`  隐枚举 ${enOk} 道与枚举一致（其中最小化 ${minOk}/${minCases} 道），`
+    + `且每一行的 z 列都等于该点的原题目标值`);
 }
 
 /* =========================================================================
@@ -270,16 +298,17 @@ console.log('\n════════ 混合整数规划（部分变量连续�
     const bnb = r.methods.find(x => x.key === 'bnb');
     const cut = r.methods.find(x => x.key === 'cut');
     if (cut.applicable) fail('割平面 对混合整数规划竟然判成适用');
-    if (bnb.applicable && bf.best !== null) {
-      if (bnb.best === null || !eq(bnb.bestZ, bf.bestZ)) {
-        fail(`混合 分枝定界 z=${label(bnb.bestZ)} ≠ 枚举 z=${label(bf.bestZ)}`);
-      } else {
-        IP.ipIntVars(problem).forEach(j => {
-          if (!IP.ipIsInt(bnb.best[j])) fail(`混合 分枝定界 解里要求取整的 x${j + 1}=${bnb.best[j]} 不是整数`);
-        });
-        ok++;
-      }
+    /* 交出来的解里，要求取整的那些变量必须真的是整数 */
+    if (bnb.applicable && bnb.complete && bnb.best && bf.best !== null
+        && eq(bnb.bestZ, bf.bestZ)) {
+      IP.ipIntVars(problem).forEach(j => {
+        if (!IP.ipIsInt(bnb.best[j])) {
+          fail(`混合 分枝定界 解里要求取整的 x${j + 1}=${bnb.best[j]} 不是整数`);
+        }
+      });
+      ok++;
     }
+    checkBnb('混合', bnb, bf, problem);
   }
   console.log(`  ${cases} 道：分枝定界 ${ok} 道与枚举一致；割平面全部正确判为不适用`);
 }
@@ -317,6 +346,14 @@ console.log('\n════════ 适用性判定 ════════
   if (t6.methods.find(x => x.key === 'enum').applicable) fail('一般整数题 隐枚举不应适用');
   console.log('  6 组判定的适用/不适用与预期一致');
 }
+
+/* 分枝定界的合计（三个题型段共用一个检查函数，所以要在这里汇总） */
+console.log('\n════════ 分枝定界合计 ════════');
+console.log(`  ${bnbOk} 道在结点上限内跑完，且与暴力枚举的最优值一致`
+  + (bnbIncomplete
+      ? `；另有 ${bnbIncomplete} 道触及结点上限提前中止 —— 已核对它交出来的解`
+        + `不优于真正的最优值（此时模块会明确写成「不保证全局最优」）`
+      : '；没有题目触及结点上限'));
 
 if (bad.length) {
   console.log(`\n!!! 不通过 ${bad.length} 条：`);

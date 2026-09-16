@@ -467,18 +467,20 @@
     /* 标准化说明 */
     h += '<div class="judge"><span class="row blk">标准化</span>';
     if (prob.direction === 'min') {
-      h += '<span class="row">· 原题是求最小，把目标系数全部取负转成求最大，'
-        + '最后再把结果还原。</span>';
+      h += '<span class="row">· 原题求<b>最小</b>。隐枚举法按教材是在「求最大」的标准形上做的，'
+        + '所以先把目标系数<b>整体取负</b>（min 转 max），最后把最优解再还原回原题方向。</span>';
+      h += '<span class="row">· 因此过滤条件比较的是<b>标准形</b>的目标值 z′ = −z。'
+        + '下表 z 列显示的仍然是<b>你原题的 z</b>，方便直接对着题目看。</span>';
     } else {
-      h += '<span class="row">· 原题已经是求最大。</span>';
+      h += '<span class="row">· 原题已经是求最大，标准形与它一致，不需要取负。</span>';
     }
     if (m.flipped.length) {
-      h += '<span class="row">· 目标系数为负的变量做替换 x<sub>j</sub> = 1 − y<sub>j</sub>：'
+      h += '<span class="row">· 标准形里目标系数为负的变量做替换 x<sub>j</sub> = 1 − y<sub>j</sub>：'
         + m.flipped.map(function (j) { return 'x' + subs(j + 1); }).join('、')
-        + '。这样它们的系数变成正数，目标值单调不减。</span>';
+        + '。这样它们的系数变成正数，目标值随任一变量由 0 变 1 单调不减。</span>';
       h += '<span class="row">· 常数项随之变成 ' + num(m.offset) + '。</span>';
     } else {
-      h += '<span class="row">· 目标系数本来就都非负，不需要替换。</span>';
+      h += '<span class="row">· 标准形的目标系数本来就都非负，不需要替换。</span>';
     }
     h += '</div>';
 
@@ -492,7 +494,7 @@
     h += '<details class="help"' + (show ? '' : ' open') + '><summary>'
       + (show ? '展开枚举表（' + rows.length + ' 个点）' : '展开有效点的枚举表')
       + '</summary><div class="scroll"><table class="sens en"><thead><tr>'
-      + '<th>#</th><th>取值</th><th>z</th><th>过滤条件</th><th>约束检查</th><th>结论</th>'
+      + '<th>#</th><th>取值</th><th>z（本题）</th><th>过滤条件</th><th>约束检查</th><th>结论</th>'
       + '</tr></thead><tbody>';
     rows.forEach(function (row) {
       if (!show && row.passFilter === false) return;
@@ -504,13 +506,16 @@
       h += '<tr>'
         + '<td class="nm">' + row.idx + '</td>'
         + '<td class="nowrap">(' + row.y.join(',') + ')</td>'
-        + '<td class="nowrap">' + num(row.zNorm) + '</td>'
-        + '<td class="nowrap">' + (row.passFilter ? '✓' : '✗ 跳过') + '</td>'
+        + '<td class="nowrap">' + num(row.z) + '</td>'
+        + '<td class="nowrap">' + (row.passFilter ? '✓ 要查约束' : '✗ 跳过') + '</td>'
         + '<td class="nowrap">' + chk + '</td>'
         + '<td>' + esc(row.verdict) + '</td></tr>';
     });
     h += '</tbody></table></div></details>';
-    h += '<div class="judge"><span class="row">共 ' + rows.length + ' 个 0-1 点，其中 <b>'
+    h += '<div class="judge">'
+      + '<span class="row">过滤条件 = 「这个点的（标准形）目标值是否优于目前已找到的最好解」。'
+      + '不优于就直接跳过，连约束都不用查 —— 这就是「隐」枚举省下来的那部分计算。</span>'
+      + '<span class="row">共 ' + rows.length + ' 个 0-1 点，其中 <b>'
       + m.filteredOut + '</b> 个被过滤条件直接挡掉（占 '
       + Math.round(m.filteredOut / rows.length * 100) + '%），不必检查约束。</span></div>';
     if (m.best) {

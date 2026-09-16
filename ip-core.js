@@ -551,10 +551,18 @@ function ipImplicitEnum(problem, opts) {
     for (var j2 = 0; j2 < n; j2++) zNorm += c[j2] * y[j2];
     var x = toX(y);
 
-    var row = { idx: t + 1, y: y.slice(), x: x, zNorm: zNorm,
-                passFilter: null, checks: [], verdict: '', z: null };
+    /* 表里要显示的是**原题口径**的目标值；内部比较用的 zNorm 是「化成求最大之后」的值。
+       求最小的问题 zNorm = −z(原题)，两者差一个负号 —— 显示时务必用 z(原题)，
+       否则用户看到的数字跟自己的题目对不上。 */
+    var zOrig = isMax ? zNorm : -zNorm;
+    var row = { idx: t + 1, y: y.slice(), x: x, z: zOrig, zStd: zNorm,
+                passFilter: null, checks: [], verdict: '' };
 
-    /* 过滤条件：目标值必须比现在最好的还好 */
+    /* 过滤条件：在**标准形**里这个点的目标值是否比目前最好的还好。
+       ★ 标准形一定是在求最大 —— 求最小的问题在开头已经整体取过负了，
+       所以这里恒用「大于」，绝不能再按原题方向去比。
+       （曾经写成 isMax ? zNorm > best : zNorm < best，于是变成一路挑 zNorm 最小的点，
+         把真正的最优解漏掉了：min 问题报出来的最优值是错的。） */
     if (nowBest === null || zNorm > nowBest + 1e-9) {
       row.passFilter = true;
       var ok = true;
@@ -568,11 +576,8 @@ function ipImplicitEnum(problem, opts) {
         if (!sat) { ok = false; break; }         // 一票否决，后面的约束不必再看
       }
       if (ok) {
-        var zReal = isMax ? zNorm : -zNorm;
-        row.z = zReal;
         row.verdict = '全满足，是可行解';
-        if (bestZ === null || (isMax ? zNorm > bestZ + 1e-9 : zNorm < bestZ - 1e-9)) {
-          /* bestZ 统一存「内部口径」（max 化之后的），便于比较 */
+        if (bestZ === null || zNorm > bestZ + 1e-9) {
           bestZ = zNorm; best = x.slice(); bestY = y.slice(); nowBest = zNorm;
           row.verdict = '全满足 → 目前最好，更新过滤条件';
         }
