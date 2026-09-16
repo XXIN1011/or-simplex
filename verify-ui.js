@@ -482,11 +482,17 @@ class CDP {
     home: document.getElementById('mod-home').classList.contains('on'),
     simp: document.getElementById('mod-simplex').classList.contains('on'),
     sens: document.getElementById('mod-sens').classList.contains('on'),
-    cards: document.querySelectorAll('#mod-home a.modcard').length
+    cards: document.querySelectorAll('#mod-home a.modcard').length,
+    /* 动态规划模块刻意不从首页露出（形式与其它模块不一致），只保留路由与源码 */
+    dpCards: document.querySelectorAll('#mod-home a.modcard[href="#/dp"]').length,
+    dpBoxes: document.querySelectorAll('#mod-dp').length
   })`));
-  check(routeBefore.simp === true && routeBefore.home === false && routeBefore.cards === 4,
-    '进 #/simplex 时只显示单纯形法模块，首页有 4 个模块入口',
+  check(routeBefore.simp === true && routeBefore.home === false && routeBefore.cards === 3,
+    '进 #/simplex 时只显示单纯形法模块，首页有 3 个模块入口',
     `home=${routeBefore.home} simplex=${routeBefore.simp} 卡片=${routeBefore.cards}`);
+  check(routeBefore.dpCards === 0 && routeBefore.dpBoxes === 1,
+    '首页没有动态规划入口，但它的页面容器还保留着（代码没删）',
+    `首页 dp 卡片=${routeBefore.dpCards} 容器=${routeBefore.dpBoxes}`);
 
   await evl(`location.hash = '#/sens'; 'ok'`);
   await sleep(300);

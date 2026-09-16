@@ -473,7 +473,7 @@ input.num.sm{width:52px}
   <div class="mod" id="mod-home">
     <header>
       <h1>运筹学计算器</h1>
-      <p>线性规划 · 灵敏度分析 · 动态规划</p>
+      <p>线性规划 · 灵敏度分析 · 整数规划</p>
     </header>
 
     <a class="modcard" href="#/simplex">
@@ -486,10 +486,10 @@ input.num.sm{width:52px}
       <span class="md">在已求得的最优解上，分析「改目标函数系数 / 改右端项 / 增加约束 / 增加变量」的影响，并按教材做法在原最优表上继续迭代。</span>
     </a>
 
-    <a class="modcard" href="#/dp">
-      <span class="mt">动态规划<span class="go">→</span></span>
-      <span class="md">最短路线、资源分配、背包、生产与存储、设备更新五类题型，逐阶段列出 f<sub>k</sub>(s) 与最优决策，逆序与顺序两种解法可对照。</span>
-    </a>
+    <!-- 动态规划模块暂不从首页露出：它还是「预置教材题型」那套形式，
+         与其它三个模块「读入任意题目 → 规范化输出」的风格不一致。
+         代码、路由（#/dp）与页面容器都原样保留，直接访问 /#/dp 仍然可用，
+         以后改造成同样的形式再放回首页即可。 -->
 
     <a class="modcard" href="#/ip">
       <span class="mt">整数规划<span class="go">→</span></span>
