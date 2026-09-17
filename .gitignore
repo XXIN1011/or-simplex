@@ -13,3 +13,7 @@ __pycache__/
 
 # 本地截图
 *.png
+
+# Python 工具的运行输出（随时可用 python inventory.py 重新生成）
+python/run_output.txt
+python/verify_out.txt
