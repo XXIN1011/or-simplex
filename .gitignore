@@ -13,10 +13,3 @@ __pycache__/
 
 # 本地截图
 *.png
-
-# Python 工具的运行输出（随时可用 python inventory.py 重新生成）
-python/run_output.txt
-python/verify_out.txt
-
-# JS <-> Python 对拍题库（随时可用 node inv-test.js 重新生成）
-inv-bank.json

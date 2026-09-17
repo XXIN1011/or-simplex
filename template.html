@@ -23,7 +23,6 @@
   --ok:#15803d; --ok-soft:#f0fdf4;
   --warn:#b45309; --warn-soft:#fffbeb;
   --err:#b91c1c; --err-soft:#fef2f2;
-  --inv:#7c3aed; --inv-soft:#f5f3ff;
   --caret:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%23a1a1aa' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 
@@ -38,7 +37,6 @@
     --ok:#4ade80; --ok-soft:#123020;
     --warn:#fbbf24; --warn-soft:#3a2d0e;
     --err:#f87171; --err-soft:#3a1c1c;
-    --inv:#a78bfa; --inv-soft:#2b2150;
     --caret:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%237c7c85' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
   }
 }
@@ -381,7 +379,6 @@ a.modcard .mi svg{display:block;width:22px;height:22px}
 a.modcard.m-simplex{--mi:var(--accent);--mi-bg:var(--accent-soft)}
 a.modcard.m-sens{--mi:var(--warn);--mi-bg:var(--warn-soft)}
 a.modcard.m-ip{--mi:var(--ok);--mi-bg:var(--ok-soft)}
-a.modcard.m-inv{--mi:var(--inv);--mi-bg:var(--inv-soft)}
 a.modcard .mb{display:block;flex:1;min-width:0}
 a.modcard .mt{
   display:flex;align-items:center;justify-content:space-between;gap:10px;
@@ -522,35 +519,6 @@ table.sens.en td.nm{color:var(--fg2);font-variant-numeric:tabular-nums}
 .fl{font-size:12.5px;color:var(--fg2);min-width:82px;font-weight:600}
 .fe,.fx{font-size:13px;color:var(--fg2)}
 input.num.sm{width:52px}
-
-/* ---------- 库存论 ---------- */
-table.inv{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
-table.inv th{
-  font-size:12px;font-weight:600;color:var(--fg2);
-  text-align:right;padding:3px 7px 6px;white-space:nowrap;
-  border-bottom:1px solid var(--line2);
-}
-table.inv th:first-child{text-align:left}
-table.inv td{
-  padding:7px;text-align:right;white-space:nowrap;
-  border-bottom:1px solid var(--line);
-}
-table.inv tr:last-child td{border-bottom:0}
-table.inv td.nm{text-align:left;color:var(--fg2)}
-table.inv tr.best td{color:var(--accent);font-weight:650}
-/* 可行性判定那两列是整句话，允许折行 */
-table.inv td.st{white-space:normal;text-align:left;min-width:132px;color:var(--fg2)}
-table.inv td.st.no{color:var(--warn)}
-/* 输入表右侧的单位说明 */
-td.invunit{font-size:12px;color:var(--fg2);text-align:left;padding-left:7px;white-space:nowrap}
-.lbl2{font-size:12.5px;font-weight:600;color:var(--fg2);margin:12px 0 6px}
-/* 公式块：库存论里公式推导比较多，单独给个浅底等宽感的区块 */
-.eqbox{
-  font-size:12.5px;line-height:1.9;color:var(--fg);
-  background:var(--soft);border-radius:9px;padding:11px 13px;
-  overflow-x:auto;-webkit-overflow-scrolling:touch;
-  font-variant-numeric:tabular-nums;
-}
 </style>
 </head>
 <body>
@@ -571,7 +539,7 @@ td.invunit{font-size:12px;color:var(--fg2);text-align:left;padding-left:7px;whit
         </svg>
       </span>
       <h1>运筹学计算器</h1>
-      <p>线性规划 · 灵敏度分析 · 整数规划 · 库存论</p>
+      <p>线性规划 · 灵敏度分析 · 整数规划</p>
       <ul class="feats">
         <li>单文件</li>
         <li>零依赖</li>
@@ -633,20 +601,6 @@ td.invunit{font-size:12px;color:var(--fg2);text-align:left;padding-left:7px;whit
       <span class="mb">
         <span class="mt">整数规划<span class="go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></span>
         <span class="md">输入任意整数规划（每个变量可选连续 / 整数 / <span class="nowrap">0-1</span>），自动判定分枝定界法、割平面法、隐枚举法、图解法各有哪几种能用，能用的把完整计算过程全部输出。</span>
-      </span>
-    </a>
-
-    <a class="modcard m-inv" href="#/inv">
-      <span class="mi" aria-hidden="true">
-        <!-- 库存论：锯齿状的库存曲线（进一批、缓缓销掉），正是 EOQ 三角形库存的意象 -->
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 20.5h18"/>
-          <path d="M4.5 20.5V6L9 20.5V6l4.5 14.5V6l4.5 14.5"/>
-        </svg>
-      </span>
-      <span class="mb">
-        <span class="mt">库存论<span class="go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></span>
-        <span class="md">基本订货批量、允许缺货、陆续到货、批量折扣、多产品资源约束。输入需求量与各项费用，算出最经济的订货批量与周期 —— 每一步推导都摊开给你看。</span>
       </span>
     </a>
 
@@ -780,44 +734,6 @@ td.invunit{font-size:12px;color:var(--fg2);text-align:left;padding-left:7px;whit
     <section id="ipOut"></section>
   </div>
 
-  <!-- ===================== 库存论（教材第 9 章 9.2~9.6） ===================== -->
-  <div class="mod" id="mod-inv">
-    <header>
-      <a class="back" href="#/">← 返回首页</a>
-      <h1 id="invTitle">库存论</h1>
-      <p id="invSub">经济订货批量 · 陆续到货 · 允许缺货 · 批量折扣 · 资源约束</p>
-    </header>
-
-    <section class="card">
-      <div id="invTabsWrap"></div>
-      <div id="invForm"></div>
-      <div class="actions">
-        <button type="button" class="btn primary" id="invSolveBtn">求　解</button>
-      </div>
-    </section>
-
-    <details class="help">
-      <summary>符号说明</summary>
-      <ul>
-        <li><b>D</b><span class="d">年总需求量（件/年）。</span></li>
-        <li><b>d</b><span class="d">单位时间需求率。与 D 必须同一时间口径。</span></li>
-        <li><b>p</b><span class="d">单位时间生产率 / 到货率（陆续到货模型用），必须 p &gt; d。</span></li>
-        <li><b>Q</b><span class="d">订货批量，就是你要决定的量。</span></li>
-        <li><b>T</b><span class="d">订货周期，相邻两次订货之间的时间长度。</span></li>
-        <li><b>c₁</b><span class="d">单位物品单位时间的存贮费（元/件·年）。</span></li>
-        <li><b>c₂</b><span class="d">单位物品单位时间的缺货损失费（允许缺货模型用）。</span></li>
-        <li><b>c₃</b><span class="d">每次订货的固定订货费（元/次）。与批量大小无关 —— 这正是它值得被单独摊薄的原因。</span></li>
-        <li><b>K</b><span class="d">采购单价（元/件）。它是常数，所以不计入也不会影响 Q*；但在批量折扣模型里它随批量跳变，就必须计入。</span></li>
-        <li><b>S / B</b><span class="d">最高存贮量 / 最大缺货量（允许缺货模型的两个输出量）。</span></li>
-        <li><b>W / V</b><span class="d">总资金上限（元） / 总库容上限（m³）。</span></li>
-        <li><b>λ</b><span class="d">拉格朗日乘数，也就是该项资源的影子价格：上限每放宽 1 个单位，总费用能降多少。</span></li>
-      </ul>
-    </details>
-
-    <div id="invBanners"></div>
-    <section id="invOut"></section>
-  </div>
-
 </div>
 
 <script>
@@ -849,12 +765,6 @@ td.invunit{font-size:12px;color:var(--fg2);text-align:left;padding-left:7px;whit
 </script>
 <script>
 /*__IP_UI__*/
-</script>
-<script>
-/*__INV_CORE__*/
-</script>
-<script>
-/*__INV_UI__*/
 </script>
 <script>
 /*__ROUTER__*/

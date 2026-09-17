@@ -123,22 +123,6 @@ const DP_SETUP = `(function(){
   return 'dp-setup-done';
 })()`;
 
-/* 库存论：五个模型各跑一遍（顺带抓各个模型自己的 JS 错误），
-   最后停在「批量折扣」—— 它同时有公式块、档位输入表、可行性判定表（含折行单元格）、
-   6 列费用比较表和警示块，覆盖面最广。 */
-const INV_SETUP = `(function(){
-  function q(s){ return document.querySelector(s); }
-  ['eoq','short','epq','disc','multi'].forEach(function(k){
-    var tab = q('#invTabs button[data-k="' + k + '"]');
-    if (tab) tab.click();
-    document.getElementById('invSolveBtn').click();
-  });
-  var tab = q('#invTabs button[data-k="disc"]');
-  if (tab) tab.click();
-  document.getElementById('invSolveBtn').click();
-  return 'inv-setup-done';
-})()`;
-
 const AUDIT = `(function(){
   function rgb(s){
     if(!s) return null;
@@ -192,10 +176,7 @@ const AUDIT = `(function(){
               /* 灵敏度分析模块与首页新增的部分 */
               '.judge','.sens-note','.sens-warn','.sens-h','a.modcard .md','a.back','.fl','.fe','.fx',
               /* 动态规划模块新增的部分 */
-              '.fv','.muted','table.inp.dm th','table.sens.dpt td','.verdict .vtitle',
-              /* 库存论模块新增的部分 */
-              '.eqbox','.lbl2','td.invunit','table.inv th','table.inv td',
-              'table.inv td.st','table.inv td.st.no','table.inv tr.best td'];
+              '.fv','.muted','table.inp.dm th','table.sens.dpt td','.verdict .vtitle'];
   var lows = [], seen = {};
   sels.forEach(function(s){
     var el = document.querySelector(s);
@@ -289,8 +270,7 @@ const AUDIT = `(function(){
   await sleep(isRemote ? 2600 : 1200);
   await cdp.send('Runtime.evaluate',
     { expression: wantHash === '#/sens' ? SENS_SETUP
-                : (wantHash === '#/dp' ? DP_SETUP
-                : (wantHash === '#/inv' ? INV_SETUP : SETUP)) }, sessionId);
+                : (wantHash === '#/dp' ? DP_SETUP : SETUP) }, sessionId);
   await sleep(isRemote ? 1400 : 900);
 
   const r = await cdp.send('Runtime.evaluate', { expression: AUDIT, returnByValue: true }, sessionId);
