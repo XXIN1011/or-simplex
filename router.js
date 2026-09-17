@@ -9,7 +9,7 @@
 (function () {
   'use strict';
 
-  var MODULES = ['home', 'simplex', 'sens', 'dp', 'ip'];
+  var MODULES = ['home', 'simplex', 'sens', 'dp', 'ip', 'inv'];
 
   function current() {
     var h = (location.hash || '').replace(/^#\/?/, '').replace(/\/+$/, '');

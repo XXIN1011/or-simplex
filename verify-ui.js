@@ -487,8 +487,8 @@ class CDP {
     dpCards: document.querySelectorAll('#mod-home a.modcard[href="#/dp"]').length,
     dpBoxes: document.querySelectorAll('#mod-dp').length
   })`));
-  check(routeBefore.simp === true && routeBefore.home === false && routeBefore.cards === 3,
-    '进 #/simplex 时只显示单纯形法模块，首页有 3 个模块入口',
+  check(routeBefore.simp === true && routeBefore.home === false && routeBefore.cards === 4,
+    '进 #/simplex 时只显示单纯形法模块，首页有 4 个模块入口',
     `home=${routeBefore.home} simplex=${routeBefore.simp} 卡片=${routeBefore.cards}`);
   check(routeBefore.dpCards === 0 && routeBefore.dpBoxes === 1,
     '首页没有动态规划入口，但它的页面容器还保留着（代码没删）',
@@ -808,6 +808,178 @@ class CDP {
   }), '最小化题枚举表里的 z 都是原题口径（非取负后的负数）',
     `表内 z 列=${ip.minRowZ.join('/')}`);
   check(ip.errors === 0, '整数规划模块无 JS 错误');
+
+  /* ---------- 9. 库存论模块（教材第 9 章 9.2~9.6） ---------- */
+  console.log('\n--- 库存论模块（教材第 9 章 9.2~9.6）---');
+  await evl(`location.hash = '#/inv'; 'ok'`);
+  await sleep(300);
+  const inv = JSON.parse(await evl(`(function(){
+    function q(s){ return document.querySelector(s); }
+    function click(id){ document.getElementById(id).click(); }
+    function set(id, v){ var el = document.getElementById(id); if(el){ el.value = v; el.dispatchEvent(new Event('input',{bubbles:true})); } }
+    function setSel(sel, v){ var el = q(sel); if(el){ el.value = v; el.dispatchEvent(new Event('input',{bubbles:true})); } }
+    function text(el){ return ((el||{}).textContent||'').replace(/\\s+/g,' '); }
+    function tab(k){ q('#invTabs button[data-k="'+k+'"]').click(); }
+    var r = {};
+
+    r.route = {
+      inv: document.getElementById('mod-inv').classList.contains('on'),
+      home: document.getElementById('mod-home').classList.contains('on'),
+      cards: document.querySelectorAll('#mod-home a.modcard').length,
+      invCard: document.querySelectorAll('#mod-home a.modcard[href="#/inv"]').length
+    };
+    r.subtitle = text(q('#mod-home .hero p'));
+    r.tabs = document.querySelectorAll('#invTabs button').length;
+    r.tabNames = Array.prototype.slice.call(document.querySelectorAll('#invTabs button'))
+      .map(function(e){ return e.textContent.trim(); });
+
+    /* 9.2 EOQ（进模块默认就是它，且已预填算例） */
+    click('invSolveBtn');
+    r.eoq = text(document.getElementById('invOut'));
+    r.eoqVerdict = text(q('#invOut .verdict .vtitle'));
+    r.eoqSteps = Array.prototype.slice.call(document.querySelectorAll('#invOut .meth-n'))
+      .map(function(e){ return e.textContent.trim(); });
+    r.eoqMethCount = document.querySelectorAll('#invOut details.meth').length;
+    r.allOpen = Array.prototype.slice.call(document.querySelectorAll('#invOut details.meth'))
+      .every(function(d){ return d.open; });
+    r.eqboxSub = document.querySelectorAll('#invOut .eqbox sub').length;
+
+    /* 9.3 允许缺货 */
+    tab('short'); click('invSolveBtn');
+    r.short = text(document.getElementById('invOut'));
+
+    /* 9.4 陆续到货 */
+    tab('epq'); click('invSolveBtn');
+    r.epq = text(document.getElementById('invOut'));
+    set('if_p', '30'); click('invSolveBtn');
+    r.epqBad = text(document.getElementById('invBanners'));
+    set('if_p', '100');
+
+    /* 9.5 批量折扣 */
+    tab('disc');
+    r.discTierInputs = document.querySelectorAll('#invDiscTbl input[data-f="lo"]').length;
+    r.discHasRate = document.querySelectorAll('#if_rate').length;
+    click('invSolveBtn');
+    r.disc = text(document.getElementById('invOut'));
+    r.discBestRow = (function(){
+      var tr = q('#invOut table.inv tr.best');
+      return tr ? tr.textContent.replace(/\\s+/g,' ').trim() : '';
+    })();
+    click('invDiscAdd');
+    r.discTiersAfterAdd = document.querySelectorAll('#invDiscTbl input[data-f="lo"]').length;
+    click('invDiscDel');
+    r.discTiersAfterDel = document.querySelectorAll('#invDiscTbl input[data-f="lo"]').length;
+    /* 切到「绝对存贮费」口径：只应渲染 c1 一个框，且还能算出结果 */
+    q('#if_mode button[data-k="abs"]').click();
+    r.discAbsHasC1 = document.querySelectorAll('#if_c1a').length;
+    r.discAbsHasRate = document.querySelectorAll('#if_rate').length;
+    click('invSolveBtn');
+    r.discAbs = text(document.getElementById('invOut'));
+    /* 切回去，rate 的值不该被清掉 */
+    q('#if_mode button[data-k="rate"]').click();
+    r.rateAfterRoundTrip = (document.getElementById('if_rate')||{}).value;
+
+    /* 参数校验：第一档下限不是 0 必须被拦下 */
+    setSel('#invDiscTbl input[data-f="lo"]', '100');
+    click('invSolveBtn');
+    r.discBad = text(document.getElementById('invBanners'));
+    setSel('#invDiscTbl input[data-f="lo"]', '0');
+
+    /* 9.6 多产品约束 */
+    tab('multi');
+    r.multiCols = document.querySelectorAll('#invMultiTbl tr:first-child th').length;
+    r.multiRows = document.querySelectorAll('#invMultiTbl input[data-f="D"]').length;
+    click('invSolveBtn');
+    r.multi = text(document.getElementById('invOut'));
+    click('invMultiAdd');
+    r.multiRowsAfterAdd = document.querySelectorAll('#invMultiTbl input[data-f="D"]').length;
+    click('invMultiDel');
+    r.multiRowsAfterDel = document.querySelectorAll('#invMultiTbl input[data-f="D"]').length;
+    set('if_limit', ''); click('invSolveBtn');
+    r.multiBad = text(document.getElementById('invBanners'));
+
+    r.errors = window.__errors.length;
+    return JSON.stringify(r);
+  })()`));
+  check(inv.route.inv === true && inv.route.home === false, '进 #/inv 时只显示库存论模块');
+  check(inv.route.cards === 4 && inv.route.invCard === 1,
+    '首页有 4 个模块入口，其中一个是库存论',
+    `卡片=${inv.route.cards} 库存论卡=${inv.route.invCard}`);
+  check(inv.subtitle.indexOf('库存论') >= 0, '首页副标题已加上「库存论」', inv.subtitle);
+  check(inv.tabs === 5 && inv.tabNames[0].indexOf('9.2') >= 0
+        && inv.tabNames[4].indexOf('9.6') >= 0,
+    '5 个模型选择按钮，按教材章节顺序 9.2→9.6', inv.tabNames.join(' / '));
+
+  /* --- 9.2 EOQ --- */
+  check(inv.eoqVerdict.indexOf('Q* = 1,000 件') >= 0,
+    'EOQ：结论给出 Q* = 1,000 件（与已验证的算例一致）', inv.eoqVerdict);
+  check(inv.eoq.indexOf('4,000') >= 0 && inv.eoq.indexOf('10,000') >= 0,
+    'EOQ：给出最小总费用 4,000 与公式里的 D = 10,000');
+  check(inv.eoq.indexOf('104,000') >= 0 && inv.eoq.indexOf('100,000') >= 0,
+    'EOQ：费用构成含采购成本 100,000 与年总费用 104,000');
+  check(inv.eoqMethCount === 4 && inv.eoqSteps[0].indexOf('目标函数与求导') === 0,
+    'EOQ：4 张步骤卡，首张是「目标函数与求导」', inv.eoqSteps.join(' / '));
+  check(inv.allOpen === true, '步骤卡默认全部展开（不会把推导藏起来）');
+  check(inv.eqboxSub > 0, '公式里的下标渲染成了真正的 <sub>', `sub 数=${inv.eqboxSub}`);
+
+  /* --- 9.3 允许缺货 --- */
+  check(inv.short.indexOf('1,732.0508') >= 0 && inv.short.indexOf('1,154.7005') >= 0,
+    '允许缺货：Q* = 1,732.0508、B* = 1,154.7005（与对拍值一致）');
+  check(inv.short.indexOf('2,309.4011') >= 0, '允许缺货：最小总费用 2,309.4011');
+  check(inv.short.indexOf('与不允许缺货') >= 0, '允许缺货：给出了与 9.2 EOQ 的对照');
+
+  /* --- 9.4 陆续到货 --- */
+  check(inv.epq.indexOf('1,290.9944') >= 0 && inv.epq.indexOf('774.5967') >= 0,
+    '陆续到货：Q* = 1,290.9944、S* = 774.5967（与对拍值一致）');
+  check(inv.epq.indexOf('单位口径') >= 0 && inv.epq.indexOf('3,098.3867') >= 0,
+    '陆续到货：既做了单位口径校验、也给出 C* = 3,098.3867');
+  check(inv.epqBad.indexOf('必须大于需求率') >= 0,
+    '陆续到货：p ≤ d 被拦下并给出中文提示', inv.epqBad);
+
+  /* --- 9.5 批量折扣 --- */
+  check(inv.discTierInputs === 4, '批量折扣：默认 4 档价格可输入', `档数=${inv.discTierInputs}`);
+  check(inv.discHasRate === 1, '批量折扣：费率口径下只渲染一个存贮费输入框');
+  check(inv.disc.indexOf('44,450') >= 0 && inv.disc.indexOf('2,000') >= 0,
+    '批量折扣：全局最优 Q* = 2,000、总费用 44,450（与对拍值一致）');
+  check(inv.discBestRow.indexOf('第 4 档') >= 0 && inv.discBestRow.indexOf('44,450') >= 0,
+    '批量折扣：最优那一行被高亮标出（第 4 档 44,450）', inv.discBestRow);
+  check(inv.disc.indexOf('必须计入采购费') >= 0,
+    '批量折扣：明确提示必须计入采购费 D·K');
+  check(inv.discTiersAfterAdd === 5 && inv.discTiersAfterDel === 4,
+    '批量折扣：能加档也能减档', `加后=${inv.discTiersAfterAdd} 减后=${inv.discTiersAfterDel}`);
+  check(inv.discAbsHasC1 === 1 && inv.discAbsHasRate === 0,
+    '批量折扣：切到「绝对存贮费」口径后只渲染 c1 一个框',
+    `c1=${inv.discAbsHasC1} rate=${inv.discAbsHasRate}`);
+  check(inv.discAbs.indexOf('44,750') >= 0,
+    '批量折扣：绝对存贮费口径下算出 44,750（各档 Qᵢ* 相同，最优批量仍被顶到 2,000）');
+  check(inv.rateAfterRoundTrip === '0.2',
+    '批量折扣：来回切换口径不会把费率的值清空', `rate=${inv.rateAfterRoundTrip}`);
+  check(inv.discBad.indexOf('第一档的分界点下限必须是 0') >= 0,
+    '批量折扣：第一档下限不为 0 被拦下', inv.discBad);
+
+  /* --- 9.6 多产品约束 --- */
+  check(inv.multiCols === 6 && inv.multiRows === 2,
+    '多产品：输入表 6 列（产品/D/c₁/c₃/K/v）、默认 2 个产品',
+    `列=${inv.multiCols} 行=${inv.multiRows}`);
+  check(inv.multi.indexOf('0.12199254') >= 0, '多产品：λ* = 0.12199254（与对拍值一致）');
+  check(inv.multi.indexOf('788.1195') >= 0 && inv.multi.indexOf('474.587') >= 0,
+    '多产品：各产品 Qᵢ* = 788.1195 / 474.587（与对拍值一致）');
+  check(inv.multi.indexOf('6,406.1271') >= 0 && inv.multi.indexOf('15,000') >= 0,
+    '多产品：总费用 6,406.1271、资源占用 15,000');
+  check(inv.multi.indexOf('拉格朗日') >= 0 && inv.multi.indexOf('影子价格') >= 0
+        && inv.multi.indexOf('二分法') >= 0,
+    '多产品：输出了拉格朗日一阶条件、二分法迭代与影子价格解读');
+  check(inv.multiRowsAfterAdd === 3 && inv.multiRowsAfterDel === 2,
+    '多产品：能加产品也能减产品',
+    `加后=${inv.multiRowsAfterAdd} 减后=${inv.multiRowsAfterDel}`);
+  check(inv.multiBad.indexOf('不能为空') >= 0,
+    '多产品：必填项留空被拦下并给出中文提示', inv.multiBad);
+
+  /* --- 通用 --- */
+  check([inv.eoq, inv.short, inv.epq, inv.disc, inv.multi].every(function (t) {
+    return t.indexOf('**') < 0;
+  }), '五个模型的输出里都没有残留 ** 加粗标记');
+  check(inv.errors === 0, '库存论模块无 JS 错误');
 
   console.log(`\n合计: ${pass} 通过 / ${fail} 失败`);
   ws.close(); child.kill();

@@ -20,6 +20,8 @@ const SLOTS = {
   '/*__DP_UI__*/': 'dp-ui.js',              // 动态规划界面
   '/*__IP_CORE__*/': 'ip-core.js',          // 整数规划核心（四种方法 + 适用性判定）
   '/*__IP_UI__*/': 'ip-ui.js',              // 整数规划界面
+  '/*__INV_CORE__*/': 'inv-core.js',        // 库存论核心（教材第 9 章 9.2~9.6）
+  '/*__INV_UI__*/': 'inv-ui.js',            // 库存论界面
   '/*__ROUTER__*/': 'router.js'             // 首页/模块路由
 };
 
