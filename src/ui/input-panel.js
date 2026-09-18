@@ -67,6 +67,7 @@ function createInputPanel(cfg) {
     html += '<tr><td class="lbl">z =</td>';
     for (var j2 = 0; j2 < n; j2++) {
       html += '<td><input class="num" type="text" inputmode="decimal" placeholder="0" '
+        + 'aria-label="目标函数中 x' + (j2 + 1) + ' 的系数" '
         + 'data-k="c" data-j="' + j2 + '" value="' + esc(fmtIn(state.c[j2])) + '"></td>';
     }
     if (n === 0) {
@@ -86,16 +87,20 @@ function createInputPanel(cfg) {
       html += '<tr><td class="lbl">' + (i + 1) + '</td>';
       for (var j3 = 0; j3 < n; j3++) {
         html += '<td><input class="num" type="text" inputmode="decimal" placeholder="0" '
+          + 'aria-label="第 ' + (i + 1) + ' 条约束中 x' + (j3 + 1) + ' 的系数" '
           + 'data-k="a" data-i="' + i + '" data-j="' + j3 + '" value="' + esc(fmtIn(k.coef[j3])) + '"></td>';
       }
-      html += '<td><select class="rel" data-i="' + i + '">'
+      /* 关系符没有 placeholder 可用，必须显式给 aria-label，
+         否则读屏用户只会听到一个孤零零的 "<=" 下拉框（审查脚本也会记为「无标注」） */
+      html += '<td><select class="rel" data-i="' + i + '" aria-label="第 ' + (i + 1) + ' 条约束的关系符">'
         + ['<=', '>=', '='].map(function (r) {
           return '<option value="' + r + '"' + (k.rel === r ? ' selected' : '') + '>' + r + '</option>';
         }).join('')
         + '</select></td>';
       html += '<td><input class="num" type="text" inputmode="decimal" placeholder="0" '
+        + 'aria-label="第 ' + (i + 1) + ' 条约束的右端项 b' + (i + 1) + '" '
         + 'data-k="b" data-i="' + i + '" value="' + esc(fmtIn(k.rhs)) + '"></td>';
-      html += '<td><button type="button" class="delvar" data-i="' + i + '">&times;</button></td>';
+      html += '<td><button type="button" class="delvar" data-i="' + i + '" aria-label="删除第 ' + (i + 1) + ' 条约束">&times;</button></td>';
       html += '</tr>';
     }
     html += '</tbody>';

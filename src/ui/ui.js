@@ -313,7 +313,9 @@
     var xNames = names.slice(0, n);
     var cons = prob.constraints || [];
     var init = res.steps[0];
-    var pad = '       ';
+    /* 续行缩进必须正好等于 's.t.  ' 的宽度（6 个字符），否则第二行起的约束会错开半格。
+       .std-line 用等宽字体渲染，所以这里数空格就是数宽度。 */
+    var pad = '      ';
 
     /* ---- ① 原问题 ---- */
     var orig = ['<div class="std-line">' + prob.direction + ' z = ' + linExpr(prob.c, xNames) + '</div>'];

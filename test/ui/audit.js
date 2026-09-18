@@ -140,20 +140,41 @@ const AUDIT = `(function(){
     if(l1 < l2){ var t = l1; l1 = l2; l2 = t; }
     return Math.round(((l1+0.05)/(l2+0.05)) * 100) / 100;
   }
-  /* 向上找第一个不透明的背景色 */
+  /* 求「文字实际压着的合成底色」。
+     ★ 旧实现是「向上找第一个 alpha>0.9 的背景色」，不做任何合成 —— 页面
+     一旦出现半透明玻璃层，它就会跳过玻璃、拿更下面的实色去算，得出的数字
+     与眼睛看到的无关（本主题引入玻璃后，那一版就静默失效了）。
+     现在改成：从元素自身向上逐层记录，再从最底层往上做 alpha 合成。
+
+     已知局限：background-image（本页的极光渐变）不参与计算，因为
+     getComputedStyle 只给得到背景色。所以对「压在玻璃上的文字」，这里得到
+     的只是近似值，且偏乐观。权威校验是像素级实测：
+       node tools/visual/probe-color.js "<页面>" > r.json
+       python tools/visual/measure-contrast.py <截图.png> r.json
+     它直接从截图里取文字实际压着的像素颜色，不受这层局限影响。两个都要跑。 */
   function effBg(el){
-    var n = el;
+    var n = el, layers = [];
     while(n && n.nodeType === 1){
       var bc = getComputedStyle(n).backgroundColor;
       var c = rgb(bc);
       if(c){
-        var isRgba = /rgba/.test(bc);
-        var a = isRgba ? parseFloat(String(bc).split(',')[3]) : 1;
-        if(a > 0.9) return c;
+        var m = String(bc).match(/[\\d.]+/g) || [];
+        var a = m.length > 3 ? parseFloat(m[3]) : 1;
+        layers.push({ c: c, a: a });
+        if(a >= 1) break;
       }
       n = n.parentElement;
     }
-    return rgb(getComputedStyle(document.body).backgroundColor);
+    /* 栈底：html 的背景色（主题把基质色放在 html 上，body 是透明的） */
+    var base = rgb(getComputedStyle(document.documentElement).backgroundColor) || [255, 255, 255];
+    var out = base;
+    for(var i = layers.length - 1; i >= 0; i--){
+      var p = layers[i];
+      out = [p.c[0]*p.a + out[0]*(1-p.a),
+             p.c[1]*p.a + out[1]*(1-p.a),
+             p.c[2]*p.a + out[2]*(1-p.a)];
+    }
+    return out;
   }
 
   var out = {};

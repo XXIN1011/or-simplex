@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#131316" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f5f7fa" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d1016" media="(prefers-color-scheme: dark)">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -12,174 +12,250 @@
 <title>运筹学计算器</title>
 <meta name="apple-mobile-web-app-title" content="运筹学计算器">
 <style>
+/* =========================================================================
+   设计令牌（design tokens）
+   -------------------------------------------------------------------------
+   全部颜色 / 圆角 / 阴影 / 间距都先落到变量上，组件只引用变量。这样浅色与
+   深色是「同一套结构换一组值」，不会出现某条规则忘了跟着深色走的情况。
+
+   配色取向参考了 GitHub 上几套被广泛使用的中性色系统（shadcn/ui 的
+   background / card / muted / border 分层，GitHub Primer 的「中性底色 + 单一
+   强调色」用法）：大面积用中性灰蓝，强调色只出现在可操作元素与关键数字上，
+   颜色越少，层次反而越清楚。
+   ========================================================================= */
 :root{
-  /* --fg2 承担绝大部分次要文字（副标题、章节标题、说明）。浅色下要过 WCAG AA 的 4.5:1，
-     原来的 #71717a 在灰底 #f4f4f5 上只有 4.40，故整体压深一档。 */
-  --fg:#18181b; --fg2:#6b6b74; --fg3:#a1a1aa;
-  --line:#e4e4e7; --line2:#d4d4d8;
-  --bg:#f4f4f5; --card:#fff; --input:#fff; --soft:#f4f4f5;
-  --accent:#2563eb; --accent-soft:#eff6ff;
-  --leave-soft:#fff7ed; --pivot:#f59e0b; --pivot-soft:#fef3c7;
-  --ok:#15803d; --ok-soft:#f0fdf4;
-  --warn:#b45309; --warn-soft:#fffbeb;
-  --err:#b91c1c; --err-soft:#fef2f2;
-  --caret:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%23a1a1aa' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  color-scheme:light dark;
+
+  /* --fg2 承担绝大部分次要文字（副标题、章节标题、说明）。浅色下要过 WCAG AA
+     的 4.5:1 —— 它在白卡上是 5.5:1、在灰底 --soft 上仍有 5.2:1，留了余量。 */
+  --fg:#0f1623; --fg2:#55606f; --fg3:#8b95a5;
+  --line:#e5e8ee; --line2:#d1d7e1;
+  --bg:#f5f7fa; --card:#fff; --input:#fff; --soft:#f1f4f9; --zebra:#fafbfd;
+
+  --accent:#2563eb; --accent-hi:#5b8cf7; --accent-soft:#eef4ff; --accent-text:#1d4ed8;
+  --leave-soft:#fff5e9; --pivot:#f59e0b; --pivot-soft:#fef3c7;
+  --ok:#15803d; --ok-soft:#eefbf2;
+  --warn:#b45309; --warn-soft:#fff8ea;
+  --err:#c02626; --err-soft:#fef3f2;
+
+  /* 页面背景上那两团极淡的光晕：只负责氛围，不承载任何文字（对比度审查取的是
+     background-color，始终是纯色，所以不会被它稀释） */
+  --glow-1:rgba(37,99,235,.10);
+  --glow-2:rgba(245,158,11,.10);
+
+  --shadow-1:0 1px 2px rgba(15,22,35,.05), 0 1px 3px rgba(15,22,35,.04);
+  --shadow-2:0 6px 18px -6px rgba(15,22,35,.14), 0 2px 6px -2px rgba(15,22,35,.06);
+  --shadow-3:0 16px 40px -12px rgba(15,22,35,.26);
+  --focus:0 0 0 3px rgba(37,99,235,.20);
+
+  --r-sm:9px; --r:13px; --r-lg:16px; --r-xl:20px;
+
+  --mono:ui-monospace,"SF Mono","Cascadia Mono",Consolas,"Courier New",monospace;
+  --caret:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%238b95a5' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 
 /* ---------- 深色模式：颜色全部走变量，这里整体换一套 ---------- */
 @media (prefers-color-scheme: dark){
   :root{
-    --fg:#e8e8ea; --fg2:#a1a1a9; --fg3:#7c7c85;
-    --line:#2f2f36; --line2:#41414a;
-    --bg:#131316; --card:#1c1c20; --input:#232329; --soft:#26262c;
-    --accent:#6ea8fe; --accent-soft:#1c3252;
-    --leave-soft:#3a2a17; --pivot:#fbbf24; --pivot-soft:#463711;
-    --ok:#4ade80; --ok-soft:#123020;
-    --warn:#fbbf24; --warn-soft:#3a2d0e;
-    --err:#f87171; --err-soft:#3a1c1c;
-    --caret:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%237c7c85' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+    --fg:#e8ecf3; --fg2:#a4aec1; --fg3:#6e7a8d;
+    --line:#242c3a; --line2:#333d4e;
+    --bg:#0d1016; --card:#151a23; --input:#1c222d; --soft:#1b212c; --zebra:#181e28;
+
+    --accent:#7aa2ff; --accent-hi:#a3bdff; --accent-soft:#1b2740; --accent-text:#9ab8ff;
+    --leave-soft:#2e2416; --pivot:#fbbf24; --pivot-soft:#3d320f;
+    --ok:#4ade80; --ok-soft:#0f2a1c;
+    --warn:#fbbf24; --warn-soft:#2f2710;
+    --err:#f87171; --err-soft:#301a1a;
+
+    --glow-1:rgba(90,130,255,.13);
+    --glow-2:rgba(245,158,11,.06);
+
+    --shadow-1:0 1px 2px rgba(0,0,0,.5);
+    --shadow-2:0 8px 22px -8px rgba(0,0,0,.7);
+    --shadow-3:0 18px 44px -14px rgba(0,0,0,.8);
+    --focus:0 0 0 3px rgba(122,162,255,.28);
+
+    --caret:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%236e7a8d' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
   }
 }
+
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;scroll-padding-top:14px}
 body{
-  margin:0;background:var(--bg);color:var(--fg);
-  font-family:-apple-system,BlinkMacSystemFont,"HarmonyOS Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
-  font-size:15px;line-height:1.55;
+  margin:0;color:var(--fg);background-color:var(--bg);
+  /* 两团光晕只铺在顶部两侧，往下自然消失 —— 页面很长，中段仍是干净的底色 */
+  background-image:
+    radial-gradient(820px 380px at 6% -6%,var(--glow-1) 0%,rgba(0,0,0,0) 62%),
+    radial-gradient(680px 340px at 98% 0%,var(--glow-2) 0%,rgba(0,0,0,0) 58%);
+  background-repeat:no-repeat;background-attachment:fixed;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","HarmonyOS Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:15px;line-height:1.6;
   padding:0 0 env(safe-area-inset-bottom);
 }
-.wrap{max-width:760px;margin:0 auto;padding:20px 12px 60px}
+::selection{background:var(--accent-soft);color:var(--fg)}
+/* 键盘聚焦时才画焦点环：鼠标点击不画，手指点更不画 */
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+input:focus-visible,select:focus-visible{outline:none}
+
+/* 底部有固定的模块导航条，正文要给它让出位置，否则最后一屏会被压住 */
+.wrap{max-width:820px;margin:0 auto;padding:18px 14px calc(108px + env(safe-area-inset-bottom))}
 
 /* ---------- 头部 ---------- */
 header{margin:0 2px 16px}
-h1{margin:0;font-size:21px;font-weight:650;letter-spacing:-.01em}
-header p{margin:3px 0 0;font-size:12.5px;color:var(--fg2);letter-spacing:.02em}
+h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.25}
+header p{margin:4px 0 0;font-size:13px;color:var(--fg2);letter-spacing:.01em}
 
 /* ---------- 卡片 ---------- */
-.card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:12px}
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:15px;margin-bottom:12px;box-shadow:var(--shadow-1);
+}
 
 /* ---------- 符号说明（可折叠） ---------- */
-.help{background:var(--card);border-radius:12px;padding:0 14px;margin-bottom:12px}
+.help{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:0 15px;margin-bottom:12px;box-shadow:var(--shadow-1);
+}
 .help summary{
-  padding:13px 0;font-size:13.5px;font-weight:600;color:var(--fg2);
+  padding:14px 0;font-size:13.5px;font-weight:650;color:var(--fg);
   cursor:pointer;list-style:none;display:flex;align-items:center;
 }
 .help summary::-webkit-details-marker{display:none}
 .help summary::after{
-  content:'';width:7px;height:7px;margin-left:7px;
+  content:'';width:7px;height:7px;margin-left:8px;
   border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;
-  transform:rotate(45deg) translate(-2px,-2px);opacity:.45;transition:transform .15s;
+  transform:rotate(45deg) translate(-1px,-1px);opacity:.5;transition:transform .18s;
 }
-.help[open] summary::after{transform:rotate(-135deg) translate(-2px,-2px)}
+.help[open] summary::after{transform:rotate(-135deg) translate(-1px,-1px)}
+.help[open] summary{border-bottom:1px solid var(--soft)}
 .help ul{margin:0;padding:0 0 13px;list-style:none}
 .help li{
   display:flex;gap:10px;
   font-size:13px;color:var(--fg2);line-height:1.65;
-  padding:8px 0;border-top:1px solid var(--line);
+  padding:9px 0;border-top:1px solid var(--line);
 }
+.help li:first-child{border-top:0}
 .help li b{
   flex:none;width:82px;
   color:var(--fg);font-weight:650;font-variant-numeric:tabular-nums;
 }
 .help li .d{flex:1;min-width:0}
-.help .mono{font-variant-numeric:tabular-nums;color:var(--fg)}
+.help .mono{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--fg)}
 
 /* ---------- 分段控件 ---------- */
-.seg{display:inline-flex;background:var(--soft);border-radius:8px;padding:3px;margin-bottom:12px}
+.seg{
+  display:inline-flex;background:var(--soft);border:1px solid var(--line);
+  border-radius:var(--r);padding:3px;gap:2px;margin-bottom:12px;
+}
 .seg button{
   border:0;background:transparent;color:var(--fg2);
   font:inherit;font-size:14px;font-weight:600;
-  padding:6px 20px;border-radius:6px;cursor:pointer;transition:.12s;
+  padding:6px 20px;border-radius:10px;cursor:pointer;
+  transition:background .15s,color .15s,box-shadow .15s;
   /* max/min 是手机上最高频的开关，原来只有 34px 高，补到 44px 才好点 */
   min-height:44px;display:inline-flex;align-items:center;justify-content:center;
 }
-.seg button.on{background:var(--card);color:var(--accent);box-shadow:0 1px 2px rgba(0,0,0,.07)}
+.seg button.on{background:var(--card);color:var(--accent);box-shadow:var(--shadow-1);font-weight:700}
 
 /* ---------- 输入表 ---------- */
-.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -14px;padding:0 14px}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -15px;padding:0 15px}
 .scroll-hint{
-  font-size:11.5px;color:var(--fg2);text-align:center;
-  margin:-3px 0 8px;transition:opacity .2s;
+  font-size:12px;color:var(--fg2);text-align:center;
+  margin:-1px 0 8px;transition:opacity .2s;
 }
 .scroll-hint.hide{opacity:0}
 table{border-collapse:collapse;font-variant-numeric:tabular-nums}
 .inp th{
-  font-size:12px;font-weight:600;color:var(--fg2);
-  padding:0 3px 6px;text-align:center;white-space:nowrap;
+  font-size:12px;font-weight:650;color:var(--fg2);
+  padding:0 3px 7px;text-align:center;white-space:nowrap;
 }
 .inp th.var{color:var(--accent)}
 .inp th.rhs{color:var(--fg)}
-.inp td{padding:2px 3px;text-align:center;vertical-align:middle}
+.inp td{padding:3px;text-align:center;vertical-align:middle}
 .inp td.lbl{
   font-size:12.5px;color:var(--fg2);text-align:right;
-  padding-right:8px;white-space:nowrap;min-width:34px;font-weight:600;
+  padding-right:9px;white-space:nowrap;min-width:34px;font-weight:650;
 }
+/* 目标函数行单独压一层底色：一眼分得清「这是 z」和下面那些约束 */
+.inp tbody tr:first-child td{background:var(--soft)}
+.inp tbody tr:first-child td.lbl{color:var(--accent)}
+.inp tbody tr:first-child td:first-child{border-radius:var(--r-sm) 0 0 var(--r-sm)}
 input.num{
-  width:58px;padding:9px 2px;text-align:center;
-  border:1px solid var(--line2);border-radius:7px;
+  width:58px;height:44px;padding:0 2px;text-align:center;
+  border:1px solid var(--line2);border-radius:var(--r-sm);
   font:inherit;font-size:16px;color:var(--fg);background:var(--input);
   font-variant-numeric:tabular-nums;
+  transition:border-color .15s,box-shadow .15s,background .15s;
 }
-input.num:focus{outline:none;border-color:var(--accent);background:var(--accent-soft)}
+input.num:focus{
+  outline:none;border-color:var(--accent);background:var(--input);
+  box-shadow:var(--focus);
+}
 /* 没填的格子显示一个淡灰的 0：既看得出「不填就是 0」，又不会让人以为里面已经有内容 */
-input.num::placeholder{color:var(--fg3);opacity:.7}
+input.num::placeholder{color:var(--fg3);opacity:.75}
 select.rel{
   /* 原来 43px，比右边的系数格矮一点；补到 44px 后两者齐高，也好点中 */
-  width:58px;min-height:44px;padding:10px 4px 10px 2px;border:1px solid var(--line2);border-radius:7px;
+  width:58px;height:44px;padding:0 4px 0 2px;
+  border:1px solid var(--line2);border-radius:var(--r-sm);
   font:inherit;font-size:15px;color:var(--fg);background:var(--input);
   -webkit-appearance:none;appearance:none;text-align:center;text-align-last:center;
   background-image:var(--caret);
   background-repeat:no-repeat;background-position:right 5px center;
+  transition:border-color .15s,box-shadow .15s;
 }
-select.rel:focus{outline:none;border-color:var(--accent)}
+select.rel:focus{outline:none;border-color:var(--accent);box-shadow:var(--focus)}
 .delvar{
   border:0;background:transparent;color:var(--fg3);font-size:17px;
   /* 触摸目标补满 44×44：高度靠 min-height，宽度靠 min-width。
      这一列变宽会让表格宽 8px，但手机上本来就横向可滑，换来的是不会误删整行 */
   padding:13px 9px;min-width:44px;min-height:44px;cursor:pointer;line-height:1;
+  border-radius:var(--r-sm);transition:color .15s,background .15s;
 }
-.delvar:active{color:var(--err)}
+.delvar:active{color:var(--err);background:var(--err-soft)}
 
 /* ---------- 按钮 ---------- */
 .ctrls{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}
 .actions{display:flex;gap:9px;margin-top:13px}
 button.btn{
-  border:1px solid var(--line2);background:var(--input);color:var(--fg2);
-  font:inherit;font-size:13.5px;font-weight:500;
-  padding:8px 13px;border-radius:8px;cursor:pointer;transition:.12s;
+  border:1px solid var(--line2);background:var(--input);color:var(--fg);
+  font:inherit;font-size:13.5px;font-weight:600;
+  padding:8px 13px;border-radius:var(--r);cursor:pointer;
+  transition:background .15s,border-color .15s,transform .08s,box-shadow .15s;
   /* 「+ 变量」「+ 约束」等：原来 39px 高，补到 44px */
   min-height:44px;display:inline-flex;align-items:center;justify-content:center;
 }
-button.btn:active{background:var(--soft)}
-button.btn:disabled{opacity:.35;cursor:default}
+button.btn:active{background:var(--soft);transform:translateY(1px)}
+button.btn:disabled{opacity:.38;cursor:default}
 button.btn.primary{
-  flex:1;background:var(--accent);border-color:var(--accent);color:#fff;
-  font-size:15px;font-weight:600;padding:11px 13px;
+  flex:1;background-image:linear-gradient(180deg,var(--accent-hi),var(--accent));
+  background-color:var(--accent);border-color:transparent;color:#fff;
+  font-size:15px;font-weight:700;letter-spacing:.14em;padding:11px 13px;
+  box-shadow:0 8px 18px -10px var(--accent);
 }
-button.btn.primary:active{background:var(--accent);filter:brightness(.9)}
+button.btn.primary:active{filter:brightness(.94);transform:translateY(1px)}
 /* 输入表里的空状态提示 */
 .inp td.empty-tip{
   font-size:12px;color:var(--fg2);text-align:left;
   padding-left:8px;white-space:nowrap;
 }
-.verdict .muted{color:var(--fg3);font-size:14px;font-weight:400}
+.verdict .muted{color:var(--fg2);font-size:14px;font-weight:400}
 
 /* 对偶解（影子价格） */
 .dlist{
-  display:flex;flex-wrap:wrap;gap:5px 20px;
-  font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;
+  display:flex;flex-wrap:wrap;gap:6px 20px;
+  font-size:15px;font-weight:650;font-variant-numeric:tabular-nums;
 }
 .dlist .dv{color:var(--accent)}
 
 /* 灵敏度分析（系数允许变化范围） */
 .sens-h{
-  font-size:12.5px;font-weight:650;color:var(--fg);
-  margin:14px 0 4px;
+  font-size:12.5px;font-weight:700;color:var(--fg);
+  margin:15px 0 5px;letter-spacing:.01em;
 }
 .sens-h:first-of-type{margin-top:2px}
 table.sens{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
 table.sens td{
-  padding:5px 0;font-size:13px;vertical-align:baseline;
+  padding:6px 0;font-size:13px;vertical-align:baseline;
   border-bottom:1px solid var(--line);
 }
 table.sens tr:last-child td{border-bottom:0}
@@ -187,40 +263,44 @@ table.sens td.nm{color:var(--fg2);white-space:nowrap;padding-right:10px}
 table.sens td.cur{color:var(--fg2);text-align:right;white-space:nowrap;padding-right:10px}
 table.sens td.rng{color:var(--fg2);white-space:nowrap}
 /* 区间的端点值用强调色标出来，一眼能看出「卡在哪」 */
-table.sens td.rng b{color:var(--accent);font-weight:650}
+table.sens td.rng b{color:var(--accent-text);font-weight:700}
 table.sens td.rng .free{color:var(--fg3)}
 table.sens td.eff{color:var(--fg2);text-align:right;white-space:nowrap;padding-left:10px}
-.sens-note{font-size:12px;color:var(--fg2);line-height:1.65;margin-top:8px}
+.sens-note{font-size:12px;color:var(--fg2);line-height:1.7;margin-top:8px}
 .sens-warn{
-  font-size:12px;color:var(--warn);line-height:1.65;
-  margin-top:10px;padding-top:10px;border-top:1px solid var(--soft);
+  font-size:12px;color:var(--warn);line-height:1.7;
+  margin-top:10px;padding:9px 11px;border-radius:var(--r-sm);
+  background:var(--warn-soft);
 }
 .btag{
   display:inline-block;margin-left:5px;
-  font-size:10.5px;font-weight:600;padding:1px 5px;border-radius:5px;
-  background:var(--soft);color:var(--fg3);
+  font-size:12px;font-weight:600;padding:1px 6px;border-radius:6px;
+  background:var(--soft);color:var(--fg2);
 }
-.btag.on{background:var(--accent-soft);color:var(--accent)}
+.btag.on{background:var(--accent-soft);color:var(--accent-text)}
 
 /* ---------- 标准化卡片 ---------- */
 .std-h{
-  font-size:12px;font-weight:650;color:var(--fg2);
-  letter-spacing:.02em;margin-bottom:6px;
+  font-size:12px;font-weight:700;color:var(--accent-text);
+  letter-spacing:.06em;margin-bottom:6px;
 }
+/* 表达式一律用等宽字体：源码里靠空格对齐「s.t.」和后续项，
+   换成等宽后这些空格才真的对得上（原来用比例字体，怎么调都是歪的） */
 .std-line{
-  font-size:12.5px;line-height:1.8;color:var(--fg);
+  font-family:var(--mono);font-size:12.5px;line-height:1.95;color:var(--fg);
   font-variant-numeric:tabular-nums;
   white-space:pre-wrap;word-break:break-word;
 }
 .std-arrow{
-  font-size:11.5px;color:var(--fg2);
-  margin:9px 0;padding-top:9px;border-top:1px solid var(--soft);
+  font-size:12px;color:var(--fg2);
+  margin:11px 0;padding-top:11px;border-top:1px dashed var(--line2);
 }
 .std-note{
-  margin-top:11px;padding-top:10px;border-top:1px solid var(--soft);
-  font-size:12px;color:var(--fg2);line-height:1.7;
+  margin-top:12px;padding:11px 13px;border-radius:var(--r-sm);
+  background:var(--soft);
+  font-size:12px;color:var(--fg2);line-height:1.75;
 }
-.std-note b{color:var(--fg);font-weight:650}
+.std-note b{color:var(--fg);font-weight:700}
 
 /* ---------- 图解法 ---------- */
 .graph{margin:2px 0 10px}
@@ -234,203 +314,265 @@ table.sens td.eff{color:var(--fg2);text-align:right;white-space:nowrap;padding-l
 .graph .g-contour-hi{opacity:1;stroke-width:1.4}
 .graph .g-opt{fill:var(--pivot)}
 .graph text{font-size:12px;fill:var(--fg2)}
-.graph .g-lbl{font-size:13.5px;fill:var(--fg2);font-weight:600}
-.graph .g-optlbl{font-size:12.5px;fill:var(--pivot);font-weight:600}
+.graph .g-lbl{font-size:13.5px;fill:var(--fg2);font-weight:650}
+.graph .g-optlbl{font-size:12.5px;fill:var(--pivot);font-weight:650}
 /* 整数规划：可行域里的整数格点（灰色），以及最优整数解（绿色，与松弛解区分开） */
 .graph .g-int{fill:var(--fg2);fill-opacity:.5}
-.graph .g-ipopt{fill:#16a34a;stroke:#fff;stroke-width:1.5}
-.graph .g-ipoptlbl{font-size:12.5px;fill:#16a34a;font-weight:650}
+.graph .g-ipopt{fill:#16a34a;stroke:var(--card);stroke-width:1.5}
+.graph .g-ipoptlbl{font-size:12.5px;fill:#16a34a;font-weight:700}
+@media (prefers-color-scheme: dark){
+  .graph .g-ipopt{fill:#4ade80}
+  .graph .g-ipoptlbl{fill:#4ade80}
+}
 
 /* ---------- 结果 ---------- */
 #result{display:none}
 #result.show{display:block}
 #result.stale{opacity:.38;transition:opacity .15s}
+/* 章节标题：左侧一小段强调色竖条 + 加粗字，比单纯换个字号更容易扫读 */
 h2.sec{
-  font-size:13px;font-weight:600;color:var(--fg2);
-  margin:22px 2px 9px;letter-spacing:.03em;
+  display:flex;align-items:center;gap:8px;
+  font-size:13px;font-weight:700;color:var(--fg);
+  margin:26px 2px 10px;letter-spacing:.04em;
+}
+h2.sec::before{
+  content:'';flex:none;width:3px;height:14px;border-radius:2px;
+  background-image:linear-gradient(180deg,var(--accent-hi),var(--accent));
 }
 h2.sec:first-child{margin-top:14px}
 
 .iter-head{
   display:flex;align-items:center;justify-content:space-between;
-  margin:-2px 0 10px;
+  margin:-2px 0 11px;
 }
-.iter-head .name{font-size:13.5px;font-weight:650;color:var(--fg)}
+.iter-head .name{font-size:14px;font-weight:700;color:var(--fg)}
 .iter-head .tag{
-  font-size:11.5px;color:var(--accent);background:var(--accent-soft);
-  padding:2px 8px;border-radius:20px;font-weight:600;
+  font-size:12px;color:var(--accent-text);background:var(--accent-soft);
+  padding:3px 10px;border-radius:999px;font-weight:650;
 }
 .iter-head .tag.done{color:var(--ok);background:var(--ok-soft)}
 .iter-head .tag.stop{color:var(--warn);background:var(--warn-soft)}
 
 table.tb{width:100%;font-size:13px;font-variant-numeric:tabular-nums}
 table.tb th,table.tb td{
-  padding:6px 5px;text-align:center;white-space:nowrap;
+  padding:7px 5px;text-align:center;white-space:nowrap;
   border-bottom:1px solid var(--soft);
 }
 table.tb th{
-  font-size:11.5px;font-weight:600;color:var(--fg2);
-  border-bottom:1px solid var(--line);padding-bottom:5px;
+  font-size:12px;font-weight:650;color:var(--fg2);
+  background:var(--soft);
+  border-bottom:1px solid var(--line);padding-bottom:6px;
 }
+table.tb th:first-child{border-radius:var(--r-sm) 0 0 0}
+table.tb th:last-child{border-radius:0 var(--r-sm) 0 0}
+table.tb tbody tr:nth-child(even) td{background:var(--zebra)}
+table.tb tbody tr:nth-child(even) td.bcol{background:var(--zebra)}
 table.tb th.bcol,table.tb td.bcol{
-  border-left:1px solid var(--line);color:var(--fg);font-weight:600;
+  border-left:1px solid var(--line);color:var(--fg);font-weight:650;
 }
 table.tb td.rowlbl{font-weight:650;color:var(--fg);font-size:12.5px}
-table.tb td.rowlbl.base{color:var(--accent)}
+table.tb td.rowlbl.base{color:var(--accent-text)}
 table.tb tr.objrow td{
   border-top:1.5px solid var(--line2);border-bottom:0;
-  color:var(--fg2);padding-top:7px;
+  color:var(--fg2);padding-top:8px;background:transparent;
 }
 table.tb tr.objrow td.rowlbl{color:var(--fg2)}
 table.tb .cell.enter{background:var(--accent-soft)}
 table.tb .cell.leave{background:var(--leave-soft)}
 table.tb .cell.pivot{
   background:var(--pivot-soft);font-weight:700;
-  box-shadow:inset 0 0 0 1.5px var(--pivot);border-radius:4px;
+  box-shadow:inset 0 0 0 1.5px var(--pivot);border-radius:var(--r-sm);
 }
-table.tb th.enter{color:var(--accent)}
-table.tb th.leave{color:var(--warn)}
+table.tb th.enter{color:var(--accent-text);background:var(--accent-soft)}
+table.tb th.leave{color:var(--warn);background:var(--leave-soft)}
 
 .explain{
-  margin-top:11px;padding-top:11px;border-top:1px solid var(--soft);
-  font-size:13px;color:var(--fg2);line-height:1.65;
+  margin-top:12px;padding-top:12px;border-top:1px solid var(--soft);
+  font-size:13px;color:var(--fg2);line-height:1.75;
 }
-.explain b{color:var(--fg);font-weight:600}
-.explain .k{color:var(--accent);font-weight:650}
-.explain .w{color:var(--warn);font-weight:650}
-.explain .r{color:var(--err);font-weight:650}
-.explain .g{color:var(--ok);font-weight:650}
+.explain b{color:var(--fg);font-weight:650}
+.explain .k{color:var(--accent-text);font-weight:700}
+.explain .w{color:var(--warn);font-weight:700}
+.explain .r{color:var(--err);font-weight:700}
+.explain .g{color:var(--ok);font-weight:700}
 .explain .row{display:block}
 
 /* ---------- 结论 ---------- */
 /* 结论块下方必须留出与 .card 一致的外边距：它和对偶解块背景同为 --card，
-   不留缝的话两块白底会贴成一整块，看不出是两张卡片。 */
-.verdict{border-radius:12px;padding:16px;background:var(--card);margin-bottom:12px}
-.verdict .vtitle{font-size:13px;font-weight:650;margin-bottom:10px}
+   不留缝的话两块白底会贴成一整块，看不出是两张卡片。
+   左侧那道 4px 色条按结论类型变色（绿=最优 / 红=无解 / 琥珀=无界），
+   不用读文字也能先看出结果好坏。 */
+.verdict{
+  position:relative;border-radius:var(--r-lg);padding:16px 16px 16px 18px;
+  background-color:var(--card);border:1px solid var(--line);
+  border-left:4px solid var(--fg3);
+  box-shadow:var(--shadow-1);margin-bottom:12px;
+}
+.verdict .vtitle{font-size:13px;font-weight:700;margin-bottom:10px}
+.verdict.opt{border-left-color:var(--ok);background-image:linear-gradient(180deg,var(--ok-soft) 0%,rgba(0,0,0,0) 46%)}
 .verdict.opt .vtitle{color:var(--ok)}
+.verdict.no{border-left-color:var(--err);background-image:linear-gradient(180deg,var(--err-soft) 0%,rgba(0,0,0,0) 46%)}
 .verdict.no .vtitle{color:var(--err)}
+.verdict.unb{border-left-color:var(--warn);background-image:linear-gradient(180deg,var(--warn-soft) 0%,rgba(0,0,0,0) 46%)}
 .verdict.unb .vtitle{color:var(--warn)}
-.sol{font-size:17px;font-weight:650;font-variant-numeric:tabular-nums;line-height:1.9}
-.sol .v{color:var(--accent)}
+.sol{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.85}
+.sol .v{color:var(--accent-text)}
 .sol .zv{color:var(--ok)}
 .vsum{
   margin-top:11px;padding-top:11px;border-top:1px solid var(--soft);
-  font-size:13px;color:var(--fg2);line-height:1.7;
+  font-size:13px;color:var(--fg2);line-height:1.75;
 }
 .banner{
-  margin-bottom:12px;padding:11px 13px;border-radius:10px;
-  font-size:13px;line-height:1.6;background:var(--card);color:var(--fg2);
+  margin-bottom:12px;padding:11px 14px;border-radius:var(--r);
+  font-size:13px;line-height:1.65;background:var(--card);color:var(--fg2);
+  border:1px solid var(--line);box-shadow:var(--shadow-1);
 }
-.banner.err{background:var(--err-soft);color:var(--err)}
-.banner b{color:inherit;font-weight:650}
+.banner.err{background-color:var(--err-soft);color:var(--err);border-color:transparent;box-shadow:none}
+.banner b{color:inherit;font-weight:700}
 .banner .nb{white-space:nowrap}
 
 /* ---------- 模块页面与首页 ---------- */
 .mod{display:none}
 .mod.on{display:block}
 a.back{
-  display:inline-flex;align-items:center;
-  min-height:44px;margin-bottom:4px;padding:0 2px;
-  font-size:13px;font-weight:600;color:var(--accent);text-decoration:none;
+  display:inline-flex;align-items:center;gap:2px;
+  min-height:44px;margin-bottom:2px;padding:0 2px;
+  font-size:13px;font-weight:650;color:var(--accent-text);text-decoration:none;
 }
 a.back:active{opacity:.6}
 
 /* 首页头部做成一块「品牌区」：图标 + 标题 + 一句话定位 + 特性标签。
    渐变只铺在左上角、右下角收到全透明，于是正文始终落在纯 --card 上 —— 副标题按
-   --fg2 对 --card 算对比度（浅色 5.3:1、深色 6.6:1），不会被渐变稀释掉。
+   --fg2 对 --card 算对比度（浅色 5.5:1、深色 7.7:1），不会被渐变稀释掉。
    只作用于 .hero，其它模块的 header 保持原样。 */
 .hero{
+  position:relative;overflow:hidden;
   background-color:var(--card);
-  background-image:linear-gradient(135deg,var(--accent-soft) 0%,rgba(0,0,0,0) 58%);
-  border-radius:12px;padding:18px;margin:0 0 12px;
+  background-image:
+    radial-gradient(320px 200px at 0% 0%,var(--accent-soft) 0%,rgba(0,0,0,0) 70%),
+    linear-gradient(135deg,var(--accent-soft) 0%,rgba(0,0,0,0) 58%);
+  border:1px solid var(--line);border-radius:var(--r-xl);
+  padding:20px;margin:0 0 12px;box-shadow:var(--shadow-1);
 }
-.hero .mark{display:block;margin-bottom:11px}
-.hero .mark svg{display:block;width:44px;height:44px}
-.hero h1{font-size:22px}
-.hero .feats{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0;padding:0;list-style:none}
+/* 右上角一层极淡的点阵，给纯色卡片一点质感；不承载文字，纯装饰 */
+.hero::after{
+  content:'';position:absolute;inset:0;pointer-events:none;opacity:.5;
+  background-image:radial-gradient(currentColor 1px,rgba(0,0,0,0) 1px);
+  background-size:14px 14px;
+  color:var(--line2);
+  -webkit-mask-image:linear-gradient(120deg,rgba(0,0,0,0) 42%,#000 100%);
+  mask-image:linear-gradient(120deg,rgba(0,0,0,0) 42%,#000 100%);
+}
+.hero>*{position:relative;z-index:1}
+.hero .mark{display:block;margin-bottom:12px}
+.hero .mark svg{display:block;width:48px;height:48px;border-radius:14px;box-shadow:0 8px 20px -10px rgba(37,99,235,.75)}
+.hero h1{font-size:23px}
+.hero .feats{display:flex;flex-wrap:wrap;gap:6px;margin:13px 0 0;padding:0;list-style:none}
 .hero .feats li{
   /* 12px 是审查脚本的「过小字号」下限，别再往下调 */
   font-size:12px;color:var(--fg2);background:var(--soft);
-  border-radius:999px;padding:3px 9px;
+  border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-weight:600;
 }
 
 /* 首页模块卡：图标 + 标题 + 说明 + 圆形箭头。
    图标底色与强调色按模块区分（蓝 / 琥珀 / 绿），全部取自 :root 里已有的变量，
    这样浅色、深色两套配色自动跟着走，不用再写一份深色规则。 */
 a.modcard{
-  display:flex;align-items:flex-start;gap:12px;
-  text-decoration:none;
-  background:var(--card);border-radius:12px;padding:15px 16px;margin-bottom:11px;
-  box-shadow:0 1px 2px rgba(0,0,0,.05);
-  transition:box-shadow .14s,background .14s,transform .14s;
+  display:flex;align-items:flex-start;gap:13px;
+  text-decoration:none;position:relative;overflow:hidden;
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:16px;margin-bottom:11px;
+  box-shadow:var(--shadow-1);
+  transition:box-shadow .16s,border-color .16s,transform .16s;
+}
+a.modcard::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  background-image:linear-gradient(180deg,var(--mi),rgba(0,0,0,0));
+  opacity:0;transition:opacity .16s;
 }
 a.modcard:active{background:var(--soft)}
 /* 悬停效果只在真有指针的设备上给：手机上 :hover 会「粘」在最后点过的那张卡上 */
 @media (hover:hover){
-  a.modcard:hover{box-shadow:0 5px 16px rgba(0,0,0,.08);transform:translateY(-1px)}
-  a.modcard:hover .go{background:var(--accent);color:#fff}
+  a.modcard:hover{box-shadow:var(--shadow-2);transform:translateY(-2px);border-color:var(--line2)}
+  a.modcard:hover::before{opacity:1}
+  a.modcard:hover .go{background:var(--mi);color:#fff;transform:translateX(2px)}
+  a.modcard:hover .mi{transform:scale(1.06)}
 }
 a.modcard .mi{
-  flex:none;width:40px;height:40px;border-radius:11px;
+  flex:none;width:44px;height:44px;border-radius:14px;
   display:flex;align-items:center;justify-content:center;
   background:var(--mi-bg);color:var(--mi);
+  transition:transform .16s;
 }
-a.modcard .mi svg{display:block;width:22px;height:22px}
+a.modcard .mi svg{display:block;width:23px;height:23px}
 a.modcard.m-simplex{--mi:var(--accent);--mi-bg:var(--accent-soft)}
 a.modcard.m-sens{--mi:var(--warn);--mi-bg:var(--warn-soft)}
 a.modcard.m-ip{--mi:var(--ok);--mi-bg:var(--ok-soft)}
 a.modcard .mb{display:block;flex:1;min-width:0}
 a.modcard .mt{
   display:flex;align-items:center;justify-content:space-between;gap:10px;
-  font-size:16.5px;font-weight:650;color:var(--fg);
+  font-size:17px;font-weight:700;color:var(--fg);letter-spacing:-.01em;
 }
 a.modcard .go{
   flex:none;display:inline-flex;align-items:center;justify-content:center;
-  width:26px;height:26px;border-radius:50%;
+  width:28px;height:28px;border-radius:50%;
   background:var(--accent-soft);color:var(--accent);
-  transition:background .14s,color .14s;
+  transition:background .16s,color .16s,transform .16s;
 }
-a.modcard .go svg{display:block;width:13px;height:13px}
-a.modcard .md{display:block;margin-top:5px;font-size:12.5px;color:var(--fg2);line-height:1.65}
+a.modcard .go svg{display:block;width:14px;height:14px}
+a.modcard .md{display:block;margin-top:6px;font-size:12.5px;color:var(--fg2);line-height:1.7}
 
 /* 首页底部提示：手机上「添加到桌面」才是主要入口，值得占一行 */
 .foottip{
-  display:flex;align-items:flex-start;gap:9px;
-  margin:16px 2px 0;padding-top:15px;border-top:1px solid var(--line);
-  font-size:12.5px;color:var(--fg2);line-height:1.7;
+  display:flex;align-items:flex-start;gap:10px;
+  margin:18px 2px 0;padding-top:16px;border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--fg2);line-height:1.75;
 }
 .foottip svg{flex:none;width:17px;height:17px;margin-top:2px;color:var(--fg3)}
+.repolink{
+  display:inline-flex;align-items:center;gap:8px;
+  min-height:44px;margin-top:6px;padding:0 4px;
+  font-size:12.5px;font-weight:600;color:var(--accent-text);text-decoration:none;
+}
+.repolink svg{width:16px;height:16px}
+.repolink:active{opacity:.6}
 
 /* ---------- 灵敏度分析模块 ---------- */
 /* 一共 6 个场景，两列排开比自动换行整齐（小屏上也不会挤成一团） */
 .scen-tabs{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:12px}
 .scen-tabs button{
   border:1px solid var(--line2);background:var(--input);color:var(--fg2);
-  font:inherit;font-size:13px;font-weight:500;
-  padding:8px 11px;border-radius:8px;cursor:pointer;transition:.12s;
+  font:inherit;font-size:13px;font-weight:600;
+  padding:8px 11px;border-radius:var(--r);cursor:pointer;
+  transition:background .15s,border-color .15s,color .15s,transform .08s;
   min-height:44px;display:inline-flex;align-items:center;justify-content:center;
   text-align:center;
 }
-.scen-tabs button:active{background:var(--soft)}
-.scen-tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.scen-tabs button:active{background:var(--soft);transform:translateY(1px)}
+.scen-tabs button.on{
+  background-color:var(--accent);
+  background-image:linear-gradient(180deg,var(--accent-hi),var(--accent));
+  border-color:transparent;color:#fff;font-weight:700;
+  box-shadow:0 8px 16px -10px var(--accent);
+}
 /* 教材式判断那一段推导 */
 .judge{
-  margin-top:9px;padding:11px 13px;border-radius:9px;
-  background:var(--soft);
+  margin-top:9px;padding:12px 14px;border-radius:var(--r);
+  background:var(--soft);border-left:3px solid var(--line2);
   font-size:13px;color:var(--fg2);line-height:1.85;
   font-variant-numeric:tabular-nums;word-break:break-word;
 }
 .judge .row{display:block}
 /* 教材把「系数变化」按非基变量 / 基变量拆成两小节，块标题单独强调一下 */
 .judge .row.blk{
-  margin-top:9px;font-size:12px;font-weight:650;color:var(--fg);
-  letter-spacing:.02em;
+  margin-top:10px;font-size:12px;font-weight:700;color:var(--fg);
+  letter-spacing:.04em;
 }
 .judge .row.blk:first-child{margin-top:0}
-.judge b{color:var(--fg);font-weight:650}
+.judge b{color:var(--fg);font-weight:700}
 table.sens th{
   /* 表头是会被读的内容，必须过 WCAG AA 的 4.5:1 —— 所以用 --fg2 而不是更淡的 --fg3 */
-  padding:0 0 6px;font-size:11.5px;font-weight:600;color:var(--fg2);
+  padding:0 0 7px;font-size:12px;font-weight:650;color:var(--fg2);
   text-align:left;white-space:nowrap;border-bottom:1px solid var(--line);
 }
 .nowrap{white-space:nowrap}
@@ -439,19 +581,19 @@ table.sens th{
 /* 加减按钮中间那个当前值，固定宽度免得数字一变整行就跳 */
 .fv{
   display:inline-block;min-width:28px;text-align:center;
-  font-size:14.5px;font-weight:650;color:var(--fg);
+  font-size:14.5px;font-weight:700;color:var(--fg);
   font-variant-numeric:tabular-nums;
 }
 .btn.sm{min-width:44px;min-height:44px;padding:0 12px;font-size:16px;line-height:1}
-.seg.sm button{min-height:44px;padding:0 11px;font-size:12.5px}
+.seg.sm button{min-height:44px;padding:0 12px;font-size:12.5px}
 /* 动态规划的输入表：第一列是行首（节点名/项目序号），列头是各种取值 */
 table.inp.dm th{
-  font-size:11.5px;font-weight:600;color:var(--fg2);
+  font-size:12px;font-weight:650;color:var(--fg2);
   text-align:center;padding:0 3px 7px;white-space:nowrap;
 }
 table.inp.dm th.rowh{text-align:right;padding-right:9px;color:var(--fg2)}
 /* 递推表：状态列次要一点，让 f 与 u* 更醒目 */
-table.sens.dpt td{padding:6px 9px 6px 0;vertical-align:top}
+table.sens.dpt td{padding:7px 9px 7px 0;vertical-align:top}
 table.sens.dpt td:first-child{color:var(--fg2)}
 .muted{color:var(--fg2)}
 
@@ -462,7 +604,7 @@ table.sens.dpt td:first-child{color:var(--fg2)}
   padding-top:10px;border-top:1px solid var(--soft);
 }
 .pick{
-  display:inline-flex;align-items:center;gap:7px;
+  display:inline-flex;align-items:center;gap:8px;
   font-size:13px;color:var(--fg);cursor:pointer;min-height:44px;
 }
 .pick input{width:19px;height:19px;accent-color:var(--accent)}
@@ -479,21 +621,25 @@ table.sens.en td.nm{color:var(--fg2);font-variant-numeric:tabular-nums}
 .meth-h{
   list-style:none;cursor:pointer;
   display:flex;align-items:center;flex-wrap:wrap;gap:5px 10px;
-  min-height:52px;padding:10px 14px;border-radius:12px;
-  background:var(--card);
-  border-left:4px solid var(--accent);
-  box-shadow:0 1px 3px rgba(0,0,0,.06);
-  transition:background .12s;
+  min-height:54px;padding:10px 14px;border-radius:var(--r-lg);
+  background-color:var(--card);
+  background-image:linear-gradient(90deg,var(--accent-soft) 0%,rgba(0,0,0,0) 42%);
+  border:1px solid var(--line);border-left:4px solid var(--accent);
+  box-shadow:var(--shadow-1);
+  transition:box-shadow .15s;
 }
 .meth-h::-webkit-details-marker{display:none}
-.meth-h:active{background:var(--soft)}
-.meth[open]>.meth-h{border-radius:12px 12px 0 0;box-shadow:none}
+.meth-h:active{background-color:var(--soft)}
+.meth[open]>.meth-h{border-radius:var(--r-lg) var(--r-lg) 0 0;box-shadow:none;
+  border-bottom-color:transparent}
 .meth-i{
   flex:0 0 auto;line-height:1;
   display:inline-flex;align-items:center;justify-content:center;
-  width:23px;height:23px;border-radius:50%;
-  background:var(--accent);color:#fff;
+  width:24px;height:24px;border-radius:50%;
+  background-image:linear-gradient(180deg,var(--accent-hi),var(--accent));
+  background-color:var(--accent);color:#fff;
   font-size:13px;font-weight:700;
+  box-shadow:0 6px 14px -8px var(--accent);
 }
 .meth-n{
   flex:1 1 auto;min-width:0;
@@ -502,23 +648,293 @@ table.sens.en td.nm{color:var(--fg2);font-variant-numeric:tabular-nums}
 }
 .meth-c{
   flex:0 1 auto;min-width:0;
-  font-size:12px;font-weight:600;color:var(--accent);
+  font-size:12px;font-weight:650;color:var(--accent-text);
   background:var(--accent-soft);
-  padding:3px 9px;border-radius:999px;
+  padding:3px 10px;border-radius:999px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .meth-x{
   flex:0 0 auto;width:9px;height:9px;margin-left:2px;
   border-right:2px solid var(--fg2);border-bottom:2px solid var(--fg2);
-  transform:rotate(45deg);transition:transform .16s;
+  transform:rotate(45deg);transition:transform .18s;
 }
 .meth[open]>.meth-h .meth-x{transform:rotate(-135deg)}
-.meth-body{margin-top:9px}
+.meth-body{
+  margin-top:0;padding:14px;border:1px solid var(--line);border-top:0;
+  border-radius:0 0 var(--r-lg) var(--r-lg);background:var(--card);
+  box-shadow:var(--shadow-1);
+}
 /* 场景参数输入行 */
 .fh{display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-bottom:8px}
-.fl{font-size:12.5px;color:var(--fg2);min-width:82px;font-weight:600}
+.fl{font-size:12.5px;color:var(--fg2);min-width:82px;font-weight:650}
 .fe,.fx{font-size:13px;color:var(--fg2)}
 input.num.sm{width:52px}
+
+/* ---------- 底部模块导航（像原生 App 的标签栏） ---------- */
+.tabbar{
+  position:fixed;left:50%;transform:translateX(-50%);
+  bottom:calc(10px + env(safe-area-inset-bottom));z-index:40;
+  display:flex;gap:2px;padding:5px;
+  background:var(--card);border:1px solid var(--line);border-radius:19px;
+  box-shadow:var(--shadow-3);
+}
+.tabbar a{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  min-width:72px;min-height:50px;padding:0 6px;
+  border-radius:15px;text-decoration:none;color:var(--fg2);
+  font-size:12px;font-weight:600;letter-spacing:.01em;
+  transition:background .15s,color .15s;
+}
+.tabbar a svg{display:block;width:19px;height:19px}
+.tabbar a:active{background:var(--soft)}
+.tabbar a.on{background:var(--accent-soft);color:var(--accent-text);font-weight:700}
+
+/* ===================================================================
+   视觉体系：极光底 + 玻璃材质
+   -------------------------------------------------------------------
+   设计立场（跟 Apple 学的那一条）：玻璃只用在「浮在内容之上的层」
+   —— 品牌区、模块卡、按钮、结论徽章、底部标签栏；正文（表格、迭代
+   步骤、公式）保持近不透明。数字必须在任何底色下都看得清。
+
+   落地前先在样张里做完了量测（变体样张与对比图是消耗品，已丢弃；
+   留下的量测工具在 tools/visual/，可随时复跑），三个关键结论都写进了下面的注释：
+     1) 极光必须放在 html 上、body 透明 —— 否则被 body 背景盖住，白做；
+     2) 承载正文的面合成后有效 alpha 要 >= .9，对比度检查才有意义；
+     3) 深色下玻璃底要压暗，浅色配方在深底上会合成出中灰、蓝字只剩 1.9:1。
+
+   为什么不做「真折射」（canvas 位移图 + SVG feDisplacementMap，
+   GitHub 上那些 iOS 26 复刻项目的做法）：实现了也量了，结论是不值得。
+   折射要有高频背景才看得见，而本页背后只有一层渐变；把强度调到勉强可见
+   （scale≈10）时，位移量 10px 与斜纹周期 9px 同量级，周期性纹理互相挤压
+   出摩尔纹，正常尺寸下比不折射更不精致。复现方式见 tools/visual/ 的 A/B 流程。
+   =================================================================== */
+
+:root{
+  /* 玻璃配方：低不透明填充 + 背景模糊 + 背景提饱和 + 内高光 + 亮倒角边。
+     填充厚度按「最坏情况」定，不是按某一帧量到的值 —— 极光是会漂移的动画，
+     同一处文字背后的颜色会随时间变艳，必须保证任何时刻都过 4.5:1。 */
+  --gl-fill:rgba(255,255,255,.62);
+  --gl-fill-2:rgba(255,255,255,.78);
+  --gl-line:rgba(255,255,255,.72);
+  --gl-sheen:rgba(255,255,255,.82);
+  --gl-shadow:0 22px 50px -20px rgba(15,22,35,.34),0 3px 10px -4px rgba(15,22,35,.12);
+
+  /* 极光四色。不透明度是量出来的：低于 .34 玻璃白得像普通卡片，
+     高于 .62 时压在玻璃上的次要文字（--fg2）在最坏位置上会掉破 4.5:1。 */
+  --au-1:rgba(37,110,235,.58);
+  --au-2:rgba(147,88,255,.48);
+  --au-3:rgba(10,168,150,.38);
+  --au-4:rgba(250,150,40,.42);
+
+  /* 承载正文的四个面：合成后有效 alpha 仍 >= .9。
+     低于这个值 audit.js 的对比度检查就失去意义（它只认「alpha>0.9 的第一个
+     祖先」，不做逐层合成）—— 这里刻意保留 .90，让那个检查继续有效。 */
+  --card:rgba(255,255,255,.90);
+  --input:rgba(255,255,255,.92);
+  --soft:rgba(241,244,249,.88);
+  --zebra:rgba(250,251,253,.90);
+}
+
+/* ---------------- 底色 ----------------
+   绘制顺序是这里唯一容易踩的坑：z-index:-1 的伪元素属于「负 z 层」，
+   而 body 自身的 background 属于「常规流背景」，绘制顺序在后。
+   所以只要 body 还带实色背景，它就会把极光整个盖住 —— 实测过：极光写得
+   再艳，量出来仍是 #f4f4f8 一片灰。因此基质色上移到 html，body 透明。 */
+html{background-color:var(--bg)}
+body{background-image:none;background-color:transparent}
+body::before{
+  content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background-image:
+    radial-gradient(70% 30% at 18% 3%,var(--au-1),transparent 70%),
+    radial-gradient(62% 28% at 88% 10%,var(--au-2),transparent 68%),
+    radial-gradient(66% 28% at 4% 34%,var(--au-3),transparent 70%),
+    radial-gradient(64% 28% at 96% 48%,var(--au-2),transparent 68%),
+    radial-gradient(68% 30% at 10% 72%,var(--au-4),transparent 70%),
+    radial-gradient(66% 28% at 90% 88%,var(--au-1),transparent 68%),
+    radial-gradient(72% 30% at 40% 108%,var(--au-3),transparent 70%);
+  /* 缓慢漂移。注意：动画只加在 transform 上（合成层），不动 background ——
+     动背景会让每个 backdrop-filter 元素每帧重算模糊。 */
+  animation:auDrift 52s ease-in-out infinite alternate;
+  will-change:transform;
+}
+@keyframes auDrift{
+  from{transform:translate3d(0,0,0) scale(1)}
+  to{transform:translate3d(-2.8%,2.4%,0) scale(1.08)}
+}
+/* 斜纹织构：给纯渐变加一点材质感，只铺顶部、往下淡出，正文区域保持干净。
+   位置固定（inset:0 正好等于视口），所以玻璃背后的画面在滚动时不变 ——
+   浏览器可以缓存 backdrop-filter 的结果，滚动不掉帧。
+   （若改成随页面滚动，顶上那几块玻璃会在每次滚动时重算模糊 —— 这是
+   backdrop-filter 最贵的用法，Vitepress 实测吸顶栏加毛玻璃掉帧约 30%。） */
+body::after{
+  content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.5;
+  background-image:repeating-linear-gradient(58deg,
+    rgba(15,22,35,.085) 0 1px,rgba(0,0,0,0) 1px 9px);
+  -webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 34%,rgba(0,0,0,0) 62%);
+  mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 34%,rgba(0,0,0,0) 62%);
+}
+
+/* ---------------- 品牌区：玻璃 ---------------- */
+.hero{
+  background-color:var(--gl-fill);background-image:none;
+  border-color:var(--gl-line);border-radius:26px;padding:22px 20px;
+  -webkit-backdrop-filter:blur(24px) saturate(1.85);
+  backdrop-filter:blur(24px) saturate(1.85);
+  box-shadow:var(--gl-shadow),
+             inset 0 1px 0 var(--gl-sheen),
+             inset 0 -1px 0 rgba(255,255,255,.30),
+             inset 0 0 24px rgba(255,255,255,.16);
+}
+.hero::after{opacity:.26}
+
+/* ---------------- 首页模块卡：玻璃 ---------------- */
+a.modcard{
+  background:var(--gl-fill);border-color:var(--gl-line);border-radius:22px;
+  padding:17px 16px;
+  -webkit-backdrop-filter:blur(20px) saturate(1.7);
+  backdrop-filter:blur(20px) saturate(1.7);
+  box-shadow:var(--gl-shadow),inset 0 1px 0 var(--gl-sheen),inset 0 0 18px rgba(255,255,255,.14);
+}
+a.modcard:active{background:var(--gl-fill-2)}
+
+/* ---------------- 模块页标题区：玻璃垫底 ----------------
+   标题、副标题、「返回首页」原本直接压在极光上，是全站唯一没有承载面的文字。
+   极光漂到最艳时，--fg2 压在上面只有 2~4:1 —— 实测在整数规划页量到 4.09。
+   给它一块更厚的玻璃（.78 而不是 .62）垫住，文字就永远落在受控的底色上。 */
+.mod > header:not(.hero){
+  background-color:var(--gl-fill-2);border:1px solid var(--gl-line);
+  border-radius:22px;padding:14px 16px 16px;margin:0 0 14px;
+  -webkit-backdrop-filter:blur(20px) saturate(1.7);
+  backdrop-filter:blur(20px) saturate(1.7);
+  box-shadow:var(--gl-shadow),inset 0 1px 0 var(--gl-sheen);
+}
+.mod > header:not(.hero) a.back{margin-bottom:4px}
+
+/* ---------------- 页脚提示：也垫一层玻璃 ----------------
+   它原来只有一条上边框，12.5px 的说明文字直接压在极光上 —— 实测 4.30:1，
+   不达标（极光是漂移动画，最坏位置上还会更低）。text 落在受控底色上才安全。 */
+.foottip{
+  background-color:var(--gl-fill-2);border:1px solid var(--gl-line);
+  border-radius:22px;padding:14px 16px;margin:18px 0 0;
+  -webkit-backdrop-filter:blur(20px) saturate(1.7);
+  backdrop-filter:blur(20px) saturate(1.7);
+  box-shadow:var(--gl-shadow),inset 0 1px 0 var(--gl-sheen);
+}
+
+/* ---------------- 正文卡：近不透明 + 轻微磨砂 ---------------- */
+.card,.help,.meth-h,.meth-body{
+  -webkit-backdrop-filter:blur(12px) saturate(1.12);
+  backdrop-filter:blur(12px) saturate(1.12);
+  box-shadow:0 10px 28px -16px rgba(15,22,35,.18),0 1px 2px rgba(15,22,35,.04);
+}
+/* 表格再铺一层近白，让数字落在最干净的底上 */
+table.inp,table.tb,table.sens{background-color:rgba(255,255,255,.55)}
+
+/* ---------------- 按钮：玻璃药丸 ---------------- */
+button.btn{
+  background:var(--gl-fill);border-color:var(--gl-line);color:var(--fg);
+  -webkit-backdrop-filter:blur(16px) saturate(1.7);
+  backdrop-filter:blur(16px) saturate(1.7);
+  box-shadow:inset 0 1px 0 var(--gl-sheen),0 8px 20px -12px rgba(15,22,35,.32);
+}
+button.btn:active{background:var(--gl-fill-2)}
+/* 「求解」是整页最重要的按钮，保持实心强调色 —— 玻璃的透明感会削弱分量 */
+button.btn.primary{
+  background-image:linear-gradient(180deg,var(--accent-hi),var(--accent));
+  border-color:transparent;color:#fff;
+  -webkit-backdrop-filter:none;backdrop-filter:none;
+  box-shadow:0 14px 30px -13px var(--accent),inset 0 1px 0 rgba(255,255,255,.45);
+}
+
+.seg{background:rgba(255,255,255,.42);border-color:var(--gl-line);
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.seg button.on{background:var(--gl-fill-2);
+  box-shadow:inset 0 1px 0 var(--gl-sheen),0 2px 8px -4px rgba(15,22,35,.28)}
+
+/* ---------------- 结论徽章：带色玻璃 ---------------- */
+.verdict{
+  background-color:var(--gl-fill-2);border-radius:22px;
+  -webkit-backdrop-filter:blur(22px) saturate(1.6);
+  backdrop-filter:blur(22px) saturate(1.6);
+  box-shadow:var(--gl-shadow),inset 0 1px 0 var(--gl-sheen);
+}
+.banner:not(.err){background-color:rgba(255,255,255,.70);
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+
+/* ---------------- 底部标签栏：玻璃 ----------------
+   这是本页最贵的一块玻璃：它盖在会滚动的内容上，模糊结果没法缓存。
+   代价换来的是最「原生 App」的一处质感，且模糊半径压到 18px 控制开销。 */
+.tabbar{
+  background:var(--gl-fill-2);border-color:var(--gl-line);
+  -webkit-backdrop-filter:blur(18px) saturate(1.7);
+  backdrop-filter:blur(18px) saturate(1.7);
+  box-shadow:0 20px 44px -18px rgba(15,22,35,.42),inset 0 1px 0 var(--gl-sheen);
+}
+
+/* ---------------- 深色模式 ----------------
+   必须重新声明上面所有改过的变量：本区块排在应用自带的深色 @media 之后，
+   同权重按源码顺序后者胜 —— 不重声明的话，深色模式会错误地沿用浅色那套
+   rgba(255,255,255,...)，实测后果就是玻璃底合成出中灰、蓝字对比度只剩 1.89:1。 */
+@media (prefers-color-scheme: dark){
+  :root{
+    --gl-fill:rgba(30,38,56,.52);
+    --gl-fill-2:rgba(36,45,64,.72);
+    --gl-line:rgba(255,255,255,.18);
+    --gl-sheen:rgba(255,255,255,.22);
+    --gl-shadow:0 24px 54px -22px rgba(0,0,0,.8),0 3px 12px -5px rgba(0,0,0,.6);
+
+    --au-1:rgba(64,120,255,.50);
+    --au-2:rgba(158,92,255,.40);
+    --au-3:rgba(18,190,162,.30);
+    --au-4:rgba(240,150,40,.26);
+
+    --card:rgba(21,26,36,.90);
+    --input:rgba(28,34,46,.92);
+    --soft:rgba(255,255,255,.055);
+    --zebra:rgba(255,255,255,.035);
+  }
+  body::after{
+    background-image:repeating-linear-gradient(58deg,
+      rgba(255,255,255,.05) 0 1px,rgba(0,0,0,0) 1px 9px);
+    opacity:.45;
+  }
+  table.inp,table.tb,table.sens{background-color:rgba(255,255,255,.03)}
+  .banner:not(.err){background-color:rgba(30,37,50,.78)}
+  /* 深色下要反过来做：白色玻璃底会被下面几层（卡片 .90 → 分段 .05 → 选中 .17）
+     累加成中灰 #4e5361，蓝字压上去只剩 3.46:1（实测）。改成「选中 = 实心强调色 +
+     深色文字」，实测 8.0:1，顺带也更像原生的分段控件。 */
+  .seg{background:rgba(255,255,255,.05)}
+  .seg button.on{background:var(--accent);color:#0d1016;box-shadow:none}
+}
+
+/* ---------------- 不支持 backdrop-filter 时退回实色 ----------------
+   宁可少一点通透，也不能让文字落在乱底上。退回后 --card 等回到原来的
+   纯色值，正好是本主题引入前的那套配色。 */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  :root{
+    --gl-fill:rgba(255,255,255,.94);
+    --gl-fill-2:rgba(255,255,255,.97);
+    --gl-line:var(--line);
+    --gl-sheen:rgba(255,255,255,0);
+    --gl-shadow:var(--shadow-1);
+    --card:#fff;--input:#fff;--soft:#f1f4f9;--zebra:#fafbfd;
+  }
+}
+@media (prefers-color-scheme: dark){
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    :root{
+      --gl-fill:rgba(24,30,42,.97);
+      --gl-fill-2:rgba(26,32,45,.99);
+      --gl-line:var(--line);
+      --card:#151a23;--input:#1c222d;--soft:#1b212c;--zebra:#181e28;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  *{transition:none !important;animation:none !important}
+}
 </style>
 </head>
 <body>
@@ -611,6 +1027,12 @@ input.num.sm{width:52px}
       </svg>
       <span>手机上打开后，用浏览器菜单「添加到桌面」，即可全屏、离线使用。</span>
     </div>
+    <a class="repolink" href="https://github.com/XXIN1011/or-simplex" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12 12 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/>
+      </svg>
+      在 GitHub 上查看源码（MIT）
+    </a>
   </div>
 
   <!-- ===================== 单纯形法 ===================== -->
@@ -735,6 +1157,39 @@ input.num.sm{width:52px}
   </div>
 
 </div>
+
+<!-- 底部模块导航：手机上这比「返回首页再点一次」顺手得多。
+     动态规划仍按既有约定不露出（只能直接访问 #/dp）。 -->
+<nav class="tabbar" aria-label="模块导航">
+  <a href="#/" data-m="home">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M3.5 10.5 12 3.5l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/>
+    </svg>
+    <span>首页</span>
+  </a>
+  <a href="#/simplex" data-m="simplex">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17M9.5 9.5v10M15.5 9.5v10"/>
+    </svg>
+    <span>单纯形法</span>
+  </a>
+  <a href="#/sens" data-m="sens">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M7 4v16M12 4v16M17 4v16"/><path d="M4.6 9.5h4.8M9.6 14h4.8M14.6 7.5h4.8"/>
+    </svg>
+    <span>灵敏度</span>
+  </a>
+  <a href="#/ip" data-m="ip">
+    <svg viewBox="0 0 24 24" fill="none" stroke="none" aria-hidden="true">
+      <circle cx="6" cy="6" r="1.5" fill="currentColor"/><circle cx="12" cy="6" r="1.5" fill="currentColor"/>
+      <circle cx="18" cy="6" r="1.5" fill="currentColor"/><circle cx="6" cy="12" r="1.5" fill="currentColor"/>
+      <circle cx="18" cy="12" r="1.5" fill="currentColor"/><circle cx="6" cy="18" r="1.5" fill="currentColor"/>
+      <circle cx="12" cy="18" r="1.5" fill="currentColor"/><circle cx="18" cy="18" r="1.5" fill="currentColor"/>
+      <circle cx="12" cy="12" r="3.3" fill="currentColor"/>
+    </svg>
+    <span>整数规划</span>
+  </a>
+</nav>
 
 <script>
 /*__CORE__*/

@@ -135,7 +135,7 @@
         h += '<input' + small + ' data-f="ac-a" data-j="' + j2 + '" value="0">'
           + '<span class="fx">x' + (j2 + 1) + (j2 < n - 1 ? ' +' : '') + '</span>';
       }
-      h += '<select class="rel" data-f="ac-rel"><option value="<=">&lt;=</option>'
+      h += '<select class="rel" data-f="ac-rel" aria-label="新约束的关系符"><option value="<=">&lt;=</option>'
         + '<option value=">=">&gt;=</option><option value="=">=</option></select>'
         + '<input' + small + ' data-f="ac-b" value="0"></div>';
     } else if (t === 'a') {
@@ -147,10 +147,10 @@
       h += '<div class="sens-note">选一个技术系数 a<sub>ij</sub>（第 i 条约束里 x<sub>j</sub> 的系数）改成新值。'
         + '改的是<b>非基变量</b>的列还是<b>基变量</b>的列，判据完全不同。</div>'
         + '<div class="fh"><span class="fl">第</span>'
-        + '<select class="rel" data-f="a-con">' + copts + '</select>'
+        + '<select class="rel" data-f="a-con" aria-label="选择第几条约束">' + copts + '</select>'
         + '<span class="fx">条约束里的</span></div>'
         + '<div class="fh"><span class="fl">变量</span>'
-        + '<select class="rel" data-f="a-var">' + vopts + '</select></div>'
+        + '<select class="rel" data-f="a-var" aria-label="选择哪个变量">' + vopts + '</select></div>'
         + '<div class="fh"><span class="fl">改为</span>'
         + '<input' + small + ' data-f="a-val" value="'
         + String(baseProb.constraints[0].coef[0]) + '"></div>';

@@ -89,10 +89,16 @@ or-solver/
 │       └── probe-layout.js   输入区高度、求解按钮是否需要滚动才点得到
 └── tools/                  ── 开发辅助（不参与构建）
     ├── screenshots/
-    │   ├── shot.js           手机视口截图（可模拟深色、可指定模块 hash）
+    │   ├── shot.js           整页长截图（可模拟深色、可指定模块 hash）
     │   └── fill-*.js         截图前的表单填充脚本
-    └── setup/
-        └── deploy-github.py  一次性建仓/开启 Pages 脚本（已用过）
+    ├── visual/               视觉量测：半透明背景下的权威对比度校验
+    │   ├── shot-vp.js          只截「视口」的截图（整页图里 fixed 极光的位置不可靠）
+    │   ├── probe-color.js      量出元素位置与颜色 → JSON
+    │   ├── measure-contrast.py 读截图像素算 WCAG 对比度（取底色的两个坑见文件头）
+    │   └── check-overlap.py    固定底栏是否遮住页面末尾内容
+    ├── setup/
+    │   └── deploy-github.py  一次性建仓/开启 Pages 脚本（已用过）
+    └── verify-visual.sh      一键跑 4 模块 × 2 主题的像素级对比度实测
 ```
 
 > **为什么 `index.html` 必须在根**：GitHub Pages 以**仓库根**为发布目录，入口只能是
@@ -274,7 +280,13 @@ node test/ui/audit.js "index.html#/ip"
 ```bash
 node src/build.js && node test/ui/verify-ui.js && node test/ui/audit.js "index.html" && node test/ui/audit.js "index.html#/ip"
 node test/ui/graph-bounds.js index.html      # 改了 src/ui/graph.js 或图解相关 CSS 才需要
+bash tools/verify-visual.sh                  # ★ 动了颜色/半透明/玻璃相关一律要跑（见下）
 ```
+
+> **改了任何与颜色、透明度、背景相关的东西，必须跑 `bash tools/verify-visual.sh`。**
+> `audit.js` 的对比度是按「背景色逐层 alpha 合成」算的近似值 —— `getComputedStyle`
+> 拿不到 `background-image`，页面的极光渐变不参与计算，对「压在玻璃上的文字」偏乐观。
+> `verify-visual.sh` 直接读截图里文字实际压着的像素颜色，是权威校验。两者都要过。
 
 ### 6.3 只改了某个算法核心（最省的做法）
 
@@ -384,10 +396,17 @@ node tools/screenshots/shot.js "index.html#/ip" "out.png" 390 0 "@fill-ip-classi
 - 线上 https://xxin1011.github.io/or-simplex/ 应当与最新提交一致（推完等 50~65 秒再验）
 - **UI 回归 104 项全过**；九个算法验证套件全 PASS；四个模块 × 浅深色审查 0 问题
 - verify-ui 覆盖：路由、首页卡片数、单纯形法（标准化/图解/迭代/对偶）、灵敏度（区间/四场景/技术系数/参数 LP）、动态规划（五题型）、整数规划（四方法/适用性/收纳卡/最小化）
-- **目录已整理**为 `src/{core,ui}` + `test/{algorithm,ui}` + `tools/{screenshots,setup}`，
+- **目录已整理**为 `src/{core,ui}` + `test/{algorithm,ui}` + `tools/{screenshots,visual,setup}`，
   `index.html`/`README.md`/`HANDOFF.md` 留在根（见第 2 节）。整理时顺手删掉了 6 个一次性的
-  `diagnose-*.js`（对应缺陷都已修完并补了回归）。整理后 `node src/build.js` 的产物与整理前
-  **逐字节相同**（blob 哈希 `b1a2d7ac…`），全量回归 22 项全过。
+  `diagnose-*.js`（对应缺陷都已修完并补了回归），以及若干临时预览脚本与截图（那些是消耗品）。
+- **视觉主题已换成「极光底 + 玻璃材质」**：玻璃只用在浮层（品牌区 / 模块卡 / 按钮 / 结论徽章 /
+  底部标签栏），正文表格近不透明；浅深两套 + 不支持 `backdrop-filter` 时退回实色。
+  落地过程中修掉四个实测抓到的缺陷：模块页标题区与页脚提示裸压在极光上（4.09 / 4.30:1 不达标）、
+  深色分段控件把几层白色玻璃叠成中灰（1.89~3.46:1）、极光被 `body` 的实色底整块盖住。
+  验证：UI 回归 104/104、无障碍审计 8 组全 0、像素级对比度 8 组全达标
+  （新增 `bash tools/verify-visual.sh`，并把 `tools/visual/` 四个量测工具留在了仓库里）。
+- **`blob 哈希`不是「构建是否正常」的判据，而是「可复现性」判据**：同一份源码构建两次必须同哈希。
+  源码（含 CSS）改了哈希当然会变；判断构建没坏要看产物能否正常运行（UI 回归 + 截图目视）。
 
 ### 已知的待办 / 可做的方向
 
@@ -413,5 +432,12 @@ node tools/screenshots/shot.js "index.html#/ip" "out.png" 390 0 "@fill-ip-classi
    历史上每一个真缺陷（影子价格符号、灵敏度区间过宽、对偶比值漏 M 项、0-1 上界未加入、
    割平面新增列顶位右端项、隐枚举最小化比反了）都是它抓出来的。
    如果验证失败，**先怀疑代码，再怀疑测试**；确认是测试写错了再改测试，并在注释里写清原因。
-7. 🚫 **不要声称「已完成 / 已推送 / 已生效」而不核实** —— 推送用 `git ls-remote` 核实远程 SHA，
+7. 🚫 **不要给 `body` 加实色背景** —— 基质色放在 `html` 上，`body` 必须透明。`z-index:-1`
+   的极光伪元素绘制在 `body` 自身背景**之下**，`body` 一带实色底，极光就被整块盖住、玻璃
+   退化成普通白卡片（这个坑实测踩过：极光写得再艳，量出来仍是 `#f4f4f8` 一片灰）。
+   `test/ui/verify-ui.js` 里「背景是否变浅/变深」的断言读的也是 `documentElement`，别改回 `body`。
+8. 🚫 **不要让文字直接压在极光上** —— 极光是会**漂移的动画**，同一处文字背后的颜色会随时间
+   变艳。文字必须有承载面（玻璃垫底或近不透明卡片），且厚度按**最坏情况**留余量，不能按某一帧
+   量到的值来定。模块页标题区与页脚提示原本就裸压在极光上，实测只有 4.09 / 4.30:1，已补垫底。
+9. 🚫 **不要声称「已完成 / 已推送 / 已生效」而不核实** —— 推送用 `git ls-remote` 核实远程 SHA，
    线上效果用 HTTP 取回内容或截图核实，不要凭工具返回码下结论。

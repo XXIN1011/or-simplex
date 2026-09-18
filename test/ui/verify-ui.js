@@ -250,7 +250,10 @@ class CDP {
     { features: [{ name: 'prefers-color-scheme', value: 'dark' }] }, sessionId);
   await sleep(300);
   const dk = JSON.parse(await evl(`JSON.stringify({
-    bg: getComputedStyle(document.body).backgroundColor,
+    /* ★ 取 html 而不是 body：玻璃主题为了放固定定位的极光层，把基质色移到了
+       html、让 body 透明 —— z-index:-1 的伪元素绘制在 body 自身背景「之下」，
+       body 只要还带实色底，极光就会被整块盖住（实测过）。 */
+    bg: getComputedStyle(document.documentElement).backgroundColor,
     fg: getComputedStyle(document.body).color,
     card: getComputedStyle(document.querySelector('.card')).backgroundColor,
     input: getComputedStyle(document.querySelector('#inTbl input.num')).backgroundColor
@@ -266,8 +269,8 @@ class CDP {
   await cdp.send('Emulation.setEmulatedMedia', { features: [] }, sessionId);
   await sleep(200);
   const lt = JSON.parse(await evl(`JSON.stringify({
-    bg: getComputedStyle(document.body).backgroundColor })`));
-  check(lum(lt.bg) > 200, '切回浅色后背景恢复为浅色', `body=${lt.bg}`);
+    bg: getComputedStyle(document.documentElement).backgroundColor })`));
+  check(lum(lt.bg) > 200, '切回浅色后背景恢复为浅色', `html=${lt.bg}`);
 
   /* ---------- 6.5 标准化卡片 ---------- */
   console.log('\n--- 标准化卡片 ---');

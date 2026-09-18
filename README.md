@@ -133,7 +133,7 @@ index.html           成品（单文件，构建产物）—— 必须留在根�
 README.md            项目说明
 HANDOFF.md           交接手册（给接手本项目的 agent 看）
 src/                 ── 源码（构建时内联进 index.html）
-  template.html        HTML 骨架 + CSS（深色模式变量、页面容器、11 个 script 占位符）
+  template.html        HTML 骨架 + CSS（视觉主题、深色模式变量、11 个 script 占位符）
   build.js             构建：把各模块内联进 template.html → 仓库根的 index.html
   core/                算法核心（纯逻辑，不碰 DOM，Node 里可直接 require）
     simplex-core.js      大 M 法单纯形法 + 对偶解 + 灵敏度区间 + 退化标记
@@ -167,10 +167,17 @@ test/                ── 验证
     probe-layout.js      输入区高度、求解按钮是否需要滚动才能点到
 tools/               ── 开发辅助（不参与构建）
   screenshots/
-    shot.js              手机视口截图（可模拟深色模式、可指定模块 hash）
+    shot.js              整页长截图（可模拟深色模式、可指定模块 hash）
     fill-*.js            截图前的表单填充脚本
+  visual/                视觉量测：半透明（玻璃/极光）背景下的权威对比度校验
+    shot-vp.js           只截「视口」的截图 —— 整页长图里 position:fixed 的
+                         极光层渲染位置不可靠，量出来的是假数据
+    probe-color.js       量出各关键元素的位置/颜色，输出 JSON
+    measure-contrast.py  读截图像素算 WCAG 对比度（取底色的两个坑见文件头注释）
+    check-overlap.py     固定底部标签栏是否遮住页面末尾的内容
   setup/
     deploy-github.py     一次性建仓 / 开启 Pages 脚本（已用过）
+  verify-visual.sh       一键跑「4 模块 × 2 主题」的像素级对比度实测
 ```
 
 > **`index.html` 为什么必须在仓库根**：GitHub Pages 以仓库根为发布目录，入口只能是
@@ -179,6 +186,17 @@ tools/               ── 开发辅助（不参与构建）
 
 单纯形法的算法只有**一份**（`src/core/simplex-core.js`），构建时内联进 `index.html`，因此不存在两份实现失同步的问题。场景分析（`sens-core.js`）需要自己重建成标准化矩阵，这块由 `scenario-test.js` 的「建表一致性自检」逐元素比对，防止两边悄悄分叉。
 
+### 视觉主题（极光底 + 玻璃材质）
+
+CSS 分三层：① `html` 上的基质色；② `body::before` / `body::after` 两层**固定定位**的极光与斜纹织构；③ 一组 `--gl-*` 玻璃令牌 + 若干 `backdrop-filter`。两条硬约束（`src/template.html` 里有详细注释，改前务必读）：
+
+- **`body` 必须保持透明，基质色放在 `html` 上。** `z-index:-1` 的伪元素绘制在 `body` 自身背景**之下**，`body` 一旦带实色底，极光会被整块盖住，玻璃就退化成白卡片（这个坑实测踩过：极光写得再艳，量出来仍是 `#f4f4f8` 一片灰）。
+- **承载文字的层要有足够厚度。** 极光是会漂移的动画，同一处文字背后的颜色会随时间变艳，所以要么按最坏情况留余量（本主题取 `--gl-fill: .62`、文字垫底层 `.78`），要么就别让文字直接压在极光上 —— 模块页标题区与页脚提示原本没有承载面，实测只有 4.09 / 4.30:1，已补玻璃垫底。
+
+玻璃只用在「浮在内容之上的层」：品牌区、模块卡、按钮、结论徽章、底部标签栏。正文表格保持近不透明 —— 数字必须在任何底色下都看得清。另外，`prefers-reduced-motion` 下极光漂移会自动停止（由样式表末尾的全局规则兜住）。
+
+> 曾尝试做「真折射」（canvas 位移图 + SVG `feDisplacementMap`，即 GitHub 上那些 iOS 26 Liquid Glass 复刻项目的做法），实现并量测后**放弃**：折射要有高频背景才看得见，而本页背后只有一层渐变；调到勉强可见时位移量（10px）与斜纹周期（9px）同量级，周期性纹理互相挤压出摩尔纹，正常尺寸下比不折射更不精致。结论与复现方式记在 `src/template.html` 的注释里。
+
 ## 构建与验证
 
 ```bash
@@ -186,7 +204,8 @@ node src/build.js                          # 重新生成 index.html
 node test/algorithm/test-simplex.js        # 经典例题 + 生成随机题库
 python test/algorithm/crosscheck.py        # 2000 道随机题对拍 scipy（需 numpy/scipy）
 node test/ui/verify-ui.js                  # 无头浏览器 UI 回归（需 Chrome）
-node test/ui/audit.js                      # 触摸目标 / 对比度审查
+node test/ui/audit.js                      # 触摸目标 / 对比度审查（近似值）
+bash tools/verify-visual.sh                # 像素级对比度实测（4 模块 × 2 主题，权威校验）
 node test/ui/graph-bounds.js               # 图解越界检查
 node test/algorithm/sens-test.js           # 灵敏度：手算例题 + 区间紧致性校验
 python test/algorithm/crosscheck-sens.py   # 灵敏度：区间内/外样本交 scipy 复算

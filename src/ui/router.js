@@ -21,6 +21,11 @@
       var el = document.getElementById('mod-' + m);
       if (el) el.classList.toggle('on', m === name);
     });
+    /* 底部导航条上的当前模块也要高亮：它是常驻的，不标一下就看不出「我在哪」。
+       #/dp 刻意不露出，所以它没有对应的导航项，这里也就没有东西会被点亮。 */
+    Array.prototype.forEach.call(document.querySelectorAll('.tabbar a[data-m]'), function (a) {
+      a.classList.toggle('on', a.getAttribute('data-m') === name);
+    });
     window.scrollTo(0, 0);
     /* 表格是否溢出要等它可见之后才量得准，所以切页后再补一次「左右滑动」提示 */
     if (typeof addScrollHints === 'function') {
