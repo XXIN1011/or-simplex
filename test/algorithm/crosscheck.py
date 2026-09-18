@@ -3,7 +3,11 @@ import json, sys
 import numpy as np
 from scipy.optimize import linprog
 
-bank = json.load(open('random-bank.json', encoding='utf-8'))
+# 题库由同目录的 node 脚本生成；按【脚本自身位置】定位，这样从任何工作目录
+# 运行都能找到（原来用裸文件名，靠 CWD，换目录就会 FileNotFoundError）
+import os
+_HERE = os.path.dirname(os.path.abspath(__file__))
+bank = json.load(open(os.path.join(_HERE, 'random-bank.json'), encoding='utf-8'))
 print(f'载入题目: {len(bank)}')
 
 ok = 0

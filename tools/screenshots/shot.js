@@ -1,5 +1,5 @@
 /* 用 Chrome headless + CDP 在"手机视口"下渲染页面、点击求解、截全页图，并抓运行时错误
-   用法: node shot.js [页面文件] [输出png] [宽] [是否点求解] */
+   用法: node tools/screenshots/shot.js [页面文件] [输出png] [宽] [是否点求解] */
 'use strict';
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -10,7 +10,7 @@ const CHROME = fs.existsSync('C:/Program Files/Google/Chrome/Application/chrome.
   ? 'C:/Program Files/Google/Chrome/Application/chrome.exe'
   : 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 
-/* 允许在文件名后带模块 hash，例如 `node shot.js "index.html#/sens" ...` */
+/* 允许在文件名后带模块 hash，例如 `node tools/screenshots/shot.js "index.html#/sens" ...` */
 const rawTarget = process.argv[2] || 'index.html';
 const hashAt = rawTarget.indexOf('#');
 const pageFile = hashAt >= 0 ? rawTarget.slice(0, hashAt) : rawTarget;
@@ -23,7 +23,7 @@ const PORT = 9000 + Math.floor(Math.random() * 900);
 // 参数是 http(s) 开头就直接当线上地址用，否则当作本地文件
 const url = /^https?:\/\//i.test(pageFile)
   ? pageFile
-  : 'file:///' + path.resolve(__dirname, pageFile).replace(/\\/g, '/');
+  : 'file:///' + path.resolve(__dirname, '..', '..', pageFile).replace(/\\/g, '/');
 /* 应用现在有首页：默认进「单纯形法」模块，否则元素是隐藏的、量不到尺寸。
    想截其它模块就在文件名后带上 hash，例如 index.html#/sens */
 const pageUrl = url.indexOf('#') === -1 ? url + (wantHash || '#/simplex') : url;
@@ -129,7 +129,7 @@ class CDP {
 
   const shot = await cdp.send('Page.captureScreenshot',
     { format: 'png', captureBeyondViewport: true, fromSurface: true }, sessionId);
-  fs.writeFileSync(path.join(__dirname, outPng), Buffer.from(shot.data, 'base64'));
+  fs.writeFileSync(path.join(__dirname, '..', '..', outPng), Buffer.from(shot.data, 'base64'));
 
   const cdpErrors = cdp.events
     .filter(e => e.method === 'Runtime.exceptionThrown' || e.method === 'Log.entryAdded')

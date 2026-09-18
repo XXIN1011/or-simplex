@@ -1,6 +1,6 @@
 /* 检查图解法 SVG 的内容有没有超出 viewBox（放大字号后最容易出的问题）
    做法：对多道题分别求解，读取 svg.getBBox() 与 viewBox 比较
-   用法: node graph-bounds.js [页面文件或URL] */
+   用法: node test/ui/graph-bounds.js [页面文件或URL] */
 'use strict';
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -15,7 +15,7 @@ const pageFile = process.argv[2] || 'index.html';
 const PORT = 9400 + Math.floor(Math.random() * 500);
 const url = /^https?:\/\//i.test(pageFile)
   ? pageFile
-  : 'file:///' + path.resolve(__dirname, pageFile).replace(/\\/g, '/');
+  : 'file:///' + path.resolve(__dirname, '..', '..', pageFile).replace(/\\/g, '/');
 /* 应用现在有首页：这些检查都针对「单纯形法」模块，先进去，否则元素隐藏、量不到尺寸 */
 const pageUrl = url.indexOf('#') === -1 ? url + '#/simplex' : url;
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'orbounds-'));

@@ -1,6 +1,6 @@
 /* 经典例题验证 + 随机题库生成（供 scipy 对拍） */
 'use strict';
-const { simplexSolve, fmtNum, fmtPair } = require('./simplex-core.js');
+const { simplexSolve, fmtNum, fmtPair } = require('../../src/core/simplex-core.js');
 
 function renderSteps(res) {
   const names = res.vars.map(v => v.name);

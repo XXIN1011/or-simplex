@@ -129,65 +129,80 @@
 ## 代码结构
 
 ```
-index.html          成品（单文件，构建产物）
-template.html       HTML 骨架 + CSS（深色模式变量、三个页面容器）
-build.js            构建：把各模块内联进 template.html
-input-panel.js      共用组件：线性规划输入表（两个模块各挂一份实例）
-router.js           共用组件：首页 / 模块的 hash 路由
-—— 单纯形法 ——
-simplex-core.js     算法核心：大 M 法单纯形法 + 对偶解 + 灵敏度区间 + 退化标记
-graph.js            图解法：可行域 / 等值线 / 最优点的 SVG 绘制
-ui.js               单纯形法界面
-—— 灵敏度分析 ——
-sens-core.js        场景分析核心：原最优表上的几类变换 + 原始/对偶单纯形 + 参数线性规划
-sens-ui.js          灵敏度分析界面
-—— 动态规划 ——
-dp-core.js          通用递推引擎（逆序 + 顺序两种解法）+ 五种题型的建模
-dp-ui.js            动态规划界面（题型切换、输入表、递推表与策略回溯）
-—— 验证 ——
-edge-test.js        验证：0 变量 / 0 约束等边界情形
-dual-test.js        验证：对偶解经典例题 + 生成题库
-crosscheck.py       验证：2000 道随机题对拍 scipy/HiGHS
-crosscheck-dual.py  验证：对偶解的强对偶 + 互补松弛 + 中心差分扰动
-sens-test.js        验证：区间分析的手算例题 + 区间紧致性代数校验
-crosscheck-sens.py  验证：区间内/外的样本交 scipy 复算，核对线性预测
-scenario-test.js    验证：场景分析随机算例（含 a_ij 的基列/非基列两支）+ 建表一致性自检
-crosscheck-scenario.py 验证：700 个场景算例与 scipy 从头重解结果比对
-param-test.js       验证：参数线性规划分段 + 段内抽样 + 端点紧致性 + scipy 抽样
-crosscheck-param.py 验证：1110 个 λ 抽样点交 scipy 从头重解比对
-dp-test.js          验证：五种题型逐格 f_k(s) 与「从原始输入直接穷举」对拍
-verify-ui.js        验证：无头浏览器 UI 回归（92 项，含路由与四个模块的全部场景）
-ip-core.js          整数规划核心：分枝定界 / 割平面 / 隐枚举 + 适用性判定
-ip-ui.js            整数规划界面（复用输入表 + 变量类型 + 按适用性输出）
-ip-test.js          验证：四种方法与暴力枚举整数解逐项对拍
-audit.js            验证：触摸目标尺寸、文字对比度、表单标注（移动端 / 无障碍）
-graph-bounds.js     验证：图解 SVG 内容是否超出画布（6 道不同题）
-probe-layout.js     验证：输入区高度、求解按钮是否需要滚动才能点到
-shot.js             工具：手机视口截图（可模拟深色模式、可指定模块 hash）
+index.html           成品（单文件，构建产物）—— 必须留在根，它是 GitHub Pages 的入口
+README.md            项目说明
+HANDOFF.md           交接手册（给接手本项目的 agent 看）
+src/                 ── 源码（构建时内联进 index.html）
+  template.html        HTML 骨架 + CSS（深色模式变量、页面容器、11 个 script 占位符）
+  build.js             构建：把各模块内联进 template.html → 仓库根的 index.html
+  core/                算法核心（纯逻辑，不碰 DOM，Node 里可直接 require）
+    simplex-core.js      大 M 法单纯形法 + 对偶解 + 灵敏度区间 + 退化标记
+    sens-core.js         场景分析核心：原最优表上的几类变换 + 参数线性规划
+    dp-core.js           通用递推引擎（逆序 + 顺序两种解法）+ 五种题型的建模
+    ip-core.js           整数规划核心：分枝定界 / 割平面 / 隐枚举 + 适用性判定
+  ui/                  界面层
+    ui.js sens-ui.js dp-ui.js ip-ui.js    各模块界面
+    input-panel.js       共用组件：线性规划输入表（两个模块各挂一份实例）
+    graph.js             图解法：可行域 / 等值线 / 最优点的 SVG 绘制
+    router.js            共用组件：首页 / 模块的 hash 路由
+test/                ── 验证
+  algorithm/           算法对拍：node 生成题库 → python 用 scipy/HiGHS 复核
+    edge-test.js         0 变量 / 0 约束等边界情形
+    test-simplex.js      经典例题 + 生成 2000 题随机题库
+    crosscheck.py        2000 道随机题对拍 scipy/HiGHS
+    dual-test.js         对偶解经典例题 + 生成 400 题题库
+    crosscheck-dual.py   对偶解的强对偶 + 互补松弛 + 中心差分扰动
+    sens-test.js         区间分析的手算例题 + 区间紧致性代数校验
+    crosscheck-sens.py   区间内/外的样本交 scipy 复算，核对线性预测
+    scenario-test.js     场景分析随机算例（含 a_ij 的基列/非基列两支）+ 建表一致性自检
+    crosscheck-scenario.py 700 个场景算例与 scipy 从头重解结果比对
+    param-test.js        参数线性规划分段 + 段内抽样 + 端点紧致性 + scipy 抽样
+    crosscheck-param.py  1110 个 λ 抽样点交 scipy 从头重解比对
+    dp-test.js           五种题型逐格 f_k(s) 与「从原始输入直接穷举」对拍
+    ip-test.js           四种方法与暴力枚举整数解逐项对拍
+  ui/                  界面与无障碍
+    verify-ui.js         无头浏览器 UI 回归（104 项，含路由与四个模块的全部场景）
+    audit.js             触摸目标尺寸、文字对比度、表单标注（移动端 / 无障碍）
+    graph-bounds.js      图解 SVG 内容是否超出画布（6 道不同题）
+    probe-layout.js      输入区高度、求解按钮是否需要滚动才能点到
+tools/               ── 开发辅助（不参与构建）
+  screenshots/
+    shot.js              手机视口截图（可模拟深色模式、可指定模块 hash）
+    fill-*.js            截图前的表单填充脚本
+  setup/
+    deploy-github.py     一次性建仓 / 开启 Pages 脚本（已用过）
 ```
 
-单纯形法的算法只有**一份**（`simplex-core.js`），构建时内联进 `index.html`，因此不存在两份实现失同步的问题。场景分析（`sens-core.js`）需要自己重建成标准化矩阵，这块由 `scenario-test.js` 的「建表一致性自检」逐元素比对，防止两边悄悄分叉。
+> **`index.html` 为什么必须在仓库根**：GitHub Pages 以仓库根为发布目录，入口只能是
+> `/index.html`；挪进子目录，线上地址就会从 `https://xxin1011.github.io/or-simplex/`
+> 变成 `.../子目录/`。所以 `src/build.js` 读写路径是分开的：读 `src/`，写 `../index.html`。
+
+单纯形法的算法只有**一份**（`src/core/simplex-core.js`），构建时内联进 `index.html`，因此不存在两份实现失同步的问题。场景分析（`sens-core.js`）需要自己重建成标准化矩阵，这块由 `scenario-test.js` 的「建表一致性自检」逐元素比对，防止两边悄悄分叉。
 
 ## 构建与验证
 
 ```bash
-node build.js                  # 重新生成 index.html
-node test-simplex.js           # 经典例题 + 生成随机题库
-python crosscheck.py           # 2000 道随机题对拍 scipy（需 numpy/scipy）
-node verify-ui.js              # 无头浏览器 UI 回归（需 Chrome）
-node audit.js                  # 触摸目标 / 对比度审查
-node graph-bounds.js           # 图解越界检查
-node sens-test.js              # 灵敏度：手算例题 + 区间紧致性校验
-python crosscheck-sens.py      # 灵敏度：区间内/外样本交 scipy 复算
-node scenario-test.js          # 场景分析：生成随机算例
-python crosscheck-scenario.py  # 场景分析：与 scipy 从头重解结果比对
-node param-test.js             # 参数线性规划：抽样 + 端点紧致性
-python crosscheck-param.py     # 参数线性规划：λ 抽样点交 scipy 复算
-node dp-test.js                # 动态规划：五种题型逐格 f_k(s) 与穷举对拍
-node audit.js "index.html#/sens"   # 审查可指定模块（默认单纯形法）
-node audit.js "index.html#/sens" dark   # 再加深色模式
-node audit.js "index.html#/dp"     # 动态规划模块
+node src/build.js                          # 重新生成 index.html
+node test/algorithm/test-simplex.js        # 经典例题 + 生成随机题库
+python test/algorithm/crosscheck.py        # 2000 道随机题对拍 scipy（需 numpy/scipy）
+node test/ui/verify-ui.js                  # 无头浏览器 UI 回归（需 Chrome）
+node test/ui/audit.js                      # 触摸目标 / 对比度审查
+node test/ui/graph-bounds.js               # 图解越界检查
+node test/algorithm/sens-test.js           # 灵敏度：手算例题 + 区间紧致性校验
+python test/algorithm/crosscheck-sens.py   # 灵敏度：区间内/外样本交 scipy 复算
+node test/algorithm/scenario-test.js       # 场景分析：生成随机算例
+python test/algorithm/crosscheck-scenario.py  # 场景分析：与 scipy 从头重解结果比对
+node test/algorithm/param-test.js          # 参数线性规划：抽样 + 端点紧致性
+python test/algorithm/crosscheck-param.py  # 参数线性规划：λ 抽样点交 scipy 复算
+node test/algorithm/dp-test.js             # 动态规划：五种题型逐格 f_k(s) 与穷举对拍
+node test/ui/audit.js "index.html#/sens"        # 审查可指定模块（默认单纯形法）
+node test/ui/audit.js "index.html#/sens" dark   # 再加深色模式
+node test/ui/audit.js "index.html#/dp"          # 动态规划模块
+node tools/screenshots/shot.js "index.html#/ip" out.png 390 0 "@fill-ip-classic.js"
 ```
+
+> 所有脚本的页面路径都**按仓库根解析**，所以从仓库根直接跑即可；
+> 随机题库生成在 `test/algorithm/` 下（与生成它的脚本同目录），已被 `.gitignore` 排除。
 
 ## 关于正确性
 

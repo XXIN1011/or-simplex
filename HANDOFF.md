@@ -11,12 +11,16 @@
 项目「运筹学计算器」在本机路径：C:\Users\Lenovo\.hermes\workspace\or-solver
 （Git Bash / MSYS 写法：/c/Users/Lenovo/.hermes/workspace/or-solver）
 
+目录：index.html 在**仓库根**（GitHub Pages 入口，不能挪）；源码在 src/{core,ui}/；
+验证在 test/{algorithm,ui}/；截图工具在 tools/screenshots/。
+
 请先完整读 HANDOFF.md 与 README.md，再动手改。
 分支 main，远程 https://github.com/XXIN1011/or-simplex.git
 线上 https://xxin1011.github.io/or-simplex/
 
 硬性要求：
-1) 只改源文件，改完必须 `node build.js` 重新生成 index.html —— index.html 是构建产物，不要手改。
+1) 只改 src/ 下的源文件，改完必须 `node src/build.js` 重新生成根目录的 index.html ——
+   index.html 是构建产物，不要手改。
 2) 改完必须跑验证（见 HANDOFF.md 第 6 节），全绿才算做完。
 3) 推送前确认 Clash 代理已开（git 全局代理指向 127.0.0.1:7897）。
 4) git 身份是「仓库级」的（XiaoXin / 2624962001@qq.com），全局是空的，换机器克隆后要重设。
@@ -47,46 +51,75 @@
 | `#/dp` | 动态规划 | **首页不露出口，但代码/路由/页面全保留**，直接访问 `/#/dp` 仍可用 |
 
 > `#/dp` 被藏起来的原因：它还是「预置教材题型、选完填参数」那套形式，与另外三个模块
-> 「读入任意题目 → 规范化输出」的风格不一致。想放回首页：在 `template.html` 里
+> 「读入任意题目 → 规范化输出」的风格不一致。想放回首页：在 `src/template.html` 里
 > `<!-- 动态规划模块暂不从首页露出 … -->` 那段注释的位置把 `<a class="modcard" href="#/dp">` 加回去即可。
 
 ---
 
-## 2. 文件地图（哪些能改、哪些别碰）
+## 2. 目录结构与文件地图（哪些能改、哪些别碰）
 
-### ✅ 源文件（要改就改这些）
+```
+or-solver/
+├── index.html            ← 构建产物（GitHub Pages 入口，**必须留在根**）
+├── README.md               项目说明
+├── HANDOFF.md              本文件
+├── src/                    ── 源码（构建时内联进 index.html）
+│   ├── template.html       页面骨架 + 全部 CSS（含 11 个 <script> 占位符）
+│   ├── build.js            构建脚本，SLOTS 表定义「占位符 → 源文件」
+│   ├── core/               算法核心（不碰 DOM，可在 Node 里直接 require）
+│   │   ├── simplex-core.js   大 M 法单纯形 + 对偶解 + 灵敏度区间
+│   │   ├── sens-core.js      场景式灵敏度分析 + 参数线性规划
+│   │   ├── dp-core.js        动态规划递推引擎 + 五种题型
+│   │   └── ip-core.js        分枝定界 / 割平面 / 隐枚举 + 适用性判定
+│   └── ui/                 界面层
+│       ├── ui.js  sens-ui.js  dp-ui.js  ip-ui.js    各模块界面
+│       ├── input-panel.js    可复用输入表组件（createInputPanel）+ addScrollHints
+│       ├── graph.js          图解法 SVG（整数规划会传第三个参数叠加整数格点）
+│       └── router.js         hash 路由，新增模块要往 MODULES 里加名字
+├── test/                   ── 验证
+│   ├── algorithm/          算法对拍：JS 生成题库 → Python 用 scipy/HiGHS 复核
+│   │   ├── test-simplex.js  edge-test.js  dual-test.js  sens-test.js
+│   │   │   scenario-test.js param-test.js  dp-test.js   ip-test.js
+│   │   └── crosscheck.py  crosscheck-dual.py  crosscheck-sens.py
+│   │       crosscheck-scenario.py  crosscheck-param.py
+│   └── ui/                 界面与无障碍
+│       ├── verify-ui.js      无头浏览器 UI 回归（当前 **104 项**）
+│       ├── audit.js          触摸目标 / 文字对比度 / 表单标注
+│       ├── graph-bounds.js   图解 SVG 是否越界
+│       └── probe-layout.js   输入区高度、求解按钮是否需要滚动才点得到
+└── tools/                  ── 开发辅助（不参与构建）
+    ├── screenshots/
+    │   ├── shot.js           手机视口截图（可模拟深色、可指定模块 hash）
+    │   └── fill-*.js         截图前的表单填充脚本
+    └── setup/
+        └── deploy-github.py  一次性建仓/开启 Pages 脚本（已用过）
+```
 
-| 文件 | 作用 |
-|---|---|
-| `template.html` | **页面骨架 + 全部 CSS**。三个 `#mod-*` 容器、`<script>` 占位符（`/*__XXX__*/`）、首页卡片都在这里 |
-| `build.js` | 构建脚本。`SLOTS` 表定义「占位符 → 源文件」的映射与内联顺序 |
-| `router.js` | hash 路由。新增模块要往 `MODULES` 数组里加名字 |
-| `simplex-core.js` | 单纯形法核心（大 M 法、对偶解、灵敏度区间） |
-| `sens-core.js` | 灵敏度分析核心（场景式 + 参数线性规划） |
-| `dp-core.js` | 动态规划核心（通用递推引擎 + 五种题型） |
-| `ip-core.js` | 整数规划核心（分枝定界 / 割平面 / 隐枚举 + 适用性判定） |
-| `ui.js` / `sens-ui.js` / `dp-ui.js` / `ip-ui.js` | 各模块界面 |
-| `input-panel.js` | 可复用输入表组件（`createInputPanel`）+ `addScrollHints` |
-| `graph.js` | 图解法 SVG（整数规划会传第三个参数叠加整数格点） |
-| `README.md` | 项目说明（功能、代码结构、构建与验证、正确性论证） |
+> **为什么 `index.html` 必须在根**：GitHub Pages 以**仓库根**为发布目录，入口只能是
+> `/index.html`。把它挪进子目录，线上地址就会从 `https://xxin1011.github.io/or-simplex/`
+> 变成 `.../子目录/`。所以 `src/build.js` 的读写路径是分开的：**读 `src/`，写 `../index.html`**。
 
 ### 🚫 构建产物（**绝对不要手改**）
 
 | 文件 | 说明 |
 |---|---|
-| `index.html` | 由 `node build.js` 生成，是所有源码内联后的成品。改它 = 下次构建就没了 |
+| `index.html` | 由 `node src/build.js` 生成，是所有源码内联后的成品。手改 = 下次构建就没了 |
 
 ### 🔧 验证脚本（改完要跑，见第 6 节）
 
-`verify-ui.js`（UI 回归，当前 **104 项**）· `audit.js`（触摸目标/对比度/表单标注）
-`edge-test.js` · `test-simplex.js` · `dual-test.js` · `sens-test.js` · `scenario-test.js` · `param-test.js` · `dp-test.js` · `ip-test.js`（算法对拍）
-`crosscheck*.py`（与 scipy/HiGHS 对拍）· `graph-bounds.js`（图解越界）· `probe-layout.js`（布局）
-`shot.js`（手机视口截图）· `fill-*.js`（截图用的表单填充脚本）· `diagnose*.js`（排查辅助）
+`test/ui/verify-ui.js`（UI 回归，当前 **104 项**）· `test/ui/audit.js`（触摸目标/对比度/表单标注）
+`test/algorithm/*.js`（算法对拍）· `test/algorithm/crosscheck*.py`（与 scipy/HiGHS 对拍）
+`test/ui/graph-bounds.js`（图解越界）· `test/ui/probe-layout.js`（布局可达性）
+`tools/screenshots/shot.js`（截图）· `tools/screenshots/fill-*.js`（截图用填充脚本）
+
+> 这些脚本的路径都是**按仓库根解析**的（内部用 `__dirname/../../`），
+> 所以 `node test/ui/audit.js "index.html#/ip"` 这种写法从任何工作目录都能用。
 
 ### 🙈 被 gitignore 的（克隆后**不存在**，见第 5 节的坑）
 
 `random-bank.json` `dual-bank.json` `sens-bank.json` `scenario-bank.json` `param-bank.json`
-（随机题库，由 node 脚本生成）· `*.png`（本地截图）· `device.json` `token.txt` `poll-token.py`（授权相关，**绝不入库**）
+（随机题库，由 `test/algorithm/` 下的 node 脚本生成在**同目录**）· `*.png`（本地截图）
+· `device.json` `token.txt` `poll-token.py`（授权相关，**绝不入库**）
 
 ---
 
@@ -95,8 +128,8 @@
 ```bash
 cd /c/Users/Lenovo/.hermes/workspace/or-solver   # 或 cd "C:/Users/Lenovo/.hermes/workspace/or-solver"
 git status                                        # 应为空（干净）
-node build.js                                     # 期望输出：构建完成 index.html : 226.x KB
-node verify-ui.js                                 # 期望输出：合计: 104 通过 / 0 失败
+node src/build.js                                 # 期望输出：构建完成 index.html : 232.0 KB
+node test/ui/verify-ui.js                         # 期望输出：合计: 104 通过 / 0 失败
 ```
 
 三条都通过 = 环境正常，可以开始改。
@@ -106,28 +139,31 @@ node verify-ui.js                                 # 期望输出：合计: 104 �
 ## 4. 构建流程（**每次改完源码都必须做**）
 
 ```bash
-node build.js
+node src/build.js
 ```
 
-它做的唯一一件事：把 `template.html` 里的 11 个占位符替换成对应源文件的全文，产出**根目录的 `index.html`**。
+它做的唯一一件事：把 `src/template.html` 里的 11 个占位符替换成对应源文件的全文，
+产出**仓库根的 `index.html`**（读 `src/`、写 `../index.html`）。
 
 ```
-/*__CORE__*/      ← simplex-core.js      /*__DP_CORE__*/   ← dp-core.js
-/*__SENS_CORE__*/ ← sens-core.js         /*__DP_UI__*/     ← dp-ui.js
-/*__PANEL__*/     ← input-panel.js       /*__IP_CORE__*/   ← ip-core.js
-/*__GRAPH__*/     ← graph.js             /*__IP_UI__*/     ← ip-ui.js
-/*__UI__*/        ← ui.js                /*__ROUTER__*/    ← router.js
-/*__SENS_UI__*/   ← sens-ui.js
+/*__CORE__*/      ← src/core/simplex-core.js   /*__DP_CORE__*/  ← src/core/dp-core.js
+/*__SENS_CORE__*/ ← src/core/sens-core.js      /*__DP_UI__*/    ← src/ui/dp-ui.js
+/*__PANEL__*/     ← src/ui/input-panel.js      /*__IP_CORE__*/  ← src/core/ip-core.js
+/*__GRAPH__*/     ← src/ui/graph.js            /*__IP_UI__*/    ← src/ui/ip-ui.js
+/*__UI__*/        ← src/ui/ui.js               /*__ROUTER__*/   ← src/ui/router.js
+/*__SENS_UI__*/   ← src/ui/sens-ui.js
 ```
 
-**顺序有意义**：后者可以调用前者定义的全局函数（例如 `sens-ui.js` 会用 `simplex-core.js` 的 `fmtNum`）。插入新模块时，核心要排在界面之前、`router.js` 排最后。
+**`SLOTS` 里写的是相对 `src/` 的路径**（如 `'core/simplex-core.js'`），顺序有意义：
+后者可以调用前者定义的全局函数（例如 `sens-ui.js` 会用 `simplex-core.js` 的 `fmtNum`）。
+插入新模块时，核心要排在界面之前、`router.js` 排最后。
 
 ### 新增一个模块要动四处
 
-1. `template.html`：加 `<div class="mod" id="mod-xxx">…</div>` 容器，**并加两个 `<script>` 占位符**
-2. `build.js`：往 `SLOTS` 里加两条映射（顺序要对）
-3. `router.js`：把 `'xxx'` 加进 `MODULES`
-4. `template.html` 首页：加一张 `<a class="modcard" href="#/xxx">` 卡片
+1. `src/template.html`：加 `<div class="mod" id="mod-xxx">…</div>` 容器，**并加两个 `<script>` 占位符**
+2. `src/build.js`：往 `SLOTS` 里加两条映射（路径相对 `src/`，顺序要对）
+3. `src/ui/router.js`：把 `'xxx'` 加进 `MODULES`
+4. `src/template.html` 首页：加一张 `<a class="modcard" href="#/xxx">` 卡片
 
 ---
 
@@ -206,35 +242,38 @@ git config user.email "2624962001@qq.com"       # 注意：不带 --global
 ### 6.1 一键全量（推荐，按此顺序）
 
 ```bash
-node build.js                                  # 期望：构建完成 index.html : 226.x KB
-node verify-ui.js                              # 期望：合计: 104 通过 / 0 失败
-node edge-test.js                              # 期望：9 通过 / 0 失败
-node test-simplex.js                           # 生成 random-bank.json
-python crosscheck.py                           # 期望：不一致: 0 条
-node dual-test.js                              # 生成 dual-bank.json
-python crosscheck-dual.py                      # 期望：强对偶 通过 400 / 失败 0
-node sens-test.js                              # 生成 sens-bank.json；期望：全部通过 ✓（区间不多不少）
-python crosscheck-sens.py                      # 期望：结论: PASS
-node scenario-test.js                          # 生成 scenario-bank.json
-python crosscheck-scenario.py                  # 期望：结论: PASS
-node param-test.js                             # 生成 param-bank.json
-python crosscheck-param.py                     # 期望：结论: PASS
-node dp-test.js                                # 期望：结论: PASS
-node ip-test.js                                # 期望：结论: PASS（约 30 秒）
-node graph-bounds.js index.html                # 期望：6 通过 / 0 越界
-node audit.js "index.html"                     # 期望：触摸目标 0 个、对比度 0 个
-node audit.js "index.html#/sens"               # 逐个模块都查一遍
-node audit.js "index.html#/dp"
-node audit.js "index.html#/ip"
+node src/build.js                              # 期望：构建完成 index.html : 232.0 KB
+node test/ui/verify-ui.js                      # 期望：合计: 104 通过 / 0 失败
+node test/algorithm/edge-test.js               # 期望：9 通过 / 0 失败
+node test/algorithm/test-simplex.js            # 生成 random-bank.json
+python test/algorithm/crosscheck.py            # 期望：不一致: 0 条
+node test/algorithm/dual-test.js               # 生成 dual-bank.json
+python test/algorithm/crosscheck-dual.py       # 期望：强对偶 通过 400 / 失败 0
+node test/algorithm/sens-test.js               # 生成 sens-bank.json；期望：全部通过 ✓（区间不多不少）
+python test/algorithm/crosscheck-sens.py       # 期望：结论: PASS
+node test/algorithm/scenario-test.js           # 生成 scenario-bank.json
+python test/algorithm/crosscheck-scenario.py   # 期望：结论: PASS
+node test/algorithm/param-test.js              # 生成 param-bank.json
+python test/algorithm/crosscheck-param.py      # 期望：结论: PASS
+node test/algorithm/dp-test.js                 # 期望：结论: PASS
+node test/algorithm/ip-test.js                 # 期望：结论: PASS（约 30 秒）
+node test/ui/graph-bounds.js index.html        # 期望：6 通过 / 0 越界
+node test/ui/audit.js "index.html"             # 期望：触摸目标 0 个、对比度 0 个
+node test/ui/audit.js "index.html#/sens"       # 逐个模块都查一遍
+node test/ui/audit.js "index.html#/dp"
+node test/ui/audit.js "index.html#/ip"
 ```
+
+> 题库都生成在 `test/algorithm/` 下（和生成它的脚本同目录），Python 侧按**脚本自身位置**找它，
+> 所以命令从仓库根跑就行，不用先 cd 进目录。
 
 `ip-test.js` 是随机用例，跑一次通过不代表没问题——**改动涉及整数规划时请连跑 3~5 次**（曾经有过随机偶发失败）。
 
 ### 6.2 只改了界面 / 样式
 
 ```bash
-node build.js && node verify-ui.js && node audit.js "index.html" && node audit.js "index.html#/ip"
-node graph-bounds.js index.html      # 改了 graph.js 或图解相关 CSS 才需要
+node src/build.js && node test/ui/verify-ui.js && node test/ui/audit.js "index.html" && node test/ui/audit.js "index.html#/ip"
+node test/ui/graph-bounds.js index.html      # 改了 src/ui/graph.js 或图解相关 CSS 才需要
 ```
 
 ### 6.3 只改了某个算法核心（最省的做法）
@@ -242,22 +281,24 @@ node graph-bounds.js index.html      # 改了 graph.js 或图解相关 CSS 才�
 改哪个模块就跑它自己的套件 + 那一个模块的审查，例如整数规划：
 
 ```bash
-node ip-test.js && node build.js && node verify-ui.js && node audit.js "index.html#/ip"
-python crosscheck-param.py           # 若动了 simplex-core.js，几乎所有对拍都要重跑
+node test/algorithm/ip-test.js && node src/build.js && node test/ui/verify-ui.js && node test/ui/audit.js "index.html#/ip"
+python test/algorithm/crosscheck-param.py    # 若动了 simplex-core.js，几乎所有对拍都要重跑
 ```
 
-> **动了 `simplex-core.js` 要特别小心**：灵敏度分析、动态规划、整数规划都依赖它，
+> **动了 `src/core/simplex-core.js` 要特别小心**：灵敏度分析、动态规划、整数规划都依赖它，
 > 必须跑完整套（对拍 2000 + 对偶 400 + 区间 + 场景 + 参数 + 整数规划）。
 
 ### 6.4 手机视口目视（UI 改动必做）
 
 ```bash
-node shot.js "index.html#/ip" "out.png" 390 0 "@fill-ip-classic.js"     # 手机视口截图
-node shot.js "index.html#ip"  "out.png" 390 0 "@fill-ip-classic.js" dark # 深色模式
+node tools/screenshots/shot.js "index.html#/ip" "out.png" 390 0 "@fill-ip-classic.js"     # 手机视口截图
+node tools/screenshots/shot.js "index.html#/ip" "out.png" 390 0 "@fill-ip-classic.js" dark # 深色模式
 ```
 
-`shot.js` 用法：`node shot.js <页面[#hash]|url> <输出png> <宽> <是否点求解> [@填充脚本] [dark]`
-**注意**：不带 hash 时会**默认跳到 `#/simplex`**，要看首页请显式写 `"index.html#/"`。
+`shot.js` 用法：`node tools/screenshots/shot.js <页面[#hash]|url> <输出png> <宽> <是否点求解> [@填充脚本] [dark]`
+**注意两点**：① 不带 hash 时会**默认跳到 `#/simplex`**，要看首页请显式写 `"index.html#/"`；
+② `@填充脚本` 相对 `shot.js` 自己所在目录解析，所以写 `@fill-ip-classic.js`（不用带路径），
+输出 png 落在**仓库根**。
 
 截图后**要用视觉能力真的看一眼**（`vision_analyze`），不要只依赖脚本断言——历史上样式类问题（文字被裁、重叠、加粗标记 `**` 漏解析、下标没渲染）都是靠目视发现的。
 
@@ -275,22 +316,21 @@ node shot.js "index.html#ip"  "out.png" 390 0 "@fill-ip-classic.js" dark # 深�
 
 1. **先连跑 5~10 次**，把失败率摸清楚（偶发 ≠ 可以忽略）
 2. **注意失败是否总落在同一个 id / 同一类问题上** —— 那通常意味着特定结构触发，不是纯粹随机
-3. **不要先改测试**。写一个最小复现脚本（参考 `diagnose-param-flaky.js` / `diagnose-param-283.js`
-   的写法：从题库里捞出那道题 → 扫一个能触发的参数 → 把模块的「公式预测值」与「直接重算值」并排打出来）
+3. **不要先改测试**。写一个最小复现脚本，做法是：从题库里捞出那道题 → 扫一个能触发的参数 →
+   把模块的「公式预测值」与「直接重算值」并排打出来。这类一次性脚本**用完即删**——
+   历史上那两个定位出上面这个缺陷的脚本（`diagnose-param-flaky.js` / `diagnose-param-283.js`）
+   已在整理目录时清掉，再遇到同类问题照这个办法现写一个就行（几十行）。
 4. 确认是引擎缺陷就修引擎；**只有确认测试写错了才改测试**，并在注释里写清为什么
 5. 修完**连跑 10 次**确认稳定，再跑全量
 
-同理：`ip-test.js` 里分枝定界有结点上限，触顶时它只保证「目前最好」而不是「最优」，
+同理：`test/algorithm/ip-test.js` 里分枝定界有结点上限，触顶时它只保证「目前最好」而不是「最优」，
 测试必须用 `complete` 标志区分，否则会误报（这个坑也踩过）。
 
-### 6.6 排查辅助脚本（可复用）
+### 6.6 一次性排查脚本（已清理）
 
-| 脚本 | 用途 |
-|---|---|
-| `diagnose.js` / `diagnose-sens.js` | 单纯形法 / 灵敏度区间的排查 |
-| `diagnose-ip.js` | 整数规划四种方法 vs 暴力枚举不一致时，打印题目与双方结果、验可行性 |
-| `diagnose-enum.js` | 隐枚举的枚举表逐行核对（含 min 方向） |
-| `diagnose-param-flaky.js` / `diagnose-param-283.js` | 参数 LP 的偶发失败复现与根因定位 |
+原先根目录有一批 `diagnose-*.js`（单纯形法 / 灵敏度区间 / 整数规划 / 隐枚举 / 参数 LP 的排查脚本）。
+它们对应的缺陷都已修完并补了回归测试，**已在整理目录结构时删除**。
+再遇到同类问题不用去找它们，照 6.5 的五步走、现写一个最小复现脚本即可。
 
 ---
 
@@ -299,8 +339,8 @@ node shot.js "index.html#ip"  "out.png" 390 0 "@fill-ip-classic.js" dark # 深�
 1. **中文注释，且解释「为什么」而不是「是什么」。** 尤其是分支为什么存在（退化情形、边界条件）。
 2. **ES5 风格**：`var`、`Array.prototype.forEach.call`、不用箭头函数 / `let` / `const`（核心源码与界面统一如此；验证脚本 `*.js` 测试文件可以用现代语法）。
 3. **零依赖**：不引 CDN、不用 npm 包。所有算法自己实现（这是教学工具的意义，也便于以后翻译成 ArkTS 做鸿蒙原生）。
-4. **单文件产物**：改完必须 `node build.js`。
-5. **算法只有一份实现**：例如 `sens-core.js` 的建表逻辑刻意镜像 `simplex-core.js`，并由「建表一致性自检」逐元素比对防止分叉。要改算法核心时，先找找有没有第二份镜像。
+4. **单文件产物**：改完必须 `node src/build.js`。
+5. **算法只有一份实现**：例如 `src/core/sens-core.js` 的建表逻辑刻意镜像 `src/core/simplex-core.js`，并由「建表一致性自检」逐元素比对防止分叉。要改算法核心时，先找找有没有第二份镜像。
 6. **手机优先**：触摸目标 ≥ 44×44、正文对比度 ≥ 4.5:1、表格超宽要能横向滚动（`.scroll` 容器 + `addScrollHints`）。
 7. **不要把「没跑完」说成「最优」**：分枝定界有结点上限、隐枚举有规模上限，触顶时必须在界面上写明「目前最好，不保证全局最优」。这是本项目的底线。
 8. **提交信息用中文**，说清「改了什么 + 为什么」，涉及算法缺陷修复时写清根因。
@@ -344,6 +384,10 @@ node shot.js "index.html#ip"  "out.png" 390 0 "@fill-ip-classic.js" dark # 深�
 - 线上 https://xxin1011.github.io/or-simplex/ 应当与最新提交一致（推完等 50~65 秒再验）
 - **UI 回归 104 项全过**；九个算法验证套件全 PASS；四个模块 × 浅深色审查 0 问题
 - verify-ui 覆盖：路由、首页卡片数、单纯形法（标准化/图解/迭代/对偶）、灵敏度（区间/四场景/技术系数/参数 LP）、动态规划（五题型）、整数规划（四方法/适用性/收纳卡/最小化）
+- **目录已整理**为 `src/{core,ui}` + `test/{algorithm,ui}` + `tools/{screenshots,setup}`，
+  `index.html`/`README.md`/`HANDOFF.md` 留在根（见第 2 节）。整理时顺手删掉了 6 个一次性的
+  `diagnose-*.js`（对应缺陷都已修完并补了回归）。整理后 `node src/build.js` 的产物与整理前
+  **逐字节相同**（blob 哈希 `b1a2d7ac…`），全量回归 22 项全过。
 
 ### 已知的待办 / 可做的方向
 
@@ -358,13 +402,16 @@ node shot.js "index.html#ip"  "out.png" 390 0 "@fill-ip-classic.js" dark # 深�
 
 ## 10. 绝对不要做的事
 
-1. 🚫 **不要手改 `index.html`** —— 它是构建产物，改源码后 `node build.js` 会覆盖它。
-2. 🚫 **不要引入任何外部依赖**（CDN、npm 包、字体文件）—— 这个项目要能离线单文件运行。
-3. 🚫 **不要把 `token.txt` / `device.json` / 任何 token 提交进仓库**（已在 `.gitignore` 里，别去动它）。
-4. 🚫 **不要往 Netlify 推** —— 已解绑删除；只用 GitHub Pages。
-5. 🚫 **不要为了「让验证通过」而放宽验证标准** —— 验证脚本是这个项目质量的唯一保障，
+1. 🚫 **不要手改 `index.html`** —— 它是构建产物，改源码后 `node src/build.js` 会覆盖它。
+2. 🚫 **不要把 `index.html` 挪出仓库根**（比如放 `src/` 或 `dist/`）—— GitHub Pages 以仓库根为
+   发布目录，入口只能是 `/index.html`；挪走线上地址就会变成 `.../子目录/`，用户加过桌面的
+   链接全部失效。
+3. 🚫 **不要引入任何外部依赖**（CDN、npm 包、字体文件）—— 这个项目要能离线单文件运行。
+4. 🚫 **不要把 `token.txt` / `device.json` / 任何 token 提交进仓库**（已在 `.gitignore` 里，别去动它）。
+5. 🚫 **不要往 Netlify 推** —— 已解绑删除；只用 GitHub Pages。
+6. 🚫 **不要为了「让验证通过」而放宽验证标准** —— 验证脚本是这个项目质量的唯一保障，
    历史上每一个真缺陷（影子价格符号、灵敏度区间过宽、对偶比值漏 M 项、0-1 上界未加入、
    割平面新增列顶位右端项、隐枚举最小化比反了）都是它抓出来的。
    如果验证失败，**先怀疑代码，再怀疑测试**；确认是测试写错了再改测试，并在注释里写清原因。
-6. 🚫 **不要声称「已完成 / 已推送 / 已生效」而不核实** —— 推送用 `git ls-remote` 核实远程 SHA，
+7. 🚫 **不要声称「已完成 / 已推送 / 已生效」而不核实** —— 推送用 `git ls-remote` 核实远程 SHA，
    线上效果用 HTTP 取回内容或截图核实，不要凭工具返回码下结论。

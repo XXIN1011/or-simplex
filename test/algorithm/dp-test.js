@@ -8,8 +8,8 @@
    —— 只看最终答案的话，递推方向写反、边界条件写错都可能碰巧对上。
 */
 'use strict';
-const D = require('./dp-core.js');
-const fmt = require('./simplex-core.js').fmtNum;
+const D = require('../../src/core/dp-core.js');
+const fmt = require('../../src/core/simplex-core.js').fmtNum;
 
 let bad = [];
 const eq = (a, b) => Math.abs(a - b) < 1e-9;

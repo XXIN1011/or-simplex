@@ -1,5 +1,5 @@
 /* 针对性的布局探测：图解 SVG 实际显示尺寸、输入区高度、各区块位置
-   用法: node probe-layout.js [页面文件或URL] */
+   用法: node test/ui/probe-layout.js [页面文件或URL] */
 'use strict';
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -14,7 +14,7 @@ const pageFile = process.argv[2] || 'index.html';
 const PORT = 9300 + Math.floor(Math.random() * 600);
 const url = /^https?:\/\//i.test(pageFile)
   ? pageFile
-  : 'file:///' + path.resolve(__dirname, pageFile).replace(/\\/g, '/');
+  : 'file:///' + path.resolve(__dirname, '..', '..', pageFile).replace(/\\/g, '/');
 /* 应用现在有首页：这些检查都针对「单纯形法」模块，先进去，否则元素隐藏、量不到尺寸 */
 const pageUrl = url.indexOf('#') === -1 ? url + '#/simplex' : url;
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'orprobe-'));

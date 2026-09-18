@@ -21,7 +21,7 @@ const PORT = 9100 + Math.floor(Math.random() * 800);
 const target = process.argv[2] || 'index.html';
 const url = /^https?:\/\//i.test(target)
   ? target
-  : 'file:///' + path.resolve(__dirname, target).replace(/\\/g, '/');
+  : 'file:///' + path.resolve(__dirname, '..', '..', target).replace(/\\/g, '/');
 /* 应用现在有首页：回归测试要先进到「单纯形法」模块，否则元素是隐藏的、量不到尺寸 */
 const pageUrl = url.indexOf('#') === -1 ? url + '#/simplex' : url;
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'orverify-'));

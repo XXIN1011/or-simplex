@@ -14,7 +14,11 @@ import json
 import numpy as np
 from scipy.optimize import linprog
 
-bank = json.load(open('sens-bank.json', encoding='utf-8'))
+# 题库由同目录的 node 脚本生成；按【脚本自身位置】定位，这样从任何工作目录
+# 运行都能找到（原来用裸文件名，靠 CWD，换目录就会 FileNotFoundError）
+import os
+_HERE = os.path.dirname(os.path.abspath(__file__))
+bank = json.load(open(os.path.join(_HERE, 'sens-bank.json'), encoding='utf-8'))
 n_prob = len(bank)
 n_in = sum(1 for t in bank for s in t['samples'] if s['tag'] == 'in')
 n_out = sum(1 for t in bank for s in t['samples'] if s['tag'] == 'out')

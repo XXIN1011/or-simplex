@@ -10,8 +10,8 @@
 */
 'use strict';
 const fs = require('fs');
-const S = require('./simplex-core.js');
-const SC = require('./sens-core.js');
+const S = require('../../src/core/simplex-core.js');
+const SC = require('../../src/core/sens-core.js');
 
 const rnd = (a, b) => a + Math.random() * (b - a);
 const ri = (a, b) => Math.floor(rnd(a, b + 1));

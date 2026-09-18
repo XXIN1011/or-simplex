@@ -1,5 +1,5 @@
 /* 可访问性 / 移动端体验审查：触摸目标尺寸、文字对比度、表单标注、字号、横向溢出
-   用法: node audit.js [页面文件或URL] [dark] */
+   用法: node test/ui/audit.js [页面文件或URL] [dark] */
 'use strict';
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -10,7 +10,7 @@ const CHROME = fs.existsSync('C:/Program Files/Google/Chrome/Application/chrome.
   ? 'C:/Program Files/Google/Chrome/Application/chrome.exe'
   : 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 
-/* 允许在文件名后带模块 hash，例如 `node audit.js "index.html#/sens"` */
+/* 允许在文件名后带模块 hash，例如 `node test/ui/audit.js "index.html#/sens"` */
 const rawTarget = process.argv[2] || 'index.html';
 const hashAt = rawTarget.indexOf('#');
 const pageFile = hashAt >= 0 ? rawTarget.slice(0, hashAt) : rawTarget;
@@ -21,7 +21,7 @@ const WIDTH = 390;
 const PORT = 9200 + Math.floor(Math.random() * 700);
 const url = /^https?:\/\//i.test(pageFile)
   ? pageFile
-  : 'file:///' + path.resolve(__dirname, pageFile).replace(/\\/g, '/');
+  : 'file:///' + path.resolve(__dirname, '..', '..', pageFile).replace(/\\/g, '/');
 /* 应用现在有首页：默认检查「单纯形法」模块，否则元素隐藏、量不到尺寸。
    想查其它模块就带上 hash，例如 "index.html#/sens" */
 const pageUrl = url.indexOf('#') === -1 ? url + (wantHash || '#/simplex') : url;

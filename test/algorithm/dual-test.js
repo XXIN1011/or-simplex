@@ -1,7 +1,7 @@
 /* 对偶解（影子价格）测试：人工可核对的例题 + 生成批量题库供 scipy 对拍 */
 'use strict';
 const fs = require('fs');
-const { simplexSolve, fmtNum } = require('./simplex-core.js');
+const { simplexSolve, fmtNum } = require('../../src/core/simplex-core.js');
 
 function show(title, prob, expect) {
   const r = simplexSolve(prob);
