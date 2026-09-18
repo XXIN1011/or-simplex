@@ -197,7 +197,9 @@ const AUDIT = `(function(){
               /* 灵敏度分析模块与首页新增的部分 */
               '.judge','.sens-note','.sens-warn','.sens-h','a.modcard .md','a.back','.fl','.fe','.fx',
               /* 动态规划模块新增的部分 */
-              '.fv','.muted','table.inp.dm th','table.sens.dpt td','.verdict .vtitle'];
+              '.fv','.muted','table.inp.dm th','table.sens.dpt td','.verdict .vtitle',
+              /* 玻璃主题新增：主按钮（玻璃描边）与底部导航标签 */
+              'button.btn.primary','.tabbar a','.tabbar a.on','.foottip'];
   var lows = [], seen = {};
   sels.forEach(function(s){
     var el = document.querySelector(s);

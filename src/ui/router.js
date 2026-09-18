@@ -16,6 +16,44 @@
     return MODULES.indexOf(h) >= 0 ? h : 'home';
   }
 
+  /* ---- 底部导航的滑动指示器 ----
+     高亮底由 .tb-pill 一个元素承担，切模块时从旧位置平滑滑到新位置。
+     两个必须注意的点：
+     ① 位置要用 rect 算，不能用 offsetLeft —— .tabbar 是 position:fixed，
+        .tb-pill 是它的绝对定位子元素，pill 的 left:0 参照「padding box」的
+        左边缘（边框内侧），所以位移 = 标签 rect.left - 导航条 rect.left - 边框宽。
+     ② 首次定位必须关掉过渡，否则开屏会看到指示器从最左边滑过去。 */
+  var pillArmed = false;
+
+  function movePill() {
+    var bar = document.querySelector('.tabbar');
+    if (!bar) return;
+    var pill = bar.querySelector('.tb-pill');
+    if (!pill) return;
+    var act = bar.querySelector('a.on');
+    if (!act) { pill.classList.remove('on'); return; }   /* #/dp 没有导航项 */
+    var br = bar.getBoundingClientRect();
+    var ar = act.getBoundingClientRect();
+    var bw = parseFloat(getComputedStyle(bar).borderLeftWidth) || 0;
+    if (!pillArmed) pill.style.transition = 'none';
+    pill.style.width = ar.width + 'px';
+    pill.style.transform = 'translateX(' + (ar.left - br.left - bw) + 'px)';
+    pill.classList.add('on');
+    if (!pillArmed) {
+      pillArmed = true;
+      /* 下一帧再把过渡交还给样式表，之后切页就有动画了 */
+      requestAnimationFrame(function () { pill.style.transition = ''; });
+    }
+  }
+
+  /* 横竖屏切换、桌面端拉伸、系统字号变化都会让标签宽度变掉 */
+  var pillTimer = null;
+  window.addEventListener('resize', function () {
+    clearTimeout(pillTimer);
+    pillTimer = setTimeout(movePill, 120);
+  });
+  window.addEventListener('load', movePill);
+
   function show(name) {
     MODULES.forEach(function (m) {
       var el = document.getElementById('mod-' + m);
@@ -26,6 +64,7 @@
     Array.prototype.forEach.call(document.querySelectorAll('.tabbar a[data-m]'), function (a) {
       a.classList.toggle('on', a.getAttribute('data-m') === name);
     });
+    movePill();
     window.scrollTo(0, 0);
     /* 表格是否溢出要等它可见之后才量得准，所以切页后再补一次「左右滑动」提示 */
     if (typeof addScrollHints === 'function') {

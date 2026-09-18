@@ -812,6 +812,80 @@ class CDP {
     `表内 z 列=${ip.minRowZ.join('/')}`);
   check(ip.errors === 0, '整数规划模块无 JS 错误');
 
+  /* ---------- 底部导航的滑动指示器 ---------- */
+  console.log('\n--- 底部导航滑动指示器 ---');
+  /* 高亮底由一个 .tb-pill 元素承担，切模块时用 transform 平移过去。
+     断言四件事：① 元素存在且对齐当前标签；② 高亮不再由 .on 自己画背景
+     （否则切换会「旧的瞬间消失 + 新的瞬间出现」）；③ 过渡挂在 transform 上；
+     ④ 切换后位置真的变了；⑤ 访问不露出的 #/dp 时隐藏；⑥ 开「减少动态效果」时不做动画。
+
+     ★ 必须先显式声明 no-preference：无头 Chrome 默认就把 prefers-reduced-motion
+     报成 reduce，而样式表末尾有一条 *{transition:none!important} 的兜底规则 ——
+     不声明的话这里量到的过渡永远是 none，会误判成「动画没做」。 */
+  await cdp.send('Emulation.setEmulatedMedia',
+    { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] }, sessionId);
+  await sleep(250);
+  const navTo = async (hash) => {
+    await cdp.send('Runtime.evaluate', { expression: `location.hash='${hash}'` }, sessionId);
+    await sleep(700);            /* 过渡 340ms，等它滑到位再量 */
+    return JSON.parse(await evl(`JSON.stringify((function(){
+      var bar = document.querySelector('.tabbar');
+      var pill = bar && bar.querySelector('.tb-pill');
+      var act = bar && bar.querySelector('a.on');
+      if(!pill) return { hasPill:false };
+      var pr = pill.getBoundingClientRect();
+      var ar = act ? act.getBoundingClientRect() : null;
+      var ps = getComputedStyle(pill);
+      return { hasPill:true, op:ps.opacity, tp:ps.transitionProperty,
+               armed:pill.classList.contains('on'),
+               pl:Math.round(pr.left), pw:Math.round(pr.width),
+               label:act ? act.textContent.trim() : null,
+               al:ar ? Math.round(ar.left) : null, aw:ar ? Math.round(ar.width) : null,
+               onBg:act ? getComputedStyle(act).backgroundColor : null };
+    })())`));
+  };
+
+  const n1 = await navTo('#/simplex');
+  check(n1.hasPill, '底部导航里存在滑动指示器元素 .tb-pill');
+  check(n1.label === '单纯形法' && Math.abs(n1.pl - n1.al) <= 1 && Math.abs(n1.pw - n1.aw) <= 2,
+    '指示器与「单纯形法」标签的位置和宽度都对齐',
+    `指示器 left=${n1.pl} w=${n1.pw}；标签 left=${n1.al} w=${n1.aw}`);
+  check(n1.onBg === 'rgba(0, 0, 0, 0)',
+    '高亮底交给指示器承担，.on 自身不再画背景（避免「消失又出现」）',
+    `a.on background=${n1.onBg}`);
+  check(/transform/.test(n1.tp),
+    '指示器的过渡挂在 transform 上（合成层，不触发布局重算）', `transitionProperty=${n1.tp}`);
+
+  /* 反过来也要验：系统开了「减少动态效果」时必须真的不做动画 */
+  await cdp.send('Emulation.setEmulatedMedia',
+    { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] }, sessionId);
+  await sleep(250);
+  const nRm = JSON.parse(await evl(`JSON.stringify((function(){
+    var ps = getComputedStyle(document.querySelector('.tb-pill'));
+    return { prop: ps.transitionProperty, dur: ps.transitionDuration };
+  })())`));
+  check(nRm.prop === 'none' || nRm.dur === '0s' || nRm.dur === '0s, 0s, 0s',
+    '系统开启「减少动态效果」时指示器不做动画（尊重设置，不是硬编码动画）',
+    `transitionProperty=${nRm.prop} duration=${nRm.dur}`);
+  await cdp.send('Emulation.setEmulatedMedia',
+    { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] }, sessionId);
+  await sleep(200);
+
+  const n2 = await navTo('#/sens');
+  check(n2.label === '灵敏度' && n2.pl > n1.pl,
+    '切到「灵敏度」后指示器向右滑过去（位置变了，而不是原地消失又出现）',
+    `left ${n1.pl} → ${n2.pl}`);
+
+  const n3 = await navTo('#/');
+  check(n3.label === '首页' && n3.pl < n1.pl, '切回首页后指示器滑回最左', `left ${n3.pl}`);
+
+  const n4 = await navTo('#/dp');
+  check(n4.label === null && n4.op === '0',
+    '访问刻意不露出的 #/dp 时指示器隐藏（它没有对应导航项）',
+    `label=${n4.label} opacity=${n4.op}`);
+  await navTo('#/');
+  await cdp.send('Emulation.setEmulatedMedia', { features: [] }, sessionId);
+
   console.log(`\n合计: ${pass} 通过 / ${fail} 失败`);
   ws.close(); child.kill();
   await sleep(300);

@@ -34,7 +34,7 @@
 
   --accent:#2563eb; --accent-hi:#5b8cf7; --accent-soft:#eef4ff; --accent-text:#1d4ed8;
   --leave-soft:#fff5e9; --pivot:#f59e0b; --pivot-soft:#fef3c7;
-  --ok:#15803d; --ok-soft:#eefbf2;
+  --ok:#116b33; --ok-soft:#eefbf2;
   --warn:#b45309; --warn-soft:#fff8ea;
   --err:#c02626; --err-soft:#fef3f2;
 
@@ -93,6 +93,11 @@ body{
   padding:0 0 env(safe-area-inset-bottom);
 }
 ::selection{background:var(--accent-soft);color:var(--fg)}
+
+/* 上下标：浏览器默认缩到 0.83em，13px 的正文里只剩 10.8px —— 低于本项目自己定的
+   12px 下限（审查脚本会报「字号 < 12px」，实测在动态规划模块抓到 10 处）。
+   用 max() 把它托到 12px：正文里的下标变大，而 h1 那种大字号的上下标维持原比例。 */
+sub,sup{font-size:max(12px,.83em)}
 /* 键盘聚焦时才画焦点环：鼠标点击不画，手指点更不画 */
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
 input:focus-visible,select:focus-visible{outline:none}
@@ -687,7 +692,26 @@ input.num.sm{width:52px}
 }
 .tabbar a svg{display:block;width:19px;height:19px}
 .tabbar a:active{background:var(--soft)}
-.tabbar a.on{background:var(--accent-soft);color:var(--accent-text);font-weight:700}
+.tabbar a.on{color:var(--accent-text);font-weight:700}
+/* 高亮底由 .tb-pill 承担，所以 .on 自己不再画背景 —— 否则切页时会出现
+   「旧的瞬间消失、新的瞬间出现」两块底色。 */
+.tabbar{position:fixed;isolation:isolate}
+.tabbar a{position:relative;z-index:1;background:transparent}
+.tabbar a:active{background:transparent;opacity:.72}
+.tb-pill{
+  position:absolute;left:0;top:5px;bottom:5px;width:0;z-index:0;
+  border-radius:15px;background:var(--accent-soft);
+  opacity:0;pointer-events:none;
+  /* 只动 transform / width（合成层属性），不动 left —— 动 left 会触发布局重算。
+     缓动曲线用标准 ease-out（cubic-bezier(0,0,.58,1)）：实测过一版
+     cubic-bezier(.34,.82,.28,1)，它把 77% 的位移压在前 18% 的时间里 ——
+     看起来是「猛冲过去再磨蹭」，不像滑动。ease-out 的进展大致是
+     「10%时间走 19%、30%走 52%、50%走 75%」，读起来才是连续的滑行。 */
+  transition:transform .3s cubic-bezier(0,0,.58,1),
+             width .3s cubic-bezier(0,0,.58,1),
+             opacity .2s linear;
+}
+.tb-pill.on{opacity:1}
 
 /* ===================================================================
    视觉体系：极光底 + 玻璃材质
@@ -726,13 +750,15 @@ input.num.sm{width:52px}
   --au-3:rgba(10,168,150,.38);
   --au-4:rgba(250,150,40,.42);
 
-  /* 承载正文的四个面：合成后有效 alpha 仍 >= .9。
-     低于这个值 audit.js 的对比度检查就失去意义（它只认「alpha>0.9 的第一个
-     祖先」，不做逐层合成）—— 这里刻意保留 .90，让那个检查继续有效。 */
-  --card:rgba(255,255,255,.90);
-  --input:rgba(255,255,255,.92);
-  --soft:rgba(241,244,249,.88);
-  --zebra:rgba(250,251,253,.90);
+  /* 承载正文的面：全玻璃版把它们从「近不透明」降到真玻璃。
+     厚度不是随心定的 —— 极光会漂移，文字背后的颜色会随时间变艳，所以按
+     **最坏情况**算：极光最强处（au-1 全强度叠在 --bg 上）的底为亮度 0.387，
+     --fg2(#55606f) 要在上面过 4.5:1，白填充的下限是 .58；取 .70 留出余量，
+     实测典型位置 6~9:1。想更透就会掉破 AA，这是硬边界。 */
+  --card:rgba(255,255,255,.70);
+  --input:rgba(255,255,255,.72);
+  --soft:rgba(241,244,249,.62);
+  --zebra:rgba(250,251,253,.55);
 }
 
 /* ---------------- 底色 ----------------
@@ -821,14 +847,17 @@ a.modcard:active{background:var(--gl-fill-2)}
   box-shadow:var(--gl-shadow),inset 0 1px 0 var(--gl-sheen);
 }
 
-/* ---------------- 正文卡：近不透明 + 轻微磨砂 ---------------- */
-.card,.help,.meth-h,.meth-body{
-  -webkit-backdrop-filter:blur(12px) saturate(1.12);
-  backdrop-filter:blur(12px) saturate(1.12);
-  box-shadow:0 10px 28px -16px rgba(15,22,35,.18),0 1px 2px rgba(15,22,35,.04);
+/* ---------------- 正文卡：也是玻璃（全玻璃版）----------------
+   模糊从 12px 提到 18px、饱和度提到 1.3：玻璃感靠「模糊可感」来传达，
+   只降低不透明度而不加模糊，看起来更像半透明的白纸而不是玻璃。 */
+.card,.help,.meth-h,.meth-body,.verdict,.banner:not(.err){
+  -webkit-backdrop-filter:blur(18px) saturate(1.3);
+  backdrop-filter:blur(18px) saturate(1.3);
+  box-shadow:0 10px 30px -18px rgba(15,22,35,.22),0 1px 2px rgba(15,22,35,.04);
 }
-/* 表格再铺一层近白，让数字落在最干净的底上 */
-table.inp,table.tb,table.sens{background-color:rgba(255,255,255,.55)}
+/* 表格铺一层淡白：数字是正文里最需要稳定的一类内容，但也不该把透明感盖死。
+   .70 的卡片 + .25 的表 = 有效 .775，既压在受控底色上、又还看得见玻璃。 */
+table.inp,table.tb,table.sens{background-color:rgba(255,255,255,.25)}
 
 /* ---------------- 按钮：玻璃药丸 ---------------- */
 button.btn{
@@ -838,13 +867,24 @@ button.btn{
   box-shadow:inset 0 1px 0 var(--gl-sheen),0 8px 20px -12px rgba(15,22,35,.32);
 }
 button.btn:active{background:var(--gl-fill-2)}
-/* 「求解」是整页最重要的按钮，保持实心强调色 —— 玻璃的透明感会削弱分量 */
+/* 「求解」按钮：玻璃描边 —— 它自己也是玻璃，只用强调色的描边、染色与文字
+   来标明「这是主操作」。
+   原先那版是亮蓝渐变 + 同色光晕的实心块，问题是：① 渐变上端偏亮、光晕又是
+   同一个高饱和色，叠在一起刺眼；② 一块高饱和实心色压在全玻璃界面上非常突兀。
+   现在改成：低饱和染色 + 1px 强调色描边 + 玻璃内高光。
+   与次要按钮(.btn，中性玻璃、无染色)的区分靠「色相」而不是「明度」——
+   这样主按钮仍然是全场唯一的强调色块，但不再靠亮度和饱和度去抢。 */
 button.btn.primary{
-  background-image:linear-gradient(180deg,var(--accent-hi),var(--accent));
-  border-color:transparent;color:#fff;
-  -webkit-backdrop-filter:none;backdrop-filter:none;
-  box-shadow:0 14px 30px -13px var(--accent),inset 0 1px 0 rgba(255,255,255,.45);
+  background-image:none;
+  background-color:rgba(37,99,235,.14);
+  border-color:var(--accent);color:var(--accent-text);
+  -webkit-backdrop-filter:blur(16px) saturate(1.6);
+  backdrop-filter:blur(16px) saturate(1.6);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),
+             0 8px 20px -14px rgba(15,22,35,.38);
 }
+button.btn.primary:active{
+  background-color:rgba(37,99,235,.24);filter:none;transform:translateY(1px);}
 
 .seg{background:rgba(255,255,255,.42);border-color:var(--gl-line);
   -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
@@ -888,8 +928,11 @@ button.btn.primary{
     --au-3:rgba(18,190,162,.30);
     --au-4:rgba(240,150,40,.26);
 
-    --card:rgba(21,26,36,.90);
-    --input:rgba(28,34,46,.92);
+    /* 深色反过来：浅色文字不需要那么高的底亮度，所以可以更透 —— 这是
+       「两套主题各自调优」而不是「同一套配方反转」的地方。
+       深底 + .55 的黑玻璃，实测 --fg2 仍有 5.5:1 以上。 */
+    --card:rgba(21,26,36,.55);
+    --input:rgba(28,34,46,.58);
     --soft:rgba(255,255,255,.055);
     --zebra:rgba(255,255,255,.035);
   }
@@ -905,6 +948,14 @@ button.btn.primary{
      深色文字」，实测 8.0:1，顺带也更像原生的分段控件。 */
   .seg{background:rgba(255,255,255,.05)}
   .seg button.on{background:var(--accent);color:#0d1016;box-shadow:none}
+  /* 深色下的玻璃描边按钮：染色换成浅蓝、描边提到 .75 才压得住深底 */
+  button.btn.primary{
+    background-color:rgba(122,162,255,.18);
+    border-color:rgba(122,162,255,.75);color:#c3d5ff;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.18),
+               0 8px 20px -14px rgba(0,0,0,.65);
+  }
+  button.btn.primary:active{background-color:rgba(122,162,255,.28)}
 }
 
 /* ---------------- 不支持 backdrop-filter 时退回实色 ----------------
@@ -919,6 +970,11 @@ button.btn.primary{
     --gl-shadow:var(--shadow-1);
     --card:#fff;--input:#fff;--soft:#f1f4f9;--zebra:#fafbfd;
   }
+  /* 主按钮也要还原成实心：没有背景模糊时，一层 .14 的淡染几乎看不见，
+     「求解」会变得像个不可点的次要按钮。 */
+  button.btn.primary{
+    background-color:rgba(37,99,235,.92);border-color:transparent;color:#fff;
+  }
 }
 @media (prefers-color-scheme: dark){
   @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
@@ -927,6 +983,9 @@ button.btn.primary{
       --gl-fill-2:rgba(26,32,45,.99);
       --gl-line:var(--line);
       --card:#151a23;--input:#1c222d;--soft:#1b212c;--zebra:#181e28;
+    }
+    button.btn.primary{
+      background-color:rgba(122,162,255,.92);border-color:transparent;color:#0d1016;
     }
   }
 }
@@ -1161,6 +1220,10 @@ button.btn.primary{
 <!-- 底部模块导航：手机上这比「返回首页再点一次」顺手得多。
      动态规划仍按既有约定不露出（只能直接访问 #/dp）。 -->
 <nav class="tabbar" aria-label="模块导航">
+  <!-- 滑动指示器：高亮块由它一个元素承担，切模块时从旧位置平滑滑到新位置，
+       而不是「旧的消失 + 新的出现」那种跳变。位置由 src/ui/router.js 设定。
+       纯装饰，读屏忽略。 -->
+  <span class="tb-pill" aria-hidden="true"></span>
   <a href="#/" data-m="home">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path d="M3.5 10.5 12 3.5l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/>
@@ -6700,6 +6763,44 @@ if (typeof module !== 'undefined' && module.exports) {
     return MODULES.indexOf(h) >= 0 ? h : 'home';
   }
 
+  /* ---- 底部导航的滑动指示器 ----
+     高亮底由 .tb-pill 一个元素承担，切模块时从旧位置平滑滑到新位置。
+     两个必须注意的点：
+     ① 位置要用 rect 算，不能用 offsetLeft —— .tabbar 是 position:fixed，
+        .tb-pill 是它的绝对定位子元素，pill 的 left:0 参照「padding box」的
+        左边缘（边框内侧），所以位移 = 标签 rect.left - 导航条 rect.left - 边框宽。
+     ② 首次定位必须关掉过渡，否则开屏会看到指示器从最左边滑过去。 */
+  var pillArmed = false;
+
+  function movePill() {
+    var bar = document.querySelector('.tabbar');
+    if (!bar) return;
+    var pill = bar.querySelector('.tb-pill');
+    if (!pill) return;
+    var act = bar.querySelector('a.on');
+    if (!act) { pill.classList.remove('on'); return; }   /* #/dp 没有导航项 */
+    var br = bar.getBoundingClientRect();
+    var ar = act.getBoundingClientRect();
+    var bw = parseFloat(getComputedStyle(bar).borderLeftWidth) || 0;
+    if (!pillArmed) pill.style.transition = 'none';
+    pill.style.width = ar.width + 'px';
+    pill.style.transform = 'translateX(' + (ar.left - br.left - bw) + 'px)';
+    pill.classList.add('on');
+    if (!pillArmed) {
+      pillArmed = true;
+      /* 下一帧再把过渡交还给样式表，之后切页就有动画了 */
+      requestAnimationFrame(function () { pill.style.transition = ''; });
+    }
+  }
+
+  /* 横竖屏切换、桌面端拉伸、系统字号变化都会让标签宽度变掉 */
+  var pillTimer = null;
+  window.addEventListener('resize', function () {
+    clearTimeout(pillTimer);
+    pillTimer = setTimeout(movePill, 120);
+  });
+  window.addEventListener('load', movePill);
+
   function show(name) {
     MODULES.forEach(function (m) {
       var el = document.getElementById('mod-' + m);
@@ -6710,6 +6811,7 @@ if (typeof module !== 'undefined' && module.exports) {
     Array.prototype.forEach.call(document.querySelectorAll('.tabbar a[data-m]'), function (a) {
       a.classList.toggle('on', a.getAttribute('data-m') === name);
     });
+    movePill();
     window.scrollTo(0, 0);
     /* 表格是否溢出要等它可见之后才量得准，所以切页后再补一次「左右滑动」提示 */
     if (typeof addScrollHints === 'function') {

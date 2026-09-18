@@ -6,45 +6,57 @@
 # 计算，对「压在玻璃上的文字」结论偏乐观。这里改成直接读截图像素：取文字实际压着的
 # 那个颜色再算 WCAG 对比度，不受层数、模糊、渐变影响，是权威校验。
 #
-# 用法: bash tools/verify-visual.sh
+# ★ 为什么每个模块要量多个滚动位置：一次视口截图只有 844px 高，只量顶部会漏掉正文
+#   深处的表格与卡片 —— 而「全玻璃」正是把那些承载面调透明了，漏测等于没测。
+#
+# 用法: bash tools/verify-visual.sh [--verbose]
 # 退出码 0 表示全部达标。
 cd "$(dirname "$0")/.." || exit 1
 FAIL=0
+OUT=preview/verify
+mkdir -p "$OUT"
+VERBOSE="${1:-}"
 
-shot() { node tools/visual/shot-vp.js "$1" "$2" "$3" "$4" "$5" >/dev/null 2>&1; }
-probe() {   # $1=hash $2=输出json $3=dark? $4=填充脚本
-  if [ "$3" = dark ]; then
-    PROBE_FILL="$4" node tools/visual/probe-color.js "index.html$1" dark > "$2"
-  else
-    PROBE_FILL="$4" node tools/visual/probe-color.js "index.html$1" > "$2"
-  fi
-}
-
-OUT=preview/verify; mkdir -p "$OUT"
 echo "构建：$(node src/build.js)"
+echo
 
-check() {   # $1=名字 $2=hash $3=dark? $4=填充脚本
-  local name="$1" hash="$2" mode="$3" fill="$4" png json
-  png="$OUT/vp-$name.png"; json="$OUT/r-$name.json"
-  shot "index.html$hash" "$png" 0 "$mode" "$fill"
-  probe "$hash" "$json" "$mode" "$fill"
-  echo
-  echo "===== $name ====="
-  local res
-  res=$(python tools/visual/measure-contrast.py "$png" "$json" 2 0 844 2>/dev/null)
-  echo "$res" | grep -E "★不过|不达标|全部达标"
-  echo "$res" | grep -qE "★不过|不达标" && FAIL=1
-  return 0
-}
+# 名称|hash|模式|填充脚本|滚动位置(逗号分隔)
+CASES="
+home-light|#/|light||0
+home-dark|#/|dark||0
+simplex-light|#/simplex|light|fill-sample.js|0,1400
+simplex-dark|#/simplex|dark|fill-sample.js|0,1400
+sens-light|#/sens|light|fill-sens.js|0,1400
+sens-dark|#/sens|dark|fill-sens.js|0,1400
+ip-light|#/ip|light|fill-ip.js|0,1400
+ip-dark|#/ip|dark|fill-ip.js|0,1400
+"
 
-check home-light       "#/"        ""     ""
-check home-dark        "#/"        dark   ""
-check simplex-light    "#/simplex" ""     fill-sample.js
-check simplex-dark     "#/simplex" dark   fill-sample.js
-check sens-light       "#/sens"    ""     fill-sens.js
-check sens-dark        "#/sens"    dark   fill-sens.js
-check ip-light         "#/ip"      ""     fill-ip.js
-check ip-dark          "#/ip"      dark   fill-ip.js
+while IFS='|' read -r name hash mode fill offs; do
+  [ -z "$name" ] && continue
+  [ -z "$offs" ] && offs=0
+  IFS=',' read -ra OFFS <<< "$offs"
+  for off in "${OFFS[@]}"; do
+    png="$OUT/vp-$name-$off.png"; json="$OUT/r-$name-$off.json"
+    node tools/visual/shot-vp.js "index.html$hash" "$png" "$off" "$mode" "$fill" >/dev/null 2>&1
+    if [ "$mode" = dark ]; then
+      PROBE_FILL="$fill" node tools/visual/probe-color.js "index.html$hash" dark > "$json"
+    else
+      PROBE_FILL="$fill" node tools/visual/probe-color.js "index.html$hash" > "$json"
+    fi
+    res=$(python tools/visual/measure-contrast.py "$png" "$json" 2 "$off" 844 2>/dev/null)
+    cnt=$(printf '%s\n' "$res" | grep -cE "OK |★不过")
+    if printf '%s\n' "$res" | grep -qE "★不过"; then
+      printf "%-18s scroll=%-5s 检查 %2s 项 : ★ 不达标\n" "$name" "$off" "$cnt"
+      printf '%s\n' "$res" | grep "★不过" | sed 's/^/      /'
+      FAIL=1
+    else
+      min=$(printf '%s\n' "$res" | grep -oE "[0-9]+\.[0-9]+ " | tr -d ' ' | sort -n | head -1)
+      printf "%-18s scroll=%-5s 检查 %2s 项 : 全部达标（最低 %s）\n" "$name" "$off" "$cnt" "$min"
+    fi
+    if [ "$VERBOSE" = "--verbose" ]; then printf '%s\n' "$res" | sed 's/^/      /'; fi
+  done
+done <<< "$CASES"
 
 echo
 if [ $FAIL -eq 0 ]; then

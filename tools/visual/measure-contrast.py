@@ -53,19 +53,27 @@ def parse_color(s, bg):
     return rgb
 
 
-def inner_ring_color(im, box, dpr=2.0):
-    """取元素框「内圈」像素的众数 ≈ 该元素自己的底色。"""
+def inner_ring_color(im, box, dpr=2.0, border_css=0.0):
+    """取元素框「内圈」像素的众数 ≈ 该元素自己的底色。
+
+    border_css 是该元素的边框宽度（CSS px）。必须把它跳过去：
+    边框是一圈**均匀**颜色，而半透明元素的底色往往是一段**渐变** —— 取众数时
+    均匀的那一方会赢。实测踩过：求解按钮的 1px 蓝描边压过了它内部的淡蓝玻璃底，
+    把底色量成 #2460e8（正好是描边色），算出 1.25:1 的假告警。
+    """
     W, H = im.size
     x0, y0, x1, y1 = box
-    bw, bh = x1 - x0, y1 - y0
-    if bw < 2 or bh < 2:
+    w, h = x1 - x0, y1 - y0
+    if w < 2 or h < 2:
         return None
-    # 内圈宽度：取元素短边的 18%，夹在 [2, 7] 设备像素之间
-    pad = int(max(2, min(7, min(bw, bh) * 0.18)))
+    # 起采位置：跳过边框；带宽取元素短边的 22%，夹在 [3, 9] 设备像素之间
+    start = int(round(border_css * dpr)) + 1
+    span = int(max(3, min(9, min(w, h) * 0.22)))
     pts = []
     for yy in range(y0, y1):
         for xx in range(x0, x1):
-            if xx - x0 < pad or x1 - xx <= pad or yy - y0 < pad or y1 - yy <= pad:
+            d = min(xx - x0, x1 - 1 - xx, yy - y0, y1 - 1 - yy)
+            if start <= d <= start + span:
                 pts.append(im.getpixel((xx, yy)))
     if not pts:
         pts = list(im.crop(box).convert('RGB').getdata())
@@ -103,7 +111,7 @@ def main():
             skipped += 1
             continue
         box = (x, y, min(x + w, im.size[0]), min(y + h, im.size[1]))
-        bg = inner_ring_color(im, box, dpr)
+        bg = inner_ring_color(im, box, dpr, float(it.get('bw') or 0))
         if bg is None:
             skipped += 1
             continue

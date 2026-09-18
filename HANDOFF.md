@@ -287,6 +287,11 @@ bash tools/verify-visual.sh                  # ★ 动了颜色/半透明/玻璃
 > `audit.js` 的对比度是按「背景色逐层 alpha 合成」算的近似值 —— `getComputedStyle`
 > 拿不到 `background-image`，页面的极光渐变不参与计算，对「压在玻璃上的文字」偏乐观。
 > `verify-visual.sh` 直接读截图里文字实际压着的像素颜色，是权威校验。两者都要过。
+>
+> 两点使用注意：① 它会对每个模块量**两个滚动位置**（顶部 + 中段）—— 只量顶部会漏掉正文
+> 深处的承载面；② 量测工具本身踩过三个坑（取框内众数会被中文粗体的墨色带偏、取「外圈」
+> 对紧凑控件失效、**均匀的描边色会打败渐变的底色**），三个坑的处理都写在
+> `tools/visual/measure-contrast.py` 的文件头注释里 —— 改那个脚本前先读。
 
 ### 6.3 只改了某个算法核心（最省的做法）
 
@@ -385,6 +390,7 @@ node tools/screenshots/shot.js "index.html#/ip" "out.png" 390 0 "@fill-ip-classi
 | **`search_files` 偶发返回 0** | 明明存在的字符串搜不到 | 改用 `grep`（terminal） |
 | **LF/CRLF 警告** | `git add` 时刷一屏 `LF will be replaced by CRLF` | 噪声，忽略即可（sha256 比对时统一把 CRLF 归一化） |
 | **`shot.js` 默认跳 `#/simplex`** | 想截首页却截到了单纯形法 | 显式写 `"index.html#/"` |
+| **无头 Chrome 默认报 `prefers-reduced-motion: reduce`** | 断言「过渡挂在 transform 上」永远失败（量到的 `transitionProperty` 是 `none`），看起来像「动画没做」 | 样式表末尾有一条 `*{transition:none!important}` 的兜底规则，headless 下会命中。断言动画前先 `Emulation.setEmulatedMedia` 显式声明 `no-preference`，断言完再恢复 |
 | **远程审查的触摸目标假警** | 线上 `audit.js` 偶发报「N 个触摸目标 < 44px」，本地重跑为 0 | 是 CDN 慢、元素还没渲染完就量了尺寸；现已对远程 URL 放宽等待（本地 1200ms / 远程 2600ms） |
 | **`document.querySelectorAll(...).forEach`** | 老写法 `Array.prototype.forEach.call` 更稳 | 与既有代码保持一致 |
 
@@ -394,17 +400,22 @@ node tools/screenshots/shot.js "index.html#/ip" "out.png" 390 0 "@fill-ip-classi
 
 - 分支 `main`；当前 HEAD 用 `git log --oneline -1` 看（这里不写死 SHA，免得一提交就过期）
 - 线上 https://xxin1011.github.io/or-simplex/ 应当与最新提交一致（推完等 50~65 秒再验）
-- **UI 回归 104 项全过**；九个算法验证套件全 PASS；四个模块 × 浅深色审查 0 问题
+- **UI 回归 112 项全过**；九个算法验证套件全 PASS；四个模块 × 浅深色审查 0 问题
 - verify-ui 覆盖：路由、首页卡片数、单纯形法（标准化/图解/迭代/对偶）、灵敏度（区间/四场景/技术系数/参数 LP）、动态规划（五题型）、整数规划（四方法/适用性/收纳卡/最小化）
 - **目录已整理**为 `src/{core,ui}` + `test/{algorithm,ui}` + `tools/{screenshots,visual,setup}`，
   `index.html`/`README.md`/`HANDOFF.md` 留在根（见第 2 节）。整理时顺手删掉了 6 个一次性的
   `diagnose-*.js`（对应缺陷都已修完并补了回归），以及若干临时预览脚本与截图（那些是消耗品）。
-- **视觉主题已换成「极光底 + 玻璃材质」**：玻璃只用在浮层（品牌区 / 模块卡 / 按钮 / 结论徽章 /
-  底部标签栏），正文表格近不透明；浅深两套 + 不支持 `backdrop-filter` 时退回实色。
-  落地过程中修掉四个实测抓到的缺陷：模块页标题区与页脚提示裸压在极光上（4.09 / 4.30:1 不达标）、
-  深色分段控件把几层白色玻璃叠成中灰（1.89~3.46:1）、极光被 `body` 的实色底整块盖住。
-  验证：UI 回归 104/104、无障碍审计 8 组全 0、像素级对比度 8 组全达标
-  （新增 `bash tools/verify-visual.sh`，并把 `tools/visual/` 四个量测工具留在了仓库里）。
+- **视觉主题是「极光底 + 全玻璃」**：所有承载面（品牌区 / 模块卡 / 正文卡 / 表格 / 按钮 /
+  结论徽章 / 底部标签栏）都是玻璃，浅深两套各自调优 + 不支持 `backdrop-filter` 时退回实色。
+  「求解」是玻璃描边按钮；底部导航用单个 `.tb-pill` 元素做滑动指示器。
+  用户明确要求过两件事，别改回去：① **要全玻璃**（含表格）；② **标签栏切换要滑过去**，
+  不能「旧的消失 + 新的出现」。
+- 落地过程中实测抓到并修掉的缺陷：极光被 `body` 的实色底整块盖住（量出来是 `#f4f4f8` 一片灰）、
+  模块页标题区与页脚提示裸压在极光上（4.09 / 4.30:1）、深色下白玻璃被下层叠成中灰
+  （1.89~3.46:1）、`<sub>` 被浏览器缩到 10.83px 跌破 12px 下限（DP 模块 10 处）。
+- 验证：UI 回归 112/112、无障碍审计 8 组全 0、像素级对比度 **14 屏全达标（最低 5.04）**。
+  `bash tools/verify-visual.sh` 会对每个模块量「顶部 + 中段」两屏 —— 只量顶部会漏掉正文
+  深处的表格与卡片，而全玻璃正是把那些面调透明了，漏测等于没测。
 - **`blob 哈希`不是「构建是否正常」的判据，而是「可复现性」判据**：同一份源码构建两次必须同哈希。
   源码（含 CSS）改了哈希当然会变；判断构建没坏要看产物能否正常运行（UI 回归 + 截图目视）。
 

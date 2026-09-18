@@ -39,7 +39,7 @@ const SELECTORS = [
   'a.modcard .mt', 'a.modcard .md', 'a.back',
   '.seg button.on', '.seg button:not(.on)',
   '.help summary', '.help li b', '.help li .d',
-  'table.inp th', 'input.num', 'button.btn',
+  'table.inp th', 'input.num', 'button.btn', 'button.btn.primary',
   'h2.sec', '.iter-head', '.explain',
   'table.tb th', 'table.tb td', 'table.tb td.rowlbl',
   '.verdict .vtitle', '.sol', '.vsum',
@@ -134,6 +134,12 @@ class CDP {
                    w: Math.round(r.width), h: Math.round(r.height),
                    color: cs.color, fs: parseFloat(cs.fontSize), fw: cs.fontWeight,
                    fixed: cs.position === 'fixed',
+                   /* 边框宽度也要带出来：量测取底色时必须跳过描边那几像素，
+                      否则「均匀的描边色」会在众数上打败「渐变的底色」 */
+                   bw: Math.max(parseFloat(cs.borderTopWidth) || 0,
+                                parseFloat(cs.borderRightWidth) || 0,
+                                parseFloat(cs.borderBottomWidth) || 0,
+                                parseFloat(cs.borderLeftWidth) || 0),
                    vh: window.innerHeight, sh: document.documentElement.scrollHeight });
       });
       return out;
