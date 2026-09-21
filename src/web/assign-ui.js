@@ -291,7 +291,7 @@ var addScrollHints = inputPanel.addScrollHints;
   function matrixHtml(M, marks, lines, rowLabels, colLabels) {
     var h = '<div class="scroll"><table class="mtxout"><thead><tr><th></th>';
     for (var j = 0; j < colLabels.length; j++) {
-      h += '<th' + (lines && lines.cols[j] ? ' class="cx"' : '') + '>' + esc(colLabels[j]) + '</th>';
+      h += '<th' + (lines && lines.cols[j] ? ' class="cxh"' : '') + '>' + esc(colLabels[j]) + '</th>';
     }
     h += '</tr></thead><tbody>';
     for (var i = 0; i < M.length; i++) {

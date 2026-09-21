@@ -697,34 +697,47 @@ table.mtxout th,table.mtxout td{
 }
 table.mtxout th{font-size:12px;font-weight:650;color:var(--fg2);background:var(--soft)}
 table.mtxout th.lbl{text-align:right;font-size:12.5px}
-/* 覆盖线画在格子**内部**（距上边 / 左边 3px 处），不画在单元格边框上：
-   画在边框上时，一条横线正好压在第 i 行与第 i+1 行的分界上，看不出它盖的是哪一行
-   （用户反馈的原话：「难以看出具体是哪一行」）。画进格子内部之后，线明确属于这一行
-   / 这一列，从行首的「人员 2」标签一直贯穿到最后一格；同时也不会从数字中间穿过去，
-   免得跟「被划掉的 0」的删除线混起来。
-   双覆盖的格子（既在横线行、又在竖线列）要同时画两条线，所以用两层背景。 */
-table.mtxout th.lr,table.mtxout td.lr{
+/* 覆盖线按教材的画法：横线画在该行**正中**、竖线画在该列**正中** —— 就是拿尺子从
+   一行（一列）中间划过去的那条线，而不是压在两行的分界上（那样看不出盖的是哪一行）。
+   线因此会从数字中间穿过，这是刻意的：它和被划掉的 0 的记号不冲突 ——
+   覆盖线是 3px 的琥珀色、贯穿整行整列；「被划掉的 0」是同字色的细删除线、只覆盖那一个数字。
+   双覆盖的格子（既在横线行、又在竖线列）要同时画两条，所以用两层背景。 */
+table.mtxout td.lr{
   background-image:linear-gradient(var(--line-warn),var(--line-warn));
-  background-size:100% 2.5px;
-  background-position:center 3px;
+  background-size:100% 3px;
+  background-position:center;
   background-repeat:no-repeat;
 }
-table.mtxout th.cx,table.mtxout td.lc{
+table.mtxout td.lc{
   background-image:linear-gradient(var(--line-warn),var(--line-warn));
-  background-size:2.5px 100%;
-  background-position:3px center;
+  background-size:3px 100%;
+  background-position:center;
   background-repeat:no-repeat;
 }
 table.mtxout td.lr.lc{
   background-image:linear-gradient(var(--line-warn),var(--line-warn)),
                    linear-gradient(var(--line-warn),var(--line-warn));
-  background-size:100% 2.5px,2.5px 100%;
-  background-position:center 3px,3px center;
+  background-size:100% 3px,3px 100%;
+  background-position:center,center;
   background-repeat:no-repeat,no-repeat;
+}
+/* 行首标签与列表头这两格例外：线不在它们身上穿过（否则标签文字会被划掉），
+   而是在靠正文那一侧画一小段「起头」，与该行 / 该列正文里的线对齐。 */
+table.mtxout th.lbl.lr{
+  background-image:linear-gradient(var(--line-warn),var(--line-warn));
+  background-size:10px 3px;
+  background-position:right 3px center;
+  background-repeat:no-repeat;
+}
+table.mtxout th.cxh{
+  background-image:linear-gradient(var(--line-warn),var(--line-warn));
+  background-size:3px 10px;
+  background-position:center bottom 3px;
+  background-repeat:no-repeat;
 }
 /* 被线盖住的行 / 列，标签也跟着点一下色，方便和下方那行「横线盖住的是行：…」对上 */
 table.mtxout th.lbl.lr{color:var(--warn)}
-table.mtxout th.cx{color:var(--warn)}
+table.mtxout th.cxh{color:var(--warn)}
 table.mtxout .cv{display:inline-block;min-width:1.7em;padding:1px 4px;border-radius:999px}
 table.mtxout .zero{color:var(--fg2)}
 table.mtxout .circ{border:2px solid var(--ok);color:var(--ok);font-weight:700;padding:0 3px}
