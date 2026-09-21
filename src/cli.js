@@ -12,6 +12,7 @@
      --json        不渲染报告，直接打印求解结果的 JSON（脚本里接管道用）
      --no-tables   不打印每张迭代表，只要标准型 + 结论 + 对偶 + 灵敏度
      --integer     按整数规划求解（四种方法的适用性与过程）
+     --assign      按指派问题求解（匈牙利法：逐步迭代 + 符号说明）
      --help        显示用法
 
    退出码：0 = 得到最优解；1 = 无界 / 无可行解 / 未收敛 / 输入非法（脚本里可直接判）
@@ -25,7 +26,7 @@ const format = or.format;
 
 function usage() {
   return [
-    '用法：node src/cli.js <题目 JSON> [--json] [--no-tables] [--integer] [--help]',
+    '用法：node src/cli.js <题目 JSON> [--json] [--no-tables] [--integer] [--assign] [--help]',
     '',
     '题目 JSON 形如：',
     '  { "direction": "max", "c": [2, 3],',
@@ -37,6 +38,8 @@ function usage() {
     '  · --integer 时另需 vtypes 数组，每项取值 int（整数）/ bin（0-1）/ cont（连续），例如：',
     '      { "direction":"max","c":[3,2],"vtypes":["int","int"],',
     '        "constraints":[{"coef":[2,1],"rel":"<=","rhs":5}] }',
+    '  · --assign 时用的是成本/收益矩阵 cost（行 = 人员、列 = 工作；某格填 null 表示禁止指派），例如：',
+    '      { "direction":"min","cost":[[2,15,13,4],[10,4,14,15],[9,14,16,13],[7,8,11,9]] }',
     '',
     '也可以：node src/cli.js --file 题目.json   或   cat 题目.json | node src/cli.js'
   ].join('\n');
@@ -80,6 +83,19 @@ function main() {
   } catch (e) {
     console.error('题目不是合法 JSON：' + e.message);
     process.exit(1);
+  }
+
+  /* 指派问题走另一条路径（匈牙利法：逐步迭代 + 符号说明，不是只报一个答案） */
+  if (argv.includes('--assign')) {
+    const res = or.solveAssignment(problem, {});
+    if (argv.includes('--json')) {
+      console.log(JSON.stringify(res, null, 2));
+      if (!res.ok || res.status !== 'optimal') process.exit(1);
+      return;
+    }
+    console.log(format.assignReport(res, or.assignmentSymbols()));
+    if (!res.ok || res.status !== 'optimal') process.exit(1);
+    return;
   }
 
   /* 整数规划走另一条路径（四种方法各有适用性判定，不能只报一个答案） */

@@ -162,6 +162,87 @@ function createSolveResult(f) {
   };
 }
 
+/**
+ * createAssignProblem —— 指派问题的用户输入（进入校验之前）。
+ * @param {'min'|'max'} direction 优化方向
+ * @param {Array<Array<number|null>>} cost 系数矩阵（行 = 人员，列 = 工作；null 表示禁止指派）
+ * @returns {{direction:string, cost:Array<Array<number|null>>}}
+ */
+function createAssignProblem(direction, cost) {
+  return { direction: direction, cost: cost };
+}
+
+/**
+ * createAssignStep —— 指派问题的一步迭代（一张矩阵快照）。
+ * 与单纯形法的 createSnapshot 同一个角色：一经生成就与后续计算解耦。
+ * @param {object} f 各字段
+ * @param {number}    f.round   第几轮（行/列归约算第 1 轮的两步）
+ * @param {string}    f.phase   row / col / try / cover / adjust
+ * @param {string}    f.label   教材步骤编号 + 名称，如 '③ 试指派'
+ * @param {string}    f.title   这一步做了什么
+ * @param {number[][]} f.matrix 该步之后的矩阵（数字，或 null 表示禁止指派）
+ * @param {Array<Array<string|null>>} [f.marks]  逐格标记：'circ' 圈定的 0 / 'cross' 被划掉的 0
+ * @param {{rows:boolean[],cols:boolean[]}} [f.lines] 覆盖线（true = 该行/列被一条线盖住）
+ * @param {number|null} [f.theta]  调整量
+ * @param {number[]|null} [f.amounts] 行归约的行最小值 / 列归约的列最小值
+ * @param {number[][]|null} [f.matching] 当前试指派得到的配对 [ [row,col], … ]
+ * @param {string[]} [f.details] 逐条讲解（界面逐行渲染）
+ * @param {string}  [f.note]    一句话结论
+ * @param {boolean} [f.done]    该步之后是否已得到完整指派
+ * @returns {object} AssignStep（字段插入顺序固定：题库逐字节对拍要用）
+ */
+function createAssignStep(f) {
+  return {
+    round: f.round,
+    phase: f.phase,
+    label: f.label,
+    title: f.title,
+    matrix: f.matrix.map(function (row) { return row.slice(); }),
+    marks: f.marks || null,
+    lines: f.lines || null,
+    theta: f.theta === undefined ? null : f.theta,
+    amounts: f.amounts || null,
+    matching: f.matching || null,
+    details: f.details || [],
+    note: f.note || '',
+    done: !!f.done
+  };
+}
+
+/**
+ * createAssignResult —— 指派问题的最终结果（对外契约，字段顺序不可改动）。
+ * @param {object} f 各字段，含义见 core/assignment.js 的 assignSolve
+ * @returns {object} AssignResult
+ */
+function createAssignResult(f) {
+  return {
+    ok: f.ok,
+    status: f.status,
+    direction: f.direction,
+    message: f.message || '',
+    m: f.m,
+    n: f.n,
+    N: f.N,
+    empty: f.empty,
+    hasVirtual: f.hasVirtual,
+    virtualRows: f.virtualRows,
+    virtualCols: f.virtualCols,
+    original: f.original,
+    padded: f.padded,
+    working: f.working,
+    M: f.M,
+    steps: f.steps,
+    roundCount: f.roundCount,
+    stallRounds: f.stallRounds === undefined ? 0 : f.stallRounds,
+    assignment: f.assignment,
+    pairs: f.pairs,
+    objective: f.objective,
+    zMin: f.zMin,
+    rowLabels: f.rowLabels,
+    colLabels: f.colLabels
+  };
+}
+
 module.exports = {
   createConstraint: createConstraint,
   createLPProblem: createLPProblem,
@@ -170,5 +251,8 @@ module.exports = {
   createStandardForm: createStandardForm,
   createSnapshot: createSnapshot,
   createSensitivityReport: createSensitivityReport,
-  createSolveResult: createSolveResult
+  createSolveResult: createSolveResult,
+  createAssignProblem: createAssignProblem,
+  createAssignStep: createAssignStep,
+  createAssignResult: createAssignResult
 };

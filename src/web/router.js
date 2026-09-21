@@ -13,7 +13,7 @@ var addScrollHints = inputPanel.addScrollHints;
 (function () {
   'use strict';
 
-  var MODULES = ['home', 'simplex', 'sens', 'ip', 'settings'];
+  var MODULES = ['home', 'simplex', 'sens', 'ip', 'assign', 'settings'];
 
   function current() {
     var h = (location.hash || '').replace(/^#\/?/, '').replace(/\/+$/, '');

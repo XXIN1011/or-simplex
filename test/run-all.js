@@ -30,7 +30,8 @@ const SUITES = [
   { file: 'test/algorithm/sens-test.js', name: '灵敏度·区间不多不少', mark: '全部通过' },
   { file: 'test/algorithm/scenario-test.js', name: '场景分析·建表一致性', mark: '建表一致性自检' },
   { file: 'test/algorithm/param-test.js', name: '参数线性规划', mark: '结论: PASS' },
-  { file: 'test/algorithm/ip-test.js', name: '整数规划·四方法对拍', mark: '结论: PASS' }
+  { file: 'test/algorithm/ip-test.js', name: '整数规划·四方法对拍', mark: '结论: PASS' },
+  { file: 'test/algorithm/assignment-test.js', name: '指派问题·匈牙利法', mark: '结论: PASS' }
 ];
 
 function runUnitTests() {

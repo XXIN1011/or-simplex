@@ -22,6 +22,7 @@ var simplex = require('./core/simplex.js');
 var sensitivity = require('./core/sensitivity.js');
 var scenario = require('./core/scenario.js');
 var integer = require('./core/integer.js');
+var assignment = require('./core/assignment.js');
 
 module.exports = {
   /* ---- 主入口 ---- */
@@ -36,6 +37,10 @@ module.exports = {
   analyzeParametric: scenario.sensParam,
   /** 整数规划：分枝定界 / 割平面 / 隐枚举 / 图解的适用性与过程 */
   solveInteger: integer.ipSolve,
+  /** 指派问题（匈牙利法）：最小化 / 最大化、虚拟行列、禁止指派，含逐步迭代 */
+  solveAssignment: assignment.assignSolve,
+  /** 指派问题的符号说明表（界面与 CLI 共用同一份文案） */
+  assignmentSymbols: assignment.assignSymbols,
 
   /* ---- 各层（按需取用） ---- */
   errors: errors,
@@ -46,5 +51,6 @@ module.exports = {
   simplex: simplex,
   sensitivity: sensitivity,
   scenario: scenario,
-  integer: integer
+  integer: integer,
+  assignment: assignment
 };

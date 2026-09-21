@@ -306,6 +306,165 @@ function report(res, problem, opts) {
   return out.join('\n');
 }
 
+/* =========================================================================
+   指派问题（匈牙利法）的纯文本报告 —— CLI 与库调用方用；界面用 src/web/assign-ui.js
+   -------------------------------------------------------------------------
+   矩阵快照的文本约定：圈定的 0 写成 (0)、被划掉的 0 写成 0*、禁止指派写成 ×。
+   这三样正是学生要在纸上看清的东西，等宽字体下比任何颜色都可靠。
+   ========================================================================= */
+
+/**
+ * matrixText —— 把一张矩阵快照渲染成等宽文本。
+ * @param {object} step AssignStep（用 matrix / marks / lines）
+ * @param {string[]} [rowLabels] 逐行的名字（人员1、虚拟人员1 …）
+ * @returns {string}
+ */
+function matrixText(step, rowLabels) {
+  var N = step.matrix.length, i, j, W = 1, out = [];
+  var cells = [];
+  for (i = 0; i < N; i++) {
+    var row = [];
+    for (j = 0; j < N; j++) {
+      var v = step.matrix[i][j];
+      var mk = step.marks ? step.marks[i][j] : null;
+      var t = v === null ? '×' : fmtNum(v);
+      if (mk === 'circ') t = '(' + t + ')';
+      else if (mk === 'cross') t = t + '*';
+      row.push(t);
+      if (t.length > W) W = t.length;
+    }
+    cells.push(row);
+  }
+  var labW = 0;
+  for (i = 0; i < N; i++) {
+    var lb = (rowLabels && rowLabels[i]) ? rowLabels[i] : ('第' + (i + 1) + '行');
+    if (lb.length > labW) labW = lb.length;
+  }
+  for (i = 0; i < N; i++) {
+    var line = '  ' + pad((rowLabels && rowLabels[i]) ? rowLabels[i] : ('第' + (i + 1) + '行'), labW) + ' ';
+    for (j = 0; j < N; j++) line += cells[i][j].padStart(W + 1) + ' ';
+    if (step.lines && step.lines.rows[i]) line += '← 横线';
+    out.push(line);
+  }
+  if (step.lines) {
+    var vcols = [];
+    for (j = 0; j < N; j++) if (step.lines.cols[j]) vcols.push(j + 1);
+    out.push('  ' + pad('', labW) + ' 竖线所在列：' + (vcols.length ? vcols.join('、') : '无'));
+  }
+  return out.join('\n');
+}
+
+/* 右填充到固定宽度（面向终端的中文标签对齐） */
+function pad(s, w) {
+  s = String(s === undefined || s === null ? '' : s);
+  while (s.length < w) s += ' ';
+  return s;
+}
+
+/**
+ * matrixBlock —— 把带行列名的矩阵渲染成若干行等宽文本（终端报告用，不含缩进）。
+ * @param {Array<Array<number|null>>} M 矩阵（null 显示成禁止指派的 ×）
+ * @param {string[]} [rowLabels] 行名
+ * @param {string[]} [colLabels] 列名
+ * @returns {string[]} 每行一个字符串（第 1 行是列名表头）
+ */
+function matrixBlock(M, rowLabels, colLabels) {
+  var N = M.length, cols = colLabels || [], out = [], i, j, W = 1, labW = 0;
+  for (j = 0; j < cols.length; j++) if (String(cols[j]).length > W) W = String(cols[j]).length;
+  for (i = 0; i < N; i++) {
+    for (j = 0; j < M[i].length; j++) {
+      var t = M[i][j] === null ? '×' : fmtNum(M[i][j]);
+      if (t.length > W) W = t.length;
+    }
+    var lb = (rowLabels && rowLabels[i]) ? String(rowLabels[i]) : ('第' + (i + 1) + '行');
+    if (lb.length > labW) labW = lb.length;
+  }
+  var head = pad('', labW);
+  for (j = 0; j < cols.length; j++) head += '  ' + pad(String(cols[j]), W);
+  out.push(head);
+  for (i = 0; i < N; i++) {
+    var line = pad((rowLabels && rowLabels[i]) ? String(rowLabels[i]) : ('第' + (i + 1) + '行'), labW);
+    for (j = 0; j < M[i].length; j++) {
+      line += '  ' + ((M[i][j] === null ? '×' : fmtNum(M[i][j]))).padStart(W);
+    }
+    out.push(line);
+  }
+  return out;
+}
+
+/**
+ * assignReport —— 指派问题的完整文字报告（含每一步迭代与符号说明）。
+ * @param {object} res      assignSolve 的返回值
+ * @param {Array} [symbols] assignSymbols() 的结果；给了就在末尾附上符号说明
+ * @returns {string}
+ */
+function assignReport(res, symbols) {
+  var out = [];
+  if (!res.ok) return res.message || '输入有误。';
+
+  out.push('指派问题（匈牙利法）· ' + (res.direction === 'max' ? '最大化' : '最小化'));
+  out.push('');
+  out.push('系数矩阵（' + res.m + ' 个人员 × ' + res.n + ' 项工作）：');
+  out.push('  ' + matrixBlock(res.original, res.rowLabels.slice(0, res.m), res.colLabels.slice(0, res.n)).join('\n  '));
+
+  /* ① 转换（只在真的做了转换/补虚拟行列时才讲，读者不会为不存在的事分神） */
+  var conv = [];
+  if (res.hasVirtual) {
+    conv.push('人数与工作数不等 → 补虚拟' + (res.virtualRows.length ? '人员 ' + res.virtualRows.length + ' 个' : '')
+      + (res.virtualRows.length && res.virtualCols.length ? '、' : '')
+      + (res.virtualCols.length ? '工作 ' + res.virtualCols.length + ' 项' : '') + '（费用取 0），化成 ' + res.N + ' 阶方阵。');
+  }
+  if (res.direction === 'max') {
+    conv.push('最大化 → 令 b = M − c（M = 矩阵最大元素 ' + fmtNum(res.M) + '）化成最小化，'
+      + '算出 Σb 之后用 z = n·M − Σb 还原成最大总收益。');
+  }
+  if (conv.length) {
+    out.push('');
+    out.push('转换：');
+    conv.forEach(function (t) { out.push('  · ' + t); });
+    /* 转换后的矩阵要写出来 —— 只说「做过转换」而不给结果，读者没法把下面的迭代表和原题对上 */
+    out.push('');
+    out.push('进入匈牙利法的矩阵' + (res.direction === 'max' ? '（b = M − c' + (res.hasVirtual ? '，虚拟行列取 0' : '') + '）' : '') + '：');
+    out.push('  ' + matrixBlock(res.working, res.rowLabels, res.colLabels).join('\n  '));
+  }
+
+  if (res.status !== 'optimal') {
+    out.push('');
+    out.push('结论：' + (res.status === 'infeasible' ? '无可行解' : '未在限定轮数内收敛'));
+    out.push('  ' + res.message);
+    return out.join('\n');
+  }
+
+  /* ② 逐步迭代 */
+  res.steps.forEach(function (s) {
+    out.push('');
+    out.push('【第 ' + s.round + ' 轮】' + s.label + '　' + s.title);
+    out.push(matrixText(s, res.rowLabels));
+    s.details.forEach(function (d) { out.push('  · ' + d); });
+    if (s.note) out.push('  → ' + s.note);
+  });
+
+  /* ③ 结论 */
+  out.push('');
+  out.push('结论：最优解（共 ' + res.roundCount + ' 轮、' + res.steps.length + ' 步）');
+  res.assignment.forEach(function (a) {
+    out.push('  ' + a.rowName + ' → ' + a.colName
+      + (a.used ? '　费用/收益 ' + fmtNum(a.cost) : '　（虚拟，表示这一方没有真实工作）'));
+  });
+  out.push('  ' + (res.direction === 'max' ? '最大总收益 z = ' : '最小总费用 z = ') + fmtNum(res.objective)
+    + (res.direction === 'max' ? '（Σb = ' + fmtNum(res.zMin) + '）' : ''));
+
+  /* ④ 符号说明 */
+  if (symbols && symbols.length) {
+    out.push('');
+    out.push('符号说明：');
+    symbols.forEach(function (s) {
+      out.push('  ' + String(s.k).replace(/<[^>]+>/g, '') + '　' + s.d);
+    });
+  }
+  return out.join('\n');
+}
+
 /* status -> 一句话结论（与界面上的结论卡同义，措辞面向终端） */
 var STATUS_TEXT = {};
 STATUS_TEXT['optimal'] = '最优解（所有检验数 σⱼ ≤ 0）';
@@ -323,5 +482,7 @@ module.exports = {
   linExpr: linExpr,
   relSym: relSym,
   tableText: tableText,
-  report: report
+  report: report,
+  matrixText: matrixText,
+  assignReport: assignReport
 };

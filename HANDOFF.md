@@ -43,20 +43,22 @@
 | 形态 | **单文件、零依赖、可离线**的 `index.html`（源码构建时打包进去），同时是标准 Node 工程 |
 | 手机端 | 浏览器打开 → 「添加至桌面」当 App 用（用户是华为纯血鸿蒙，**装不了 APK**，只能走网页 / 后续做 HAP） |
 
-### 三个模块（hash 路由）+ 设置页
+### 四个模块（hash 路由）+ 设置页
 
 | 路由 | 模块 |
 |---|---|
+| `#/assign` | 指派问题（匈牙利法：行/列归约 → 试指派 → 覆盖线 → 矩阵调整，含最大化 / 虚拟行列 / 禁止指派） |
 | `#/simplex` | 单纯形法（大 M 法逐步迭代 + 对偶解 + 图解） |
 | `#/sens` | 灵敏度分析（场景式 + 参数线性规划） |
 | `#/ip` | 整数规划（四个方法的适用性与过程） |
 | `#/settings` | 设置（目前只有一项：显示模式 三档） |
 
-`#/` 是首页。**底部标签栏只放「首页」和「设置」两个入口**，三个算法模块从首页的
+`#/` 是首页。**底部标签栏只放「首页」和「设置」两个入口**，四个算法模块从首页的
 模块卡进、模块页顶部有「← 返回首页」；进到算法模块时底栏没有任何标签是当前项，
 滑动指示器整个隐去（`movePill()` 找不到 `a.on` 就摘掉 `.on`），这是有意为之。
 
-没有第四个算法模块 —— 曾经有过一个独立模块，已按用户要求**整体清零**，
+算法模块一共四个：单纯形法 / 灵敏度分析 / 整数规划 / 指派问题。
+历史上曾有过一个独立模块，已按用户要求**整体清零**，
 `tools/check-no-dp.js` 就是守护这件事的（见 6.3），不要往仓库里重新引入。
 
 ---
@@ -81,10 +83,12 @@ src/
     sensitivity.js    c 与 b 的允许变化区间
     scenario.js       场景分析（改 c/a/b、加约束、加变量）+ 参数线性规划
     integer.js        分枝定界 / 割平面 / 隐枚举 / 图解 + 适用性判定
+    assignment.js     指派问题（匈牙利法）：最大化 / 虚拟行列 / 禁止指派 + 逐步迭代快照
     format.js         数字/分数/带 M 项/区间 → 文本；`report()` 是纯文本完整报告
   web/              ── 表现层：**只碰 DOM**，算法一律 require 自 core/
     boot.js           启动入口（按顺序 require 界面模块，最后交给 router）
     ui.js sens-ui.js ip-ui.js       三个模块的界面
+    assign-ui.js      指派问题界面（系数矩阵输入 + 每一步的矩阵渲染）
     settings-ui.js    设置页 + 显示模式：解析系统偏好 → 写 <html data-theme>，选择记本机
     input-panel.js    共用：线性规划输入表（两个模块各挂一份实例）
     table-render.js   共用：迭代表 + 逐步讲解的 HTML 渲染
@@ -252,7 +256,7 @@ npm run test:unit     # 只跑单元测试（6 文件 / 60 条，约 0.3 秒）
 
 | 套件 | 期望输出 |
 |---|---|
-| 单元测试 | `# tests 60 / # pass 60 / # fail 0` |
+| 单元测试 | `# tests 76 / # pass 76 / # fail 0` |
 | test-simplex（题库生成） | `随机题库已生成: random-bank.json (2000 题)` |
 | edge-test | `合计: 9 通过 / 0 失败` |
 | dual-test | `对偶题库已生成: dual-bank.json (400 题)` |
@@ -260,7 +264,8 @@ npm run test:unit     # 只跑单元测试（6 文件 / 60 条，约 0.3 秒）
 | scenario-test | `建表一致性自检: 与 simplex-core 完全一致 ✓` |
 | param-test | `结论: PASS` |
 | ip-test | `结论: PASS`（约 30 秒） |
-| verify-ui | `合计: 98 通过 / 0 失败` |
+| assignment-test | `结论: PASS`（1200 题逐步过程自检 + 独立口径对拍，约 0.2 秒） |
+| verify-ui | `合计: 133 通过 / 0 失败` |
 
 ### 6.2 单跑与交叉对拍（scipy 是第二实现，别跳过）
 
@@ -274,12 +279,15 @@ python test/algorithm/crosscheck-sens.py       # 期望：结论: PASS
 node test/algorithm/scenario-test.js           # 生成 scenario-bank.json
 python test/algorithm/crosscheck-scenario.py   # 期望：结论: PASS（700 个场景算例）
 node test/algorithm/param-test.js              # 生成 param-bank.json
+node test/algorithm/assignment-test.js       # 生成 assignment-bank.json（含逐步过程自检）
+python test/algorithm/crosscheck-assign.py    # 期望：结论: PASS（1200 题，状态 + 目标值两层）
 python test/algorithm/crosscheck-param.py      # 期望：结论: PASS
 node test/ui/verify-ui.js                      # 无头浏览器 UI 回归（需 Chrome）
 node test/ui/graph-bounds.js index.html        # 期望：6 通过 / 0 越界
 node test/ui/audit.js "index.html"             # 期望：触摸目标 0 个、对比度 0 个
 node test/ui/audit.js "index.html#/sens"       # 逐个模块都查一遍
 node test/ui/audit.js "index.html#/ip"
+node test/ui/audit.js "index.html#/assign"
 ```
 
 > 题库都生成在 `test/algorithm/` 下（和生成它的脚本同目录），Python 侧按**脚本自身位置**找它，

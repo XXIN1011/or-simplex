@@ -490,11 +490,11 @@ class CDP {
     cards: document.querySelectorAll('#mod-home a.modcard').length,
     boxCount: document.querySelectorAll('.mod').length
   })`));
-  check(routeBefore.simp === true && routeBefore.home === false && routeBefore.cards === 3,
-    '进 #/simplex 时只显示单纯形法模块，首页有 3 个模块入口',
+  check(routeBefore.simp === true && routeBefore.home === false && routeBefore.cards === 4,
+    '进 #/simplex 时只显示单纯形法模块，首页有 4 个模块入口',
     `home=${routeBefore.home} simplex=${routeBefore.simp} 卡片=${routeBefore.cards}`);
-  check(routeBefore.boxCount === 5,
-    '全站只剩 5 个页面容器（首页 / 单纯形法 / 灵敏度分析 / 整数规划 / 设置）',
+  check(routeBefore.boxCount === 6,
+    '全站共 6 个页面容器（首页 / 单纯形法 / 灵敏度分析 / 整数规划 / 指派问题 / 设置）',
     `容器数=${routeBefore.boxCount}`);
 
   await evl(`location.hash = '#/sens'; 'ok'`);
@@ -750,6 +750,152 @@ class CDP {
   }), '最小化题枚举表里的 z 都是原题口径（非取负后的负数）',
     `表内 z 列=${ip.minRowZ.join('/')}`);
   check(ip.errors === 0, '整数规划模块无 JS 错误');
+
+  /* ---------- 9. 指派问题模块（匈牙利法） ---------- */
+  console.log('\n--- 指派问题模块（匈牙利法）---');
+  await evl(`location.hash='#/assign'; 'ok'`);
+  await sleep(320);
+
+  const asInit = JSON.parse(await evl(`JSON.stringify({
+    route: document.getElementById('mod-assign').classList.contains('on'),
+    home: document.getElementById('mod-home').classList.contains('on'),
+    others: ['simplex','sens','ip'].filter(function(m){ return document.getElementById('mod-'+m).classList.contains('on'); }),
+    dir: (document.querySelector('#asDirSeg button.on')||{}).textContent || null,
+    inputs: document.querySelectorAll('#asInTbl input').length,
+    tip: (document.querySelector('#asInTbl .empty-tip')||{}).textContent || '',
+    btns: ['asAddRow','asDelRow','asAddCol','asDelCol','asSolveBtn'].filter(function(id){ return !!document.getElementById(id); }).length,
+    out: document.getElementById('asOut').innerHTML.length,
+    symbols: document.querySelectorAll('#mod-assign details.help li').length,
+    errors: window.__errors.length
+  })`));
+  check(asInit.route === true && asInit.home === false && asInit.others.length === 0,
+    '进 #/assign 时只显示指派问题模块',
+    `others=${asInit.others.join('/')} home=${asInit.home}`);
+  check(asInit.inputs === 0 && asInit.dir === 'min' && asInit.btns === 5,
+    '打开时系数矩阵是空的、默认按 min（教材的常见口径）、五个按钮齐全',
+    `输入框=${asInit.inputs} 方向=${asInit.dir} 按钮=${asInit.btns}`);
+  check(asInit.tip.indexOf('还没有系数矩阵') >= 0,
+    '空状态给出「+ 行 / + 列 搭矩阵」的提示（不是预填的例题）',
+    `提示=${asInit.tip.slice(0, 24)}…`);
+  check(asInit.out === 0, '打开时不显示结果');
+  check(asInit.symbols >= 10,
+    '符号说明是可折叠的一块，条目来自 core/assignment.js（界面不另写一份文案）',
+    `条目数=${asInit.symbols}`);
+
+  /* 空矩阵直接求解：必须给出确定结论，而不是「至少要有 1 行」这类拦截 */
+  await evl(`document.getElementById('asSolveBtn').click()`);
+  await sleep(240);
+  const asEmpty = JSON.parse(await evl(`JSON.stringify({
+    verdict: (document.querySelector('#asOut .vtitle')||{}).textContent || null,
+    sol: (document.querySelector('#asOut .sol')||{}).textContent || null,
+    banner: document.getElementById('asBanners').innerHTML.length,
+    errors: window.__errors.length
+  })`));
+  check(asEmpty.verdict === '空问题' && /z = 0/.test(asEmpty.sol || '') && asEmpty.banner === 0,
+    '0 行 0 列照样能求解：结论是「空问题，z = 0」，不弹错误横幅',
+    `结论=${asEmpty.verdict} ${asEmpty.sol}`);
+
+  /* 4×4 最小化：行归约 → 列归约 → 试指派 一次到位 */
+  const asMin = JSON.parse(await evl(`(function(){
+    window.__asFill(4, 4, [[2,15,13,4],[10,4,14,15],[9,14,16,13],[7,8,11,9]]);
+    document.getElementById('asSolveBtn').click();
+    var out = document.getElementById('asOut');
+    var txt = out.textContent;
+    return JSON.stringify({
+      verdict: (out.querySelector('.vtitle')||{}).textContent || null,
+      z: (out.querySelector('.sol')||{}).textContent || null,
+      steps: Array.prototype.map.call(out.querySelectorAll('.iter-head .name'), function(n){ return n.textContent.trim(); }),
+      rounds: out.querySelectorAll('details.meth').length,
+      matrices: out.querySelectorAll('table.mtxout').length,
+      circles: out.querySelectorAll('table.mtxout .circ').length,
+      crossed: out.querySelectorAll('table.mtxout .cross').length,
+      assigned: txt.indexOf('人员1 → 工作4') >= 0 && txt.indexOf('人员2 → 工作2') >= 0,
+      hasTransform: txt.indexOf('b = M − c') >= 0,
+      star: txt.indexOf('**') >= 0,
+      firstRow: (function(){ var i = document.querySelector('#asInTbl input[data-i="0"][data-j="0"]'); return i ? i.value : null; })(),
+      errors: window.__errors.length
+    });
+  })()`));
+  check(asMin.steps.join('|') === '① 行归约|② 列归约|③ 试指派',
+    '步骤编号与教材一致：① 行归约 → ② 列归约 → ③ 试指派（一步到位就不出现 ④⑤）',
+    `步骤=${asMin.steps.join(' → ')}`);
+  check(asMin.z.indexOf('z = 28') >= 0 && asMin.assigned,
+    'min 4×4：最小总费用 28，并逐行列出派给谁', `结论=${asMin.z}`);
+  check(asMin.circles === 4 && asMin.crossed > 0,
+    '矩阵上圈出 4 个独立零元素（互不同行同列），同行同列的其它 0 被划掉',
+    `圈=${asMin.circles} 划=${asMin.crossed}`);
+  check(asMin.matrices >= 3 && asMin.rounds === 1,
+    '每一步都画出了一张矩阵（行归约/列归约/试指派），并按轮次收纳',
+    `矩阵数=${asMin.matrices} 轮数=${asMin.rounds}`);
+  check(asMin.hasTransform === false && asMin.firstRow === '2',
+    '最小化问题不做 b = M − c 转换；输入的矩阵原样进了迭代', `首格=${asMin.firstRow}`);
+  check(asMin.star === false, '输出里没有残留 ** 加粗标记');
+  check(asMin.errors === 0, '指派问题模块（最小化）无 JS 错误',
+    `页面错误数=${asMin.errors}`);
+
+  /* 4×4 最大化：先 b = M − c，两轮迭代，覆盖线与调整都要出现 */
+  const asMax = JSON.parse(await evl(`(function(){
+    var b = document.querySelector('#asDirSeg button[data-dir="max"]');
+    if (b) b.click();
+    window.__asFill(4, 4, [[38,42,31,45],[26,20,35,28],[40,33,29,37],[22,30,41,25]]);
+    document.getElementById('asSolveBtn').click();
+    var out = document.getElementById('asOut');
+    var txt = out.textContent;
+    return JSON.stringify({
+      dir: (document.querySelector('#asDirSeg button.on')||{}).textContent || null,
+      z: (out.querySelector('.sol')||{}).textContent || null,
+      rounds: out.querySelectorAll('details.meth').length,
+      steps: Array.prototype.map.call(out.querySelectorAll('.iter-head .name'), function(n){ return n.textContent.trim(); }),
+      hLines: out.querySelectorAll('table.mtxout td.lr').length,
+      vLines: out.querySelectorAll('table.mtxout td.lc').length,
+      hasM: txt.indexOf('M = 45') >= 0 && txt.indexOf('b<sub>') === -1,
+      hasCover: txt.indexOf('覆盖线') >= 0 && txt.indexOf('θ') >= 0,
+      hasCheck: txt.indexOf('检验') >= 0 && txt.indexOf('Σb') >= 0,
+      errors: window.__errors.length
+    });
+  })()`));
+  check(asMax.dir === 'max' && asMax.z.indexOf('z = 151') >= 0,
+    'max 4×4：最大总收益 151（= 42+28+40+41，与最小化口径的独立实现一致）',
+    `方向=${asMax.dir} 结论=${asMax.z}`);
+  check(asMax.hasM, '先讲清 b = M − c 的转换（M 取矩阵最大元素 45）');
+  check(asMax.rounds === 2 && asMax.steps.indexOf('④ 覆盖线') >= 0 && asMax.steps.indexOf('⑤ 矩阵调整') >= 0,
+    '这道题要迭代两轮：出现 ④ 覆盖线 与 ⑤ 矩阵调整',
+    `轮数=${asMax.rounds} 步骤=${asMax.steps.join('/')}`);
+  check(asMax.hLines > 0 && asMax.vLines > 0,
+    '覆盖线真的画在矩阵上（横线 = 没打勾的行、竖线 = 打勾的列）',
+    `横线格=${asMax.hLines} 竖线格=${asMax.vLines}`);
+  check(asMax.hasCover && asMax.hasCheck,
+    '覆盖线/θ 的讲解与「Σb = n·M − z」的检验都写出来了');
+  check(asMax.errors === 0, '指派问题模块（最大化）无 JS 错误',
+    `页面错误数=${asMax.errors}`);
+
+  /* 非标准情形：人数与工作数不等 + 禁止指派（单元格里填 ×） */
+  const asForbid = JSON.parse(await evl(`(function(){
+    var b = document.querySelector('#asDirSeg button[data-dir="min"]');
+    if (b) b.click();
+    window.__asFill(2, 3, [[3, 8, null], [7, null, 5]]);
+    document.getElementById('asSolveBtn').click();
+    var out = document.getElementById('asOut');
+    var txt = out.textContent;
+    var cell = document.querySelector('#asInTbl input[data-i="0"][data-j="2"]');
+    return JSON.stringify({
+      cellText: cell ? cell.value : null,
+      z: (out.querySelector('.sol')||{}).textContent || null,
+      hasVirtual: txt.indexOf('虚拟人员') >= 0,
+      virtualRow: out.textContent.indexOf('虚拟人员1 →') >= 0,
+      hasX: out.querySelector('table.mtxout .forbid') !== null,
+      converts: txt.indexOf('人数与工作数不等') >= 0,
+      errors: window.__errors.length
+    });
+  })()`));
+  check(asForbid.cellText === '×', '单元格里填的 × 原样显示（表示禁止指派）', `格内容=${asForbid.cellText}`);
+  check(asForbid.converts && asForbid.hasVirtual,
+    '人数与工作数不等时自动补虚拟人员并说明清楚');
+  check(asForbid.z.indexOf('z = 8') >= 0 && asForbid.virtualRow && asForbid.hasX,
+    'min 2 人 3 事 + 两处禁止指派：最优 3+5=8，矩阵上画出 ×，结果为虚拟人员接走多出来的工作',
+    `结论=${asForbid.z}`);
+  check(asForbid.errors === 0, '指派问题模块（禁止指派）无 JS 错误',
+    `页面错误数=${asForbid.errors}`);
 
   /* ---------- 底部导航的滑动指示器 ---------- */
   console.log('\n--- 底部导航滑动指示器 ---');

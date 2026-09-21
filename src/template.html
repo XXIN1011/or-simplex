@@ -37,6 +37,7 @@
 
   --accent:#2563eb; --accent-hi:#5b8cf7; --accent-soft:#eef4ff; --accent-text:#1d4ed8;
   --leave-soft:#fff5e9; --pivot:#f59e0b; --pivot-soft:#fef3c7;
+  --violet:#7c3aed; --violet-soft:#f4f0ff;
   --ok:#116b33; --ok-soft:#eefbf2;
   --warn:#b45309; --warn-soft:#fff8ea;
   --err:#c02626; --err-soft:#fef3f2;
@@ -73,6 +74,7 @@ html[data-theme="dark"]{
 
   --accent:#7aa2ff; --accent-hi:#a3bdff; --accent-soft:#1b2740; --accent-text:#9ab8ff;
   --leave-soft:#2e2416; --pivot:#fbbf24; --pivot-soft:#3d320f;
+  --violet:#b79bff; --violet-soft:#241d3a;
   --ok:#4ade80; --ok-soft:#0f2a1c;
   --warn:#fbbf24; --warn-soft:#2f2710;
   --err:#f87171; --err-soft:#301a1a;
@@ -521,6 +523,9 @@ a.modcard .mi svg{display:block;width:23px;height:23px}
 a.modcard.m-simplex{--mi:var(--accent);--mi-bg:var(--accent-soft)}
 a.modcard.m-sens{--mi:var(--warn);--mi-bg:var(--warn-soft)}
 a.modcard.m-ip{--mi:var(--ok);--mi-bg:var(--ok-soft)}
+/* 指派问题用紫色：前面三张卡已经占掉蓝 / 琥珀 / 绿，第四个模块需要一个能一眼分开的
+   ——紫色的对比度与它们相当，浅深两套各自调过（见设计令牌里的 --violet / --violet-soft）。 */
+a.modcard.m-assign{--mi:var(--violet);--mi-bg:var(--violet-soft)}
 a.modcard .mb{display:block;flex:1;min-width:0}
 a.modcard .mt{
   display:flex;align-items:center;justify-content:space-between;gap:10px;
@@ -673,6 +678,35 @@ table.sens.en td.nm{color:var(--fg2);font-variant-numeric:tabular-nums}
 .fl{font-size:12.5px;color:var(--fg2);min-width:82px;font-weight:650}
 .fe,.fx{font-size:13px;color:var(--fg2)}
 input.num.sm{width:52px}
+
+/* ---------- 指派问题模块（匈牙利法）---------- */
+/* 输入的系数矩阵沿用 .inp 的输入框规格（44px 触摸目标），只是行首是「人员 i」而不是
+   「第 i 条约束」；第一行也不再是目标函数行，所以要把 .inp 给首行压的底色取消。 */
+table.inp.mtx tbody tr:first-child td{background:transparent}
+table.inp.mtx th.colh{color:var(--violet)}
+table.inp.mtx td.empty-tip{white-space:normal;line-height:1.7}
+/* 输出用的矩阵：圈定的 0 是「一次指派」，被划掉的 0 是同行同列已经有指派的 0，
+   禁止指派画成灰色的 ×。覆盖线直接用单元格边框画 —— border-collapse 下逐格画出来
+   就是一条连续的线，不需要再叠一层 SVG。 */
+table.mtxout{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
+table.mtxout th,table.mtxout td{
+  border:1px solid var(--line);padding:6px 8px;text-align:center;white-space:nowrap;
+}
+table.mtxout th{font-size:12px;font-weight:650;color:var(--fg2);background:var(--soft)}
+table.mtxout th.lbl{text-align:right;font-size:12.5px}
+table.mtxout td.lr{border-bottom:2.5px solid var(--warn)}
+table.mtxout td.lc{border-left:2.5px solid var(--warn)}
+table.mtxout th.lr{border-bottom:2.5px solid var(--warn)}
+table.mtxout th.cx{border-left:2.5px solid var(--warn)}
+table.mtxout .cv{display:inline-block;min-width:1.7em;padding:1px 4px;border-radius:999px}
+table.mtxout .zero{color:var(--fg2)}
+table.mtxout .circ{border:2px solid var(--ok);color:var(--ok);font-weight:700;padding:0 3px}
+table.mtxout .cross{color:var(--fg3);text-decoration:line-through}
+table.mtxout .forbid{color:var(--fg3)}
+.mtx-legend{font-size:12px;color:var(--fg2);line-height:1.9;margin-top:7px}
+.mtx-legend .lg-warn{color:var(--warn)}
+/* .meth-body 自己已经有 14px 内边距，.scroll 的负外边距在这里会顶出去 1px */
+.meth-body>.scroll{margin:0;padding:0}
 
 /* ---------- 底部模块导航（像原生 App 的标签栏） ---------- */
 .tabbar{
@@ -1018,7 +1052,7 @@ html[data-theme="dark"] button.btn.primary:active{background-color:rgba(122,162,
         </svg>
       </span>
       <h1>运筹学计算器</h1>
-      <p>线性规划 · 灵敏度分析 · 整数规划</p>
+      <p>线性规划 · 灵敏度分析 · 整数规划 · 指派问题</p>
       <ul class="feats">
         <li>单文件</li>
         <li>零依赖</li>
@@ -1075,6 +1109,22 @@ html[data-theme="dark"] button.btn.primary:active{background-color:rgba(122,162,
       <span class="mb">
         <span class="mt">整数规划<span class="go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></span>
         <span class="md">输入任意整数规划（每个变量可选连续 / 整数 / <span class="nowrap">0-1</span>），自动判定分枝定界法、割平面法、隐枚举法、图解法各有哪几种能用，能用的把完整计算过程全部输出。</span>
+      </span>
+    </a>
+
+    <a class="modcard m-assign" href="#/assign">
+      <span class="mi" aria-hidden="true">
+        <!-- 指派问题：一张表格，第一格上打了勾 —— 打勾的那一格就是「这一次指派」，
+             与单纯形法的枢轴格、整数规划的格点属于同一套记号 -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3.5" width="18" height="17" rx="2.5"/>
+          <path d="M3 9.5h18M3 15h18M9 9.5v11M15 9.5v11"/>
+          <path d="M4.9 6.4l1.4 1.5 2.4-2.7" stroke-width="2.2"/>
+        </svg>
+      </span>
+      <span class="mb">
+        <span class="mt">指派问题<span class="go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></span>
+        <span class="md">输入费用或收益矩阵（谁做哪件事的代价），逐步迭代：行/列归约、试指派、覆盖线、矩阵调整，每一步都画在矩阵上。最大化、人数与工作数不等、个别格禁止指派都能算（教材 6.7 分配问题）。</span>
       </span>
     </a>
 
@@ -1193,6 +1243,41 @@ html[data-theme="dark"] button.btn.primary:active{background-color:rgba(122,162,
 
     <div id="ipBanners"></div>
     <section id="ipOut"></section>
+  </div>
+
+  <!-- ===================== 指派问题 ===================== -->
+  <div class="mod" id="mod-assign">
+    <header>
+      <a class="back" href="#/">← 返回首页</a>
+      <h1>指派问题</h1>
+      <p>教材第 6 章 6.7 分配问题 · 匈牙利法 · 逐步迭代</p>
+    </header>
+
+    <section class="card">
+      <div class="seg" id="asDirSeg">
+        <button type="button" data-dir="min" class="on">min</button>
+        <button type="button" data-dir="max">max</button>
+      </div>
+      <div class="scroll"><table class="inp mtx" id="asInTbl"></table></div>
+      <div class="ctrls">
+        <button type="button" class="btn" id="asAddRow">+ 行</button>
+        <button type="button" class="btn" id="asDelRow">− 行</button>
+        <button type="button" class="btn" id="asAddCol">+ 列</button>
+        <button type="button" class="btn" id="asDelCol">− 列</button>
+      </div>
+      <div class="sens-note">行 = 人员（也可以是机器、车辆…），列 = 工作（也可以是任务、地点…）。
+        单元格里填数字（费用或收益），<b>填 × 表示这个人不能做这件事</b>；空格按 0 计。
+        「− 行 / − 列」删掉的是最后一行 / 最后一列。人数与工作数不一样也能算，程序会自动补虚拟行列。</div>
+      <div class="actions">
+        <button type="button" class="btn primary" id="asSolveBtn">求　解</button>
+      </div>
+    </section>
+
+    <div id="asBanners"></div>
+    <!-- 符号说明：内容由 src/web/assign-ui.js 从 core/assignment.js 的 assignSymbols()
+         渲染进来（文案只有一份），放在求解结果之前，随时可查 -->
+    <div id="asSym"></div>
+    <section id="asOut"></section>
   </div>
 
   <!-- ===================== 设置 ===================== -->
