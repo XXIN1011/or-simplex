@@ -9,7 +9,7 @@
 (function () {
   'use strict';
 
-  var MODULES = ['home', 'simplex', 'sens', 'dp', 'ip'];
+  var MODULES = ['home', 'simplex', 'sens', 'ip'];
 
   function current() {
     var h = (location.hash || '').replace(/^#\/?/, '').replace(/\/+$/, '');
@@ -31,7 +31,7 @@
     var pill = bar.querySelector('.tb-pill');
     if (!pill) return;
     var act = bar.querySelector('a.on');
-    if (!act) { pill.classList.remove('on'); return; }   /* #/dp 没有导航项 */
+    if (!act) { pill.classList.remove('on'); return; }
     var br = bar.getBoundingClientRect();
     var ar = act.getBoundingClientRect();
     var bw = parseFloat(getComputedStyle(bar).borderLeftWidth) || 0;
@@ -59,8 +59,7 @@
       var el = document.getElementById('mod-' + m);
       if (el) el.classList.toggle('on', m === name);
     });
-    /* 底部导航条上的当前模块也要高亮：它是常驻的，不标一下就看不出「我在哪」。
-       #/dp 刻意不露出，所以它没有对应的导航项，这里也就没有东西会被点亮。 */
+    /* 底部导航条上的当前模块也要高亮：它是常驻的，不标一下就看不出「我在哪」。 */
     Array.prototype.forEach.call(document.querySelectorAll('.tabbar a[data-m]'), function (a) {
       a.classList.toggle('on', a.getAttribute('data-m') === name);
     });

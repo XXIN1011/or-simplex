@@ -486,16 +486,14 @@ class CDP {
     simp: document.getElementById('mod-simplex').classList.contains('on'),
     sens: document.getElementById('mod-sens').classList.contains('on'),
     cards: document.querySelectorAll('#mod-home a.modcard').length,
-    /* 动态规划模块刻意不从首页露出（形式与其它模块不一致），只保留路由与源码 */
-    dpCards: document.querySelectorAll('#mod-home a.modcard[href="#/dp"]').length,
-    dpBoxes: document.querySelectorAll('#mod-dp').length
+    boxCount: document.querySelectorAll('.mod').length
   })`));
   check(routeBefore.simp === true && routeBefore.home === false && routeBefore.cards === 3,
     '进 #/simplex 时只显示单纯形法模块，首页有 3 个模块入口',
     `home=${routeBefore.home} simplex=${routeBefore.simp} 卡片=${routeBefore.cards}`);
-  check(routeBefore.dpCards === 0 && routeBefore.dpBoxes === 1,
-    '首页没有动态规划入口，但它的页面容器还保留着（代码没删）',
-    `首页 dp 卡片=${routeBefore.dpCards} 容器=${routeBefore.dpBoxes}`);
+  check(routeBefore.boxCount === 4,
+    '全站只剩 4 个模块容器（首页 / 单纯形法 / 灵敏度分析 / 整数规划）',
+    `容器数=${routeBefore.boxCount}`);
 
   await evl(`location.hash = '#/sens'; 'ok'`);
   await sleep(300);
@@ -608,67 +606,6 @@ class CDP {
     '切到右边系数后输入表换成 b_i 的 λ 系数', `b 输入=${nx.pInputsB} c 输入=${nx.pInputsC}`);
   check(nx.errors === 0, '新场景无 JS 错误');
 
-  /* ---------- 6.6 动态规划模块 ---------- */
-  console.log('\n--- 动态规划模块 ---');
-  await evl(`location.hash = '#/dp'; 'ok'`);
-  await sleep(220);
-
-  const dp = JSON.parse(await evl(`(function(){
-    function q(s){ return document.querySelector(s); }
-    function text(el){ return ((el||{}).textContent||'').replace(/\\\\s+/g,' '); }
-    var r = {};
-    r.route = { dp: document.getElementById('mod-dp').classList.contains('on'),
-                home: document.getElementById('mod-home').classList.contains('on') };
-    r.tabs = document.querySelectorAll('#dpTabs button').length;
-
-    /* 默认那一题就是最短路线例题，直接求解 */
-    document.getElementById('dpSolveBtn').click();
-    r.out = text(document.getElementById('dpOut'));
-    r.stages = document.querySelectorAll('#dpOut table.sens.dpt').length;
-    r.policy = text(document.querySelector('#dpOut .verdict .sol'));
-
-    /* 换成背包 */
-    q('#dpTabs button[data-t="knapsack"]').click();
-    r.kItems = document.querySelectorAll('[data-kw]').length;
-    document.getElementById('dpSolveBtn').click();
-    r.kOut = text(document.getElementById('dpOut'));
-    r.kPolicy = text(document.querySelector('#dpOut .verdict .sol'));
-
-    /* 换成资源分配 */
-    q('#dpTabs button[data-t="resource"]').click();
-    document.getElementById('dpSolveBtn').click();
-    r.rOut = text(document.getElementById('dpOut'));
-
-    /* 换成生产与存储、设备更新，确认这两种也能出结果 */
-    q('#dpTabs button[data-t="prodinv"]').click();
-    document.getElementById('dpSolveBtn').click();
-    r.pOut = text(document.getElementById('dpOut'));
-    q('#dpTabs button[data-t="replace"]').click();
-    document.getElementById('dpSolveBtn').click();
-    r.vOut = text(document.getElementById('dpOut'));
-
-    r.errors = window.__errors.length;
-    return JSON.stringify(r);
-  })()`));
-  check(dp.route.dp === true && dp.route.home === false, '进 #/dp 时只显示动态规划模块');
-  check(dp.tabs === 5, '动态规划有五个题型标签', `标签数=${dp.tabs}`);
-  check(dp.out.indexOf('14') >= 0 && dp.policy.indexOf('B1') >= 0
-        && dp.policy.indexOf('C2') >= 0 && dp.policy.indexOf('D1') >= 0,
-    '最短路线例题：最优值 14、策略 B1→C2→D1→E');
-  check(dp.stages >= 8, '逆序与顺序两套递推表都渲染出来', `表数=${dp.stages}`);
-  check(dp.out.indexOf('顺序解法') >= 0 && dp.out.indexOf('一致') >= 0,
-    '给出顺序解法对照并确认两种解法结论一致');
-  check(dp.out.indexOf('f₁') >= 0 && dp.out.indexOf('s₁') >= 0,
-    '递推表表头用了真下标（f₁、s₁）而不是 f_1');
-  check([dp.out, dp.kOut, dp.rOut, dp.pOut, dp.vOut].every(function (x) {
-    return x.indexOf('**') < 0;
-  }), '五种题型渲染后的正文里都没有残留 ** 加粗标记');
-  check(dp.kItems === 3, '切到背包问题后输入表换成物品表', `物品行=${dp.kItems}`);
-  check(dp.kPolicy.length > 0 && dp.kOut.indexOf('背包') >= 0, '背包问题能求解并给出策略', dp.kPolicy);
-  check(dp.rOut.indexOf('资源分配') >= 0 && dp.rOut.indexOf('最优策略') >= 0, '资源分配能求解');
-  check(dp.pOut.indexOf('生产与存储') >= 0 && dp.pOut.indexOf('最优策略') >= 0, '生产与存储能求解');
-  check(dp.vOut.indexOf('设备更新') >= 0 && dp.vOut.indexOf('最优策略') >= 0, '设备更新能求解');
-  check(dp.errors === 0, '动态规划模块无 JS 错误');
 
   /* ---------- 6.7 整数规划模块 ---------- */
   console.log('\n--- 整数规划模块 ---');
@@ -817,7 +754,7 @@ class CDP {
   /* 高亮底由一个 .tb-pill 元素承担，切模块时用 transform 平移过去。
      断言四件事：① 元素存在且对齐当前标签；② 高亮不再由 .on 自己画背景
      （否则切换会「旧的瞬间消失 + 新的瞬间出现」）；③ 过渡挂在 transform 上；
-     ④ 切换后位置真的变了；⑤ 访问不露出的 #/dp 时隐藏；⑥ 开「减少动态效果」时不做动画。
+     ④ 切换后位置真的变了；⑤ 开「减少动态效果」时不做动画。
 
      ★ 必须先显式声明 no-preference：无头 Chrome 默认就把 prefers-reduced-motion
      报成 reduce，而样式表末尾有一条 *{transition:none!important} 的兜底规则 ——
@@ -879,10 +816,6 @@ class CDP {
   const n3 = await navTo('#/');
   check(n3.label === '首页' && n3.pl < n1.pl, '切回首页后指示器滑回最左', `left ${n3.pl}`);
 
-  const n4 = await navTo('#/dp');
-  check(n4.label === null && n4.op === '0',
-    '访问刻意不露出的 #/dp 时指示器隐藏（它没有对应导航项）',
-    `label=${n4.label} opacity=${n4.op}`);
   await navTo('#/');
   await cdp.send('Emulation.setEmulatedMedia', { features: [] }, sessionId);
 

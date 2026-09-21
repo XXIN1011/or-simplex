@@ -21,8 +21,6 @@ const SLOTS = {
   '/*__GRAPH__*/': 'ui/graph.js',                // 图解法
   '/*__UI__*/': 'ui/ui.js',                      // 单纯形法界面
   '/*__SENS_UI__*/': 'ui/sens-ui.js',            // 灵敏度分析界面
-  '/*__DP_CORE__*/': 'core/dp-core.js',          // 动态规划核心（通用引擎 + 五种题型）
-  '/*__DP_UI__*/': 'ui/dp-ui.js',                // 动态规划界面
   '/*__IP_CORE__*/': 'core/ip-core.js',          // 整数规划核心（四种方法 + 适用性判定）
   '/*__IP_UI__*/': 'ui/ip-ui.js',                // 整数规划界面
   '/*__ROUTER__*/': 'ui/router.js'               // 首页/模块路由

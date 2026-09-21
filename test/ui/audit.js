@@ -108,21 +108,6 @@ const SENS_SETUP = `(function(){
   return 'sens-setup-done';
 })()`;
 
-/* 动态规划：把五种题型各跑一遍，让递推表、策略卡、顺序解法对照都出现在页面上，
-   这样审查到的才是真实渲染出来的内容，而不只是空表单。 */
-const DP_SETUP = `(function(){
-  function q(s){ return document.querySelector(s); }
-  ['shortest','resource','knapsack','prodinv','replace'].forEach(function(t){
-    var tab = q('#dpTabs button[data-t="' + t + '"]');
-    if (tab) tab.click();
-    document.getElementById('dpSolveBtn').click();
-  });
-  var tab = q('#dpTabs button[data-t="shortest"]');
-  if (tab) tab.click();
-  document.getElementById('dpSolveBtn').click();
-  return 'dp-setup-done';
-})()`;
-
 const AUDIT = `(function(){
   function rgb(s){
     if(!s) return null;
@@ -196,8 +181,8 @@ const AUDIT = `(function(){
               '.graph','.help','.empty-tip','.scroll-hint','.iter-head','.hint','header p',
               /* 灵敏度分析模块与首页新增的部分 */
               '.judge','.sens-note','.sens-warn','.sens-h','a.modcard .md','a.back','.fl','.fe','.fx',
-              /* 动态规划模块新增的部分 */
-              '.fv','.muted','table.inp.dm th','table.sens.dpt td','.verdict .vtitle',
+              /* 通用 */
+              '.muted','.verdict .vtitle',
               /* 玻璃主题新增：主按钮（玻璃描边）与底部导航标签 */
               'button.btn.primary','.tabbar a','.tabbar a.on','.foottip'];
   var lows = [], seen = {};
@@ -292,8 +277,7 @@ const AUDIT = `(function(){
   const isRemote = /^https?:/i.test(url);
   await sleep(isRemote ? 2600 : 1200);
   await cdp.send('Runtime.evaluate',
-    { expression: wantHash === '#/sens' ? SENS_SETUP
-                : (wantHash === '#/dp' ? DP_SETUP : SETUP) }, sessionId);
+    { expression: wantHash === '#/sens' ? SENS_SETUP : SETUP }, sessionId);
   await sleep(isRemote ? 1400 : 900);
 
   const r = await cdp.send('Runtime.evaluate', { expression: AUDIT, returnByValue: true }, sessionId);

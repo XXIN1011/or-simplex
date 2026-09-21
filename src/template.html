@@ -95,7 +95,7 @@ body{
 ::selection{background:var(--accent-soft);color:var(--fg)}
 
 /* 上下标：浏览器默认缩到 0.83em，13px 的正文里只剩 10.8px —— 低于本项目自己定的
-   12px 下限（审查脚本会报「字号 < 12px」，实测在动态规划模块抓到 10 处）。
+   12px 下限（审查脚本会报「字号 < 12px」）。
    用 max() 把它托到 12px：正文里的下标变大，而 h1 那种大字号的上下标维持原比例。 */
 sub,sup{font-size:max(12px,.83em)}
 /* 键盘聚焦时才画焦点环：鼠标点击不画，手指点更不画 */
@@ -582,24 +582,7 @@ table.sens th{
 }
 .nowrap{white-space:nowrap}
 
-/* ---------- 动态规划模块 ---------- */
-/* 加减按钮中间那个当前值，固定宽度免得数字一变整行就跳 */
-.fv{
-  display:inline-block;min-width:28px;text-align:center;
-  font-size:14.5px;font-weight:700;color:var(--fg);
-  font-variant-numeric:tabular-nums;
-}
-.btn.sm{min-width:44px;min-height:44px;padding:0 12px;font-size:16px;line-height:1}
 .seg.sm button{min-height:44px;padding:0 12px;font-size:12.5px}
-/* 动态规划的输入表：第一列是行首（节点名/项目序号），列头是各种取值 */
-table.inp.dm th{
-  font-size:12px;font-weight:650;color:var(--fg2);
-  text-align:center;padding:0 3px 7px;white-space:nowrap;
-}
-table.inp.dm th.rowh{text-align:right;padding-right:9px;color:var(--fg2)}
-/* 递推表：状态列次要一点，让 f 与 u* 更醒目 */
-table.sens.dpt td{padding:7px 9px 7px 0;vertical-align:top}
-table.sens.dpt td:first-child{color:var(--fg2)}
 .muted{color:var(--fg2)}
 
 /* ---------- 整数规划模块 ---------- */
@@ -1052,11 +1035,6 @@ button.btn.primary:active{
       </span>
     </a>
 
-    <!-- 动态规划模块暂不从首页露出：它还是「预置教材题型」那套形式，
-         与其它三个模块「读入任意题目 → 规范化输出」的风格不一致。
-         代码、路由（#/dp）与页面容器都原样保留，直接访问 /#/dp 仍然可用，
-         以后改造成同样的形式再放回首页即可。 -->
-
     <a class="modcard m-ip" href="#/ip">
       <span class="mi" aria-hidden="true">
         <!-- 整数规划：整数格点阵，正中间那个大的就是整数最优解 ——
@@ -1166,25 +1144,6 @@ button.btn.primary:active{
     <div id="sScenario"></div>
   </div>
 
-  <!-- ===================== 动态规划 ===================== -->
-  <div class="mod" id="mod-dp">
-    <header>
-      <a class="back" href="#/">← 返回首页</a>
-      <h1>动态规划</h1>
-      <p>分阶段决策 · 逐阶段递推</p>
-    </header>
-
-    <section class="card">
-      <div id="dpInput"></div>
-      <div class="actions">
-        <button type="button" class="btn primary" id="dpSolveBtn">求　解</button>
-      </div>
-    </section>
-
-    <div id="dpBanners"></div>
-    <section id="dpOut"></section>
-  </div>
-
   <!-- ===================== 整数规划 ===================== -->
   <div class="mod" id="mod-ip">
     <header>
@@ -1217,8 +1176,7 @@ button.btn.primary:active{
 
 </div>
 
-<!-- 底部模块导航：手机上这比「返回首页再点一次」顺手得多。
-     动态规划仍按既有约定不露出（只能直接访问 #/dp）。 -->
+<!-- 底部模块导航：手机上这比「返回首页再点一次」顺手得多。 -->
 <nav class="tabbar" aria-label="模块导航">
   <!-- 滑动指示器：高亮块由它一个元素承担，切模块时从旧位置平滑滑到新位置，
        而不是「旧的消失 + 新的出现」那种跳变。位置由 src/ui/router.js 设定。
@@ -1271,12 +1229,6 @@ button.btn.primary:active{
 </script>
 <script>
 /*__SENS_UI__*/
-</script>
-<script>
-/*__DP_CORE__*/
-</script>
-<script>
-/*__DP_UI__*/
 </script>
 <script>
 /*__IP_CORE__*/
