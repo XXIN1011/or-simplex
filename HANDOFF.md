@@ -43,15 +43,20 @@
 | 形态 | **单文件、零依赖、可离线**的 `index.html`（源码构建时打包进去），同时是标准 Node 工程 |
 | 手机端 | 浏览器打开 → 「添加至桌面」当 App 用（用户是华为纯血鸿蒙，**装不了 APK**，只能走网页 / 后续做 HAP） |
 
-### 三个模块（hash 路由）
+### 三个模块（hash 路由）+ 设置页
 
 | 路由 | 模块 |
 |---|---|
 | `#/simplex` | 单纯形法（大 M 法逐步迭代 + 对偶解 + 图解） |
 | `#/sens` | 灵敏度分析（场景式 + 参数线性规划） |
 | `#/ip` | 整数规划（四个方法的适用性与过程） |
+| `#/settings` | 设置（目前只有一项：显示模式 三档） |
 
-`#/` 是首页。没有第四个模块 —— 曾经有过一个独立模块，已按用户要求**整体清零**，
+`#/` 是首页。**底部标签栏只放「首页」和「设置」两个入口**，三个算法模块从首页的
+模块卡进、模块页顶部有「← 返回首页」；进到算法模块时底栏没有任何标签是当前项，
+滑动指示器整个隐去（`movePill()` 找不到 `a.on` 就摘掉 `.on`），这是有意为之。
+
+没有第四个算法模块 —— 曾经有过一个独立模块，已按用户要求**整体清零**，
 `tools/check-no-dp.js` 就是守护这件事的（见 6.3），不要往仓库里重新引入。
 
 ---
@@ -80,6 +85,7 @@ src/
   web/              ── 表现层：**只碰 DOM**，算法一律 require 自 core/
     boot.js           启动入口（按顺序 require 界面模块，最后交给 router）
     ui.js sens-ui.js ip-ui.js       三个模块的界面
+    settings-ui.js    设置页 + 显示模式：解析系统偏好 → 写 <html data-theme>，选择记本机
     input-panel.js    共用：线性规划输入表（两个模块各挂一份实例）
     table-render.js   共用：迭代表 + 逐步讲解的 HTML 渲染
     graph.js          图解法 SVG
@@ -117,13 +123,16 @@ tools/
 验证构建没坏的办法：`npm run build` 后 `node test/ui/verify-ui.js` 跑绿 + 截图目视。
 **注意**：产物哈希变化**不代表**构建坏了（源码改了哈希当然会变），它只在「同一份源码构建两次」时用来验证可复现性。
 
-### 新增一个模块要动四处
+### 新增一个模块要动四处（想上底栏再加一处）
 
 1. `src/web/`：加界面模块（CommonJS，`module.exports` 导出公开函数/组件）
 2. `src/web/boot.js`：按顺序 `require` 它
 3. `src/web/router.js`：把 `'xxx'` 加进 `MODULES`
 4. `src/template.html`：加 `<div class="mod" id="mod-xxx">` 容器 + 首页加一张
    `<a class="modcard" href="#/xxx">` 卡片
+5. 只有想让入口常驻底栏时，才再往 `<nav class="tabbar">` 里加一条
+   `<a href="#/xxx" data-m="xxx">`（现在的底栏只有首页 + 设置，算法模块都不在上面；
+   加了以后记住 `verify-ui.js` 里那条「底栏只剩首页/设置」的断言要同步改）
 
 （`src/build.js` 会自动扫描 `src/core/` 与 `src/web/` 下的所有 `.js`，所以**不用手工登记**；
 但 `src/web/boot.js` 里要按正确顺序 `require` 它，漏了就会出现「模块没加载、页面无反应」。）
@@ -300,6 +309,7 @@ node tools/check-no-dp.js
 
 ```bash
 npm run build; node test/ui/verify-ui.js; node test/ui/audit.js "index.html"; node test/ui/audit.js "index.html#/ip"
+node test/ui/audit.js "index.html#/settings"; node test/ui/audit.js "index.html#/settings" dark
 node test/ui/graph-bounds.js index.html      # 改了 src/web/graph.js 或图解相关 CSS 才需要
 bash tools/verify-visual.sh                  # ★ 动了颜色/半透明/玻璃相关一律要跑（见下）
 ```
@@ -438,6 +448,7 @@ s.t.  -4x₁ - 3x₂ + 2x₃ ≥ -12
 | **LF/CRLF 警告** | `git add` 时刷一屏 `LF will be replaced by CRLF` | 噪声，忽略即可（sha256 比对时统一把 CRLF 归一化） |
 | **`shot.js` 默认跳 `#/simplex`** | 想截首页却截到了单纯形法 | 显式写 `"index.html#/"` |
 | **无头 Chrome 默认报 `prefers-reduced-motion: reduce`** | 断言「过渡挂在 transform 上」永远失败（量到的 `transitionProperty` 是 `none`），看起来像「动画没做」 | 样式表末尾有一条 `*{transition:none!important}` 的兜底规则，headless 下会命中。断言动画前先 `Emulation.setEmulatedMedia` 显式声明 `no-preference`，断言完再恢复 |
+| **主题改成属性驱动后，担心 CDP 模拟系统深色不生效** | 怀疑 `Emulation.setEmulatedMedia` 不会触发 `matchMedia` 的 change 事件，页面不跟着转深 | 实测**会触发**（2026-09 在无头 Chrome 上验过：`init:false → change:true`）。所以 `shot.js` / `probe-color.js` / `audit.js` / `verify-ui.js` 里用 `setEmulatedMedia` 模拟系统外观的做法**不用改** —— 保持「模拟系统偏好」验的才是用户真实走的路径，别图省事去直接改 `data-theme` |
 | **远程审查的触摸目标假警** | 线上 `audit.js` 偶发报「N 个触摸目标 < 44px」，本地重跑为 0 | 是 CDN 慢、元素还没渲染完就量了尺寸；现已对远程 URL 放宽等待（本地 1200ms / 远程 2600ms） |
 | **`document.querySelectorAll(...).forEach`** | 老写法 `Array.prototype.forEach.call` 更稳 | 与既有代码保持一致 |
 | **注释里写 `z*/b` 这类片段** | 文件当场语法错误（`*/` 提前结束了块注释） | 注释里避免出现 `*/` 字面量，写成「最优值对右端项的偏导数」这类措辞 |
@@ -453,18 +464,23 @@ s.t.  -4x₁ - 3x₂ + 2x₃ ≥ -12
   每个模块只导出少量公开函数，跨模块一律 `require`，没有全局变量；
   迭代内核拆成 4 个可替换部件（见第 4 节），加算法不必改内核。
 - **验证现状**：单元测试 **60/60**；算法回归 **7 套全 PASS**（含 scipy 对拍 2000 + 400 + 700 + 1110）；
-  UI 回归 **98/98**；无障碍审计与像素级对比度全达标；`tools/check-no-dp.js` 命中 **0**。
+  UI 回归 **110/110**；无障碍审计与像素级对比度全达标；`tools/check-no-dp.js` 命中 **0**。
 - **两个自证工具**：`test/algorithm/deep-snapshot.js`（行为逐字节等价）、`tools/check-no-dp.js`（残留清零）。
 - **视觉主题是「极光底 + 全玻璃」**：所有承载面（品牌区 / 模块卡 / 正文卡 / 表格 / 按钮 /
   结论徽章 / 底部标签栏）都是玻璃，浅深两套各自调优 + 不支持 `backdrop-filter` 时退回实色。
   「求解」是玻璃描边按钮；底部导航用单个 `.tb-pill` 元素做滑动指示器。
-  用户明确要求过两件事，别改回去：① **要全玻璃**（含表格）；② **标签栏切换要滑过去**，
-  不能「旧的消失 + 新的出现」。
+  用户明确要求过三件事，别改回去：① **要全玻璃**（含表格）；② **标签栏切换要滑过去**，
+  不能「旧的消失 + 新的出现」；③ **底栏只留「首页 + 设置」**，算法模块从首页卡片进。
+- **显示模式三档（跟随系统 / 浅色 / 深色）由 `<html data-theme>` 驱动**，不再是 CSS 媒体查询：
+  媒体查询表达不了「系统是深色、用户偏要浅色」，而且属性权重更高（`html[data-theme]` 0,1,1 > `:root` 0,1,0），
+  深色配色因此只有一份。解析与持久化在 `src/web/settings-ui.js`（localStorage 键 `or-theme`，
+  读不到时退回 system），属性在首次绘制前落下，不闪。**主题色 meta 只剩一条**，由 JS 按当前模式改写
+  （留两条 media 版的话，「系统深色 + 用户选浅色」时状态栏染色会和页面反着来）。
 - 落地过程中实测抓到并修掉的缺陷：极光被 `body` 的实色底整块盖住（量出来是 `#f4f4f8` 一片灰）、
   模块页标题区与页脚提示裸压在极光上（4.09 / 4.30:1）、深色下白玻璃被下层叠成中灰（1.89~3.46:1）、
   `<sub>` 被浏览器缩到 10.83px 跌破 12px 下限。
-- 验证：UI 回归 98/98、无障碍审计 8 组全 0、像素级对比度全屏达标（最低 5.04）。
-  `bash tools/verify-visual.sh` 会对每个模块量「顶部 + 中段」两屏 —— 只量顶部会漏掉正文
+- 验证：UI 回归 110/110、无障碍审计 8 组全 0、像素级对比度全屏达标（最低 5.04）。
+  `bash tools/verify-visual.sh` 会对每个页面量「顶部 + 中段」两屏 —— 只量顶部会漏掉正文
   深处的表格与卡片，而全玻璃正是把那些面调透明了，漏测等于没测。
 - **`blob 哈希`不是「构建是否正常」的判据，而是「可复现性」判据**：同一份源码构建两次必须同哈希。
   源码（含 CSS）改了哈希当然会变；判断构建没坏要看产物能否正常运行（UI 回归 + 截图目视）。
@@ -501,3 +517,8 @@ s.t.  -4x₁ - 3x₂ + 2x₃ ≥ -12
    破了它就又回到「一个文件里什么都混着」的状态，单测也没法再跑。
 10. 🚫 **不要声称「已完成 / 已推送 / 已生效」而不核实** —— 推送用 `git ls-remote` 核实远程 SHA，
     线上效果用 HTTP 取回内容或截图核实，不要凭工具返回码下结论。
+11. 🚫 **不要把显示模式写回 `@media (prefers-color-scheme: dark)`** —— 三档设置里
+    「系统是深色、用户要浅色」媒体查询表达不了；而且同权重按源码顺序决胜，深色配色会被迫
+    写两份（媒体查询一份 + 属性一份），早晚改漏一处。主题一律走 `html[data-theme]`，
+    系统偏好由 `settings-ui.js` 解析（见第 9 节）。同理，`<meta name="theme-color">`
+    只留一条、由 JS 改写，不要加回带 `media` 属性的两条。

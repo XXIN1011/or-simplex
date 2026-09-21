@@ -30,6 +30,8 @@ sens-light|#/sens|light|fill-sens.js|0,1400
 sens-dark|#/sens|dark|fill-sens.js|0,1400
 ip-light|#/ip|light|fill-ip.js|0,1400
 ip-dark|#/ip|dark|fill-ip.js|0,1400
+settings-light|#/settings|light||0
+settings-dark|#/settings|dark||0
 "
 
 while IFS='|' read -r name hash mode fill offs; do

@@ -12,6 +12,9 @@
 **首页**列出三个模块：**单纯形法** / **灵敏度分析** / **整数规划**，各用一条 hash 路由
 （`#/simplex`、`#/sens`、`#/ip`），手机上刷新、后退、加到桌面都能正常工作。
 
+底部标签栏只放两个常驻入口：**首页**（`#/`）与**设置**（`#/settings`）。三个算法模块从
+首页的卡片进入，模块页顶部都有「← 返回首页」。
+
 ### 单纯形法
 
 - 支持 `max` / `min` 以及 `≤` / `≥` / `=` 任意组合的约束
@@ -88,7 +91,7 @@
 | 参数线性规划 | 含参数 λ 时给出一张「λ 区间 → 最优基 → x(λ) → z(λ)」的分段表 |
 | 退化提示 | 最小比值 θ = 0 时明确指出这一步不会改善目标值 |
 | 符号说明 | 可折叠地解释 x/s/a、σ、M、基变量、z 的含义 |
-| 深色模式 | 跟随系统 `prefers-color-scheme` 自动切换 |
+| 显示模式 | 设置页三档可选：**跟随系统**（默认）/ **浅色** / **深色**；选择记在本机，切换即时生效 |
 | 溢出提示 | 表格超宽时提示可左右滑动 |
 
 ## 使用
@@ -156,7 +159,7 @@ src/
   index.js            库的统一出口（require('or-simplex')）
   cli.js              命令行入口（node src/cli.js）
   build.js            构建：迷你打包器，把 core/ + web/ 打成单文件 index.html
-  template.html       HTML 骨架 + CSS（视觉主题、深色模式变量、一个 script 占位符）
+  template.html       HTML 骨架 + CSS（视觉主题、主题令牌、一个 script 占位符）
   core/               ── 领域层：纯算法，不碰 DOM、不做 IO
     errors.js           异常模块：结局码 E_INVALID_INPUT / E_INFEASIBLE / E_UNBOUNDED …
     util.js             公共工具：EPS、pair(a+bM) 运算、矩阵求逆/乘向量、容差判定
@@ -170,6 +173,7 @@ src/
   web/                ── 表现层：只碰 DOM
     boot.js              页面启动入口（按顺序 require 各界面模块，最后交给路由）
     ui.js sens-ui.js ip-ui.js            各模块界面
+    settings-ui.js       设置页 + 显示模式（解析系统偏好、落 <html data-theme>、记本机）
     input-panel.js       共用组件：线性规划输入表（模块各挂一份实例）
     table-render.js      共用组件：迭代表与逐步讲解的 HTML 渲染（三个模块共用）
     graph.js             图解法：可行域 / 等值线 / 最优点的 SVG 绘制
@@ -193,7 +197,7 @@ test/                ── 验证
     crosscheck-param.py  1110 个 λ 抽样点交 scipy 从头重解比对
     ip-test.js           四种方法与暴力枚举整数解逐项对拍
   ui/                  界面与无障碍
-    verify-ui.js         无头浏览器 UI 回归（98 项，含路由与三个模块的全部场景）
+    verify-ui.js         无头浏览器 UI 回归（110 项，含路由、底栏、显示模式与三个模块的全部场景）
     audit.js             触摸目标尺寸、文字对比度、表单标注（移动端 / 无障碍）
     graph-bounds.js      图解 SVG 内容是否超出画布（6 道不同题）
     probe-layout.js      输入区高度、求解按钮是否需要滚动才能点到
@@ -210,7 +214,7 @@ tools/               ── 开发辅助（不参与构建）
     check-overlap.py     固定底部标签栏是否遮住页面末尾的内容
   setup/
     deploy-github.py     一次性建仓 / 开启 Pages 脚本（已用过）
-  verify-visual.sh       一键跑「3 模块 × 2 主题」的像素级对比度实测
+  verify-visual.sh       一键跑「5 个页面 × 2 主题」的像素级对比度实测
 ```
 
 > **`index.html` 为什么必须在仓库根**：GitHub Pages 以仓库根为发布目录，入口只能是
@@ -245,7 +249,9 @@ web/*.js ──require──▶ core/{simplex,scenario,integer,format,sensitivit
 
 ### 视觉主题（极光底 + 全玻璃）
 
-CSS 分三层：① `html` 上的基质色；② `body::before` / `body::after` 两层**固定定位**的极光与斜纹织构；③ 一组 `--gl-*` 玻璃令牌 + 若干 `backdrop-filter`。**所有承载面都是玻璃** —— 品牌区、模块卡、正文卡、表格、按钮、结论徽章、底部标签栏，没有一处例外。四条硬约束（`src/template.html` 里有详细注释，改前务必读）：
+CSS 分三层：① `html` 上的基质色；② `body::before` / `body::after` 两层**固定定位**的极光与斜纹织构；③ 一组 `--gl-*` 玻璃令牌 + 若干 `backdrop-filter`。**所有承载面都是玻璃** —— 品牌区、模块卡、正文卡、表格、按钮、结论徽章、底部标签栏，没有一处例外。五条硬约束（`src/template.html` 里有详细注释，改前务必读）：
+
+- **主题由 `<html data-theme="light|dark">` 驱动，不要写回 `@media (prefers-color-scheme: dark)`。** 显示模式有三档，「系统是深色、但用户偏要浅色」这种情况媒体查询表达不了；属性还有更高的权重（`html[data-theme]` 0,1,1 > `:root` 0,1,0），深色配色因此只有一份。系统偏好由 `src/web/settings-ui.js` 解析成 light/dark 写进属性（默认那一档也走同一条路），属性在首次绘制前落下，不会闪。
 
 - **`body` 必须保持透明，基质色放在 `html` 上。** `z-index:-1` 的伪元素绘制在 `body` 自身背景**之下**，`body` 一旦带实色底，极光会被整块盖住，玻璃就退化成白卡片（这个坑实测踩过：极光写得再艳，量出来仍是 `#f4f4f8` 一片灰）。
 - **承载文字的玻璃厚度有硬下限。** 极光是**会漂移的动画**，同一处文字背后的颜色会随时间变艳，所以必须按最坏情况算：极光最强处的底亮度约 0.387，`--fg2` 要在上面过 4.5:1，白填充不能低于约 `.58`。浅色取 `.70`（留余量），深色因为用的是浅色文字、对底亮度要求更低，取 `.55` 更透 —— 这就是「两套主题各自调优」，不是「同一套配方反转」。
@@ -254,7 +260,7 @@ CSS 分三层：① `html` 上的基质色；② `body::before` / `body::after` 
 
 两套主题的差异是刻意做出来的：**浅色 = 更厚的玻璃 + 更淡的极光**；**深色 = 更透的玻璃 + 更饱和的极光**。分段控件的选中态也是分开设计的 —— 浅色是「白胶囊 + 蓝字」，深色是「实心强调色 + 深字」（深色下白玻璃会被下层叠成中灰，蓝字只剩 1.9:1，实测过）。
 
-底部导航的当前模块高亮由**单个 `.tb-pill` 元素**承担，切模块时用 `transform` 平移过去，而不是「旧的消失 + 新的出现」。位置由 `src/web/router.js` 的 `movePill()` 设定（首次定位会临时关掉过渡，否则开屏会看到它从最左滑过去）；缓动用标准 ease-out，实测 30 帧采样里 19 个不同位置、单调递增。
+底部标签栏只有**首页**与**设置**两个入口（三个算法模块从首页卡片进，模块页顶部有「← 返回首页」），当前项高亮由**单个 `.tb-pill` 元素**承担，切页时用 `transform` 平移过去，而不是「旧的消失 + 新的出现」。位置由 `src/web/router.js` 的 `movePill()` 设定（首次定位会临时关掉过渡，否则开屏会看到它从最左滑过去）；缓动用标准 ease-out，实测 30 帧采样里 19 个不同位置、单调递增。**进到算法模块时没有任何标签是当前项，指示器整个隐去**（不会错误地亮着「首页」）。
 
 `prefers-reduced-motion` 下极光漂移与所有过渡都会停止（样式表末尾的全局 `*{transition:none!important}` 兜住），滑动指示器也吃这条规则。
 
@@ -287,9 +293,10 @@ python test/algorithm/crosscheck-param.py  # 参数线性规划：λ 抽样点�
 node test/algorithm/ip-test.js             # 整数规划：四种方法与暴力枚举对拍
 node test/ui/verify-ui.js                  # 无头浏览器 UI 回归（需 Chrome）
 node test/ui/audit.js                      # 触摸目标 / 对比度审查（近似值）
-node test/ui/audit.js "index.html#/sens"        # 审查可指定模块（默认单纯形法）
-node test/ui/audit.js "index.html#/sens" dark   # 再加深色模式
-bash tools/verify-visual.sh                # 像素级对比度实测（3 模块 × 2 主题，权威校验）
+node test/ui/audit.js "index.html#/sens"        # 审查可指定页面（默认单纯形法）
+node test/ui/audit.js "index.html#/sens" dark   # 再加一轮深色模式
+node test/ui/audit.js "index.html#/settings"    # 设置页也照查一遍
+bash tools/verify-visual.sh                # 像素级对比度实测（5 个页面 × 2 主题，权威校验）
 node tools/check-no-dp.js                  # 残留核查：命中即列出 file:line 并退出码 1
 node tools/screenshots/shot.js "index.html#/ip" out.png 390 0 "@fill-ip-classic.js"
 ```

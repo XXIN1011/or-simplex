@@ -15,6 +15,7 @@ require('./graph.js');         /* 图解法：注册渲染器 */
 require('./ui.js');            /* 单纯形法界面 */
 require('./sens-ui.js');       /* 灵敏度分析界面 */
 require('./ip-ui.js');         /* 整数规划界面 */
+require('./settings-ui.js');   /* 设置页 + 显示模式（要在路由之前把主题属性落好） */
 require('./router.js');        /* 首页 / 模块路由：最后启动 */
 
 module.exports = {};

@@ -52,6 +52,8 @@ const SELECTORS = [
   /* 整数规划模块 */
   '.meth-n', '.meth-c', '.meth-body', '.pick', 'table.sens.en td',
   '.std-h', '.std-line', '.std-note',
+  /* 设置页（显示模式的三段控件 + 说明文字） */
+  '.muted', '#themeSeg button.on', '#themeSeg button:not(.on)',
   /* 模块页标题区：没有卡片背景，直接压在极光上 —— 这是最容易掉对比度的地方 */
   '.mod.on header h1', '.mod.on header p', '.mod.on a.back'
 ];

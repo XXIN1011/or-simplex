@@ -3,8 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#f5f7fa" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0d1016" media="(prefers-color-scheme: dark)">
+<!-- 状态栏/地址栏的染色：只留一条，由 src/web/settings-ui.js 按「当前生效的显示
+     模式」改写 content。不能留两条 media 版 —— 「系统是深色、但用户在本应用里选了
+     浅色」时，染色会跟页面反着来。 -->
+<meta name="theme-color" content="#f5f7fa">
+<meta name="color-scheme" content="light dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -54,29 +57,35 @@
   --caret:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%238b95a5' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 
-/* ---------- 深色模式：颜色全部走变量，这里整体换一套 ---------- */
-@media (prefers-color-scheme: dark){
-  :root{
-    --fg:#e8ecf3; --fg2:#a4aec1; --fg3:#6e7a8d;
-    --line:#242c3a; --line2:#333d4e;
-    --bg:#0d1016; --card:#151a23; --input:#1c222d; --soft:#1b212c; --zebra:#181e28;
+/* ---------- 深色：颜色全部走变量，这里整体换一套 ----------
+   ★ 这里原本是 @media (prefers-color-scheme: dark)，改成属性驱动，是为了让
+   「跟随系统 / 浅色 / 深色」三档共用同一份配色 —— 媒体查询表达不了
+   「系统是深色、但用户在本应用里偏要浅色」这种情况。
+   现在由 src/web/settings-ui.js 把系统偏好解析成 light / dark 写进
+   <html data-theme>，「跟随系统」这一档也走同一条路，所以深色配色只有一份，
+   不存在「媒体查询一份 + 属性一份」的双份维护。
+   选择器用 html[data-theme="dark"]（权重 0,1,1）而不是 :root（0,1,0），
+   这样无论本区块排在源码哪里都压得过浅色基础规则，不再依赖源码顺序。 */
+html[data-theme="dark"]{
+  --fg:#e8ecf3; --fg2:#a4aec1; --fg3:#6e7a8d;
+  --line:#242c3a; --line2:#333d4e;
+  --bg:#0d1016; --card:#151a23; --input:#1c222d; --soft:#1b212c; --zebra:#181e28;
 
-    --accent:#7aa2ff; --accent-hi:#a3bdff; --accent-soft:#1b2740; --accent-text:#9ab8ff;
-    --leave-soft:#2e2416; --pivot:#fbbf24; --pivot-soft:#3d320f;
-    --ok:#4ade80; --ok-soft:#0f2a1c;
-    --warn:#fbbf24; --warn-soft:#2f2710;
-    --err:#f87171; --err-soft:#301a1a;
+  --accent:#7aa2ff; --accent-hi:#a3bdff; --accent-soft:#1b2740; --accent-text:#9ab8ff;
+  --leave-soft:#2e2416; --pivot:#fbbf24; --pivot-soft:#3d320f;
+  --ok:#4ade80; --ok-soft:#0f2a1c;
+  --warn:#fbbf24; --warn-soft:#2f2710;
+  --err:#f87171; --err-soft:#301a1a;
 
-    --glow-1:rgba(90,130,255,.13);
-    --glow-2:rgba(245,158,11,.06);
+  --glow-1:rgba(90,130,255,.13);
+  --glow-2:rgba(245,158,11,.06);
 
-    --shadow-1:0 1px 2px rgba(0,0,0,.5);
-    --shadow-2:0 8px 22px -8px rgba(0,0,0,.7);
-    --shadow-3:0 18px 44px -14px rgba(0,0,0,.8);
-    --focus:0 0 0 3px rgba(122,162,255,.28);
+  --shadow-1:0 1px 2px rgba(0,0,0,.5);
+  --shadow-2:0 8px 22px -8px rgba(0,0,0,.7);
+  --shadow-3:0 18px 44px -14px rgba(0,0,0,.8);
+  --focus:0 0 0 3px rgba(122,162,255,.28);
 
-    --caret:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%236e7a8d' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
-  }
+  --caret:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%236e7a8d' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -325,10 +334,9 @@ table.sens td.eff{color:var(--fg2);text-align:right;white-space:nowrap;padding-l
 .graph .g-int{fill:var(--fg2);fill-opacity:.5}
 .graph .g-ipopt{fill:#16a34a;stroke:var(--card);stroke-width:1.5}
 .graph .g-ipoptlbl{font-size:12.5px;fill:#16a34a;font-weight:700}
-@media (prefers-color-scheme: dark){
-  .graph .g-ipopt{fill:#4ade80}
-  .graph .g-ipoptlbl{fill:#4ade80}
-}
+/* 深色下最优点改用亮绿：原来的绿色在深底上会糊掉 */
+html[data-theme="dark"] .graph .g-ipopt{fill:#4ade80}
+html[data-theme="dark"] .graph .g-ipoptlbl{fill:#4ade80}
 
 /* ---------- 结果 ---------- */
 #result{display:none}
@@ -542,6 +550,14 @@ a.modcard .md{display:block;margin-top:6px;font-size:12.5px;color:var(--fg2);lin
 .repolink svg{width:16px;height:16px}
 .repolink:active{opacity:.6}
 
+/* ---------- 设置页 ---------- */
+/* 显示模式的三段控件：占满整行、三档等宽 —— 手机上比窄窄一条好点得多。
+   外面那圈材质直接沿用 .seg（与别的分段控件同一套），用户一眼就知道能点。 */
+#themeSeg{display:flex;width:100%;margin:2px 0 10px}
+#themeSeg button{flex:1;padding:0 8px}
+/* 说明文字：给「跟随系统」这一档解释清楚它到底跟的是什么 */
+#themeSeg~.muted{margin:0;font-size:12.5px;line-height:1.7}
+
 /* ---------- 灵敏度分析模块 ---------- */
 /* 一共 6 个场景，两列排开比自动换行整齐（小屏上也不会挤成一团） */
 .scen-tabs{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:12px}
@@ -750,6 +766,12 @@ input.num.sm{width:52px}
    所以只要 body 还带实色背景，它就会把极光整个盖住 —— 实测过：极光写得
    再艳，量出来仍是 #f4f4f8 一片灰。因此基质色上移到 html，body 透明。 */
 html{background-color:var(--bg)}
+/* 浏览器原生控件（滚动条、勾选框、下拉箭头、日期选择器）也要跟着当前生效的模式
+   走 —— 这是唯一能影响它们的开关。不给的话，深色页面会拖出一条刺眼的白滚动条，
+   而勾选框会画成白底。 */
+html{color-scheme:light dark}
+html[data-theme="light"]{color-scheme:light}
+html[data-theme="dark"]{color-scheme:dark}
 body{background-image:none;background-color:transparent}
 body::before{
   content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
@@ -894,52 +916,52 @@ button.btn.primary:active{
   box-shadow:0 20px 44px -18px rgba(15,22,35,.42),inset 0 1px 0 var(--gl-sheen);
 }
 
-/* ---------------- 深色模式 ----------------
-   必须重新声明上面所有改过的变量：本区块排在应用自带的深色 @media 之后，
-   同权重按源码顺序后者胜 —— 不重声明的话，深色模式会错误地沿用浅色那套
-   rgba(255,255,255,...)，实测后果就是玻璃底合成出中灰、蓝字对比度只剩 1.89:1。 */
-@media (prefers-color-scheme: dark){
-  :root{
-    --gl-fill:rgba(30,38,56,.52);
-    --gl-fill-2:rgba(36,45,64,.72);
-    --gl-line:rgba(255,255,255,.18);
-    --gl-sheen:rgba(255,255,255,.22);
-    --gl-shadow:0 24px 54px -22px rgba(0,0,0,.8),0 3px 12px -5px rgba(0,0,0,.6);
+/* ---------------- 深色：玻璃配方 ----------------
+   浅色那套 rgba(255,255,255,...) 的填充在深底上会合成出中灰、蓝字对比度只剩
+   1.89:1，所以这里整体换一套。选择器与上面「深色：颜色令牌」同权重（0,1,1）
+   且排在其后，所以能盖住那边给出的亮色面上值。 */
+html[data-theme="dark"]{
+  --gl-fill:rgba(30,38,56,.52);
+  --gl-fill-2:rgba(36,45,64,.72);
+  --gl-line:rgba(255,255,255,.18);
+  --gl-sheen:rgba(255,255,255,.22);
+  --gl-shadow:0 24px 54px -22px rgba(0,0,0,.8),0 3px 12px -5px rgba(0,0,0,.6);
 
-    --au-1:rgba(64,120,255,.50);
-    --au-2:rgba(158,92,255,.40);
-    --au-3:rgba(18,190,162,.30);
-    --au-4:rgba(240,150,40,.26);
+  --au-1:rgba(64,120,255,.50);
+  --au-2:rgba(158,92,255,.40);
+  --au-3:rgba(18,190,162,.30);
+  --au-4:rgba(240,150,40,.26);
 
-    /* 深色反过来：浅色文字不需要那么高的底亮度，所以可以更透 —— 这是
-       「两套主题各自调优」而不是「同一套配方反转」的地方。
-       深底 + .55 的黑玻璃，实测 --fg2 仍有 5.5:1 以上。 */
-    --card:rgba(21,26,36,.55);
-    --input:rgba(28,34,46,.58);
-    --soft:rgba(255,255,255,.055);
-    --zebra:rgba(255,255,255,.035);
-  }
-  body::after{
-    background-image:repeating-linear-gradient(58deg,
-      rgba(255,255,255,.05) 0 1px,rgba(0,0,0,0) 1px 9px);
-    opacity:.45;
-  }
-  table.inp,table.tb,table.sens{background-color:rgba(255,255,255,.03)}
-  .banner:not(.err){background-color:rgba(30,37,50,.78)}
-  /* 深色下要反过来做：白色玻璃底会被下面几层（卡片 .90 → 分段 .05 → 选中 .17）
-     累加成中灰 #4e5361，蓝字压上去只剩 3.46:1（实测）。改成「选中 = 实心强调色 +
-     深色文字」，实测 8.0:1，顺带也更像原生的分段控件。 */
-  .seg{background:rgba(255,255,255,.05)}
-  .seg button.on{background:var(--accent);color:#0d1016;box-shadow:none}
-  /* 深色下的玻璃描边按钮：染色换成浅蓝、描边提到 .75 才压得住深底 */
-  button.btn.primary{
-    background-color:rgba(122,162,255,.18);
-    border-color:rgba(122,162,255,.75);color:#c3d5ff;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.18),
-               0 8px 20px -14px rgba(0,0,0,.65);
-  }
-  button.btn.primary:active{background-color:rgba(122,162,255,.28)}
+  /* 深色反过来：浅色文字不需要那么高的底亮度，所以可以更透 —— 这是
+     「两套主题各自调优」而不是「同一套配方反转」的地方。
+     深底 + .55 的黑玻璃，实测 --fg2 仍有 5.5:1 以上。 */
+  --card:rgba(21,26,36,.55);
+  --input:rgba(28,34,46,.58);
+  --soft:rgba(255,255,255,.055);
+  --zebra:rgba(255,255,255,.035);
 }
+html[data-theme="dark"] body::after{
+  background-image:repeating-linear-gradient(58deg,
+    rgba(255,255,255,.05) 0 1px,rgba(0,0,0,0) 1px 9px);
+  opacity:.45;
+}
+html[data-theme="dark"] table.inp,
+html[data-theme="dark"] table.tb,
+html[data-theme="dark"] table.sens{background-color:rgba(255,255,255,.03)}
+html[data-theme="dark"] .banner:not(.err){background-color:rgba(30,37,50,.78)}
+/* 深色下要反过来做：白色玻璃底会被下面几层（卡片 .90 → 分段 .05 → 选中 .17）
+   累加成中灰 #4e5361，蓝字压上去只剩 3.46:1（实测）。改成「选中 = 实心强调色 +
+   深色文字」，实测 8.0:1，顺带也更像原生的分段控件。 */
+html[data-theme="dark"] .seg{background:rgba(255,255,255,.05)}
+html[data-theme="dark"] .seg button.on{background:var(--accent);color:#0d1016;box-shadow:none}
+/* 深色下的玻璃描边按钮：染色换成浅蓝、描边提到 .75 才压得住深底 */
+html[data-theme="dark"] button.btn.primary{
+  background-color:rgba(122,162,255,.18);
+  border-color:rgba(122,162,255,.75);color:#c3d5ff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),
+             0 8px 20px -14px rgba(0,0,0,.65);
+}
+html[data-theme="dark"] button.btn.primary:active{background-color:rgba(122,162,255,.28)}
 
 /* ---------------- 不支持 backdrop-filter 时退回实色 ----------------
    宁可少一点通透，也不能让文字落在乱底上。退回后 --card 等回到原来的
@@ -958,18 +980,17 @@ button.btn.primary:active{
   button.btn.primary{
     background-color:rgba(37,99,235,.92);border-color:transparent;color:#fff;
   }
-}
-@media (prefers-color-scheme: dark){
-  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-    :root{
-      --gl-fill:rgba(24,30,42,.97);
-      --gl-fill-2:rgba(26,32,45,.99);
-      --gl-line:var(--line);
-      --card:#151a23;--input:#1c222d;--soft:#1b212c;--zebra:#181e28;
-    }
-    button.btn.primary{
-      background-color:rgba(122,162,255,.92);border-color:transparent;color:#0d1016;
-    }
+  /* 深色退回实色时同样要重给一套。媒体查询时代这里是「@supports 里再套 @media」
+     两层嵌套，现在两个条件都落到选择器上：写成 html[data-theme="dark"]，
+     与上面深色玻璃块同权重（0,1,1）且排在其后，所以能盖住那套半透明值。 */
+  html[data-theme="dark"]{
+    --gl-fill:rgba(24,30,42,.97);
+    --gl-fill-2:rgba(26,32,45,.99);
+    --gl-line:var(--line);
+    --card:#151a23;--input:#1c222d;--soft:#1b212c;--zebra:#181e28;
+  }
+  html[data-theme="dark"] button.btn.primary{
+    background-color:rgba(122,162,255,.92);border-color:transparent;color:#0d1016;
   }
 }
 
@@ -1174,12 +1195,36 @@ button.btn.primary:active{
     <section id="ipOut"></section>
   </div>
 
+  <!-- ===================== 设置 ===================== -->
+  <div class="mod" id="mod-settings">
+    <header>
+      <a class="back" href="#/">← 返回首页</a>
+      <h1>设置</h1>
+      <p>显示模式</p>
+    </header>
+
+    <section class="card">
+      <h2 class="sec">显示模式</h2>
+      <!-- 三档分段控件。高亮与 <html data-theme> 由 src/web/settings-ui.js 维护：
+           点一下立刻生效，不需要刷新，也不用重进页面。 -->
+      <div class="seg" id="themeSeg" role="group" aria-label="显示模式">
+        <button type="button" data-mode="system">跟随系统</button>
+        <button type="button" data-mode="light">浅色</button>
+        <button type="button" data-mode="dark">深色</button>
+      </div>
+      <p class="muted">选择记在这台设备上，下次打开仍是这一档；「跟随系统」会随系统外观自动切换。</p>
+    </section>
+  </div>
+
 </div>
 
-<!-- 底部模块导航：手机上这比「返回首页再点一次」顺手得多。 -->
+<!-- 底部标签栏：只放「首页」和「设置」两个入口。
+     三个算法模块从首页的模块卡进（模块页顶部都有「← 返回首页」），不占底栏 ——
+     底栏是常驻的，留两个格子才不至于把「设置」这种低频入口和被高频使用的模块
+     混在一条上，每个标签也能做得更大。 -->
 <nav class="tabbar" aria-label="模块导航">
   <!-- 滑动指示器：高亮块由它一个元素承担，切模块时从旧位置平滑滑到新位置，
-       而不是「旧的消失 + 新的出现」那种跳变。位置由 src/ui/router.js 设定。
+       而不是「旧的消失 + 新的出现」那种跳变。位置由 src/web/router.js 设定。
        纯装饰，读屏忽略。 -->
   <span class="tb-pill" aria-hidden="true"></span>
   <a href="#/" data-m="home">
@@ -1188,27 +1233,12 @@ button.btn.primary:active{
     </svg>
     <span>首页</span>
   </a>
-  <a href="#/simplex" data-m="simplex">
+  <a href="#/settings" data-m="settings">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17M9.5 9.5v10M15.5 9.5v10"/>
+      <circle cx="12" cy="12" r="3.2"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
     </svg>
-    <span>单纯形法</span>
-  </a>
-  <a href="#/sens" data-m="sens">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M7 4v16M12 4v16M17 4v16"/><path d="M4.6 9.5h4.8M9.6 14h4.8M14.6 7.5h4.8"/>
-    </svg>
-    <span>灵敏度</span>
-  </a>
-  <a href="#/ip" data-m="ip">
-    <svg viewBox="0 0 24 24" fill="none" stroke="none" aria-hidden="true">
-      <circle cx="6" cy="6" r="1.5" fill="currentColor"/><circle cx="12" cy="6" r="1.5" fill="currentColor"/>
-      <circle cx="18" cy="6" r="1.5" fill="currentColor"/><circle cx="6" cy="12" r="1.5" fill="currentColor"/>
-      <circle cx="18" cy="12" r="1.5" fill="currentColor"/><circle cx="6" cy="18" r="1.5" fill="currentColor"/>
-      <circle cx="12" cy="18" r="1.5" fill="currentColor"/><circle cx="18" cy="18" r="1.5" fill="currentColor"/>
-      <circle cx="12" cy="12" r="3.3" fill="currentColor"/>
-    </svg>
-    <span>整数规划</span>
+    <span>设置</span>
   </a>
 </nav>
 
@@ -4604,6 +4634,7 @@ require('./graph.js');         /* 图解法：注册渲染器 */
 require('./ui.js');            /* 单纯形法界面 */
 require('./sens-ui.js');       /* 灵敏度分析界面 */
 require('./ip-ui.js');         /* 整数规划界面 */
+require('./settings-ui.js');   /* 设置页 + 显示模式（要在路由之前把主题属性落好） */
 require('./router.js');        /* 首页 / 模块路由：最后启动 */
 
 module.exports = {};
@@ -5736,12 +5767,13 @@ module.exports = {};
 
 __define__("src/web/router.js", function (module, exports, require) {
 /* =========================================================================
-   极简路由：首页 / 单纯形法 / 灵敏度分析
+   极简路由：首页 / 单纯形法 / 灵敏度分析 / 整数规划 / 设置
    -------------------------------------------------------------------------
-   用 hash 路由（#/simplex、#/sens），手机上刷新、后退、加桌面都能正常工作，
-   而且纯静态单文件也能用。以后加新模块只要两步：
+   用 hash 路由（#/simplex、#/sens、#/settings），手机上刷新、后退、加桌面都能
+   正常工作，而且纯静态单文件也能用。以后加新模块只要三步：
      ① 页面里加一个 <div class="mod" id="mod-xxx"> 容器
      ② 把名字登记到下面的 MODULES 里
+     ③ 想让它出现在底栏就把 <a href="#/xxx" data-m="xxx"> 加进 .tabbar
    ========================================================================= */
 
 var inputPanel = require('./input-panel.js');
@@ -5749,7 +5781,7 @@ var addScrollHints = inputPanel.addScrollHints;
 (function () {
   'use strict';
 
-  var MODULES = ['home', 'simplex', 'sens', 'ip'];
+  var MODULES = ['home', 'simplex', 'sens', 'ip', 'settings'];
 
   function current() {
     var h = (location.hash || '').replace(/^#\/?/, '').replace(/\/+$/, '');
@@ -5758,6 +5790,9 @@ var addScrollHints = inputPanel.addScrollHints;
 
   /* ---- 底部导航的滑动指示器 ----
      高亮底由 .tb-pill 一个元素承担，切模块时从旧位置平滑滑到新位置。
+     ★ 底栏只有「首页」和「设置」两个入口，三个算法模块是从首页卡片进的：
+       进到模块页时没有任何标签是当前项，此时指示器整个隐去（而不是错误地
+       一直亮着「首页」）—— 模块页顶部本来就有「← 返回首页」。
      两个必须注意的点：
      ① 位置要用 rect 算，不能用 offsetLeft —— .tabbar 是 position:fixed，
         .tb-pill 是它的绝对定位子元素，pill 的 left:0 参照「padding box」的
@@ -6278,6 +6313,119 @@ var explain = tableRender.explain;
 
 /* 本模块没有对外接口：require 一次即完成灵敏度分析界面初始化（副作用模块）。 */
 module.exports = {};
+});
+
+__define__("src/web/settings-ui.js", function (module, exports, require) {
+/* =========================================================================
+   设置页（目前只有一项：显示模式）
+   -------------------------------------------------------------------------
+   为什么主题由 <html data-theme> 驱动，而不是留在 CSS 的
+   @media (prefers-color-scheme: dark) 里：
+     ① 三档里有一档是「系统是深色、但用户偏要在本应用里看浅色」—— 这种情况
+        媒体查询根本表达不了，只能用属性去压它；
+     ② 「跟随系统」还必须能实时响应系统外观切换，这本来就得 JS 参与。
+   于是把系统偏好解析成 light / dark 落到属性上，CSS 只认属性：深色配色因此
+   只有一份，不存在「媒体查询一份 + 属性一份」的双份维护。
+
+   时机：打包后的 <script> 在 </body> 前同步执行，早于首次绘制，所以这里落下
+   属性不会看到「先闪一下浅色」。将来若把这支脚本改成异步 / defer 加载，就必须
+   在 <head> 里补一段同步脚本先把属性写好，否则开屏会闪。
+   ========================================================================= */
+'use strict';
+
+/* 用户选的那一档（注意存的不是解析结果，而是选择本身）：system / light / dark */
+var KEY = 'or-theme';
+var MODES = ['system', 'light', 'dark'];
+var DARK_QUERY = '(prefers-color-scheme: dark)';
+
+/* 状态栏 / 地址栏的染色读的是 <meta name="theme-color">，拿不到 CSS 变量，
+   所以这两个色值只能在这里再写一遍。它们必须与 template.html 里 --bg 的浅色
+   （#f5f7fa）与深色（#0d1016）保持一致。 */
+var BG = { light: '#f5f7fa', dark: '#0d1016' };
+
+var mq = window.matchMedia ? window.matchMedia(DARK_QUERY) : null;
+
+function readMode() {
+  /* 隐私模式 / 禁用存储时 localStorage 可能直接抛异常，此时退回「跟随系统」 */
+  try {
+    var v = localStorage.getItem(KEY);
+    return MODES.indexOf(v) >= 0 ? v : 'system';
+  } catch (e) {
+    return 'system';
+  }
+}
+
+function saveMode(mode) {
+  try {
+    localStorage.setItem(KEY, mode);
+  } catch (e) {
+    /* 存不下就算了：本次仍然生效，只是下次打开回到默认 */
+  }
+}
+
+/* 把「用户选的档位」解析成真正生效的 light / dark */
+function resolve(mode) {
+  if (mode === 'light' || mode === 'dark') return mode;
+  return (mq && mq.matches) ? 'dark' : 'light';
+}
+
+function paint(mode) {
+  var dark = resolve(mode) === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+
+  /* 染色跟着当前生效的模式走。不能省：只留两条 media 版 meta 的话，
+     「系统深色 + 用户选浅色」时染色会和页面反着来。 */
+  var meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', dark ? BG.dark : BG.light);
+
+  /* 分段控件高亮当前档位；aria-pressed 让读屏也听得出现在选的是哪一个 */
+  var seg = document.getElementById('themeSeg');
+  if (!seg) return;
+  Array.prototype.forEach.call(seg.getElementsByTagName('button'), function (b) {
+    var on = b.getAttribute('data-mode') === mode;
+    b.className = on ? 'on' : '';
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+}
+
+function selectMode(mode) {
+  saveMode(mode);
+  paint(mode);
+}
+
+(function () {
+  /* 开屏先按已存的档位落属性（早于首次绘制，见文件头注释） */
+  var mode = readMode();
+  paint(mode);
+
+  var seg = document.getElementById('themeSeg');
+  if (seg) {
+    /* 用事件委托而不是给三个按钮各绑一次：将来加档位（比如「高对比」）
+       不用再补绑定。 */
+    seg.addEventListener('click', function (ev) {
+      var t = ev.target;
+      while (t && t !== seg && t.tagName !== 'BUTTON') t = t.parentNode;
+      if (!t || t === seg) return;
+      var m = t.getAttribute('data-mode');
+      if (MODES.indexOf(m) >= 0) selectMode(m);
+    });
+  }
+
+  /* 系统外观变化时实时跟随：另外两档在 resolve() 里会忽略系统值，
+     但仍然无条件重绘一次 —— 省一次判断，代价只是一次属性写入。 */
+  if (mq) {
+    var onSysChange = function () { paint(readMode()); };
+    if (mq.addEventListener) mq.addEventListener('change', onSysChange);
+    else if (mq.addListener) mq.addListener(onSysChange);   /* 老 WebView 只有这个 */
+  }
+})();
+
+module.exports = {
+  KEY: KEY,
+  readMode: readMode,
+  resolve: resolve,
+  selectMode: selectMode
+};
 });
 
 __define__("src/web/table-render.js", function (module, exports, require) {

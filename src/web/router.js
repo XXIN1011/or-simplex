@@ -1,10 +1,11 @@
 /* =========================================================================
-   极简路由：首页 / 单纯形法 / 灵敏度分析
+   极简路由：首页 / 单纯形法 / 灵敏度分析 / 整数规划 / 设置
    -------------------------------------------------------------------------
-   用 hash 路由（#/simplex、#/sens），手机上刷新、后退、加桌面都能正常工作，
-   而且纯静态单文件也能用。以后加新模块只要两步：
+   用 hash 路由（#/simplex、#/sens、#/settings），手机上刷新、后退、加桌面都能
+   正常工作，而且纯静态单文件也能用。以后加新模块只要三步：
      ① 页面里加一个 <div class="mod" id="mod-xxx"> 容器
      ② 把名字登记到下面的 MODULES 里
+     ③ 想让它出现在底栏就把 <a href="#/xxx" data-m="xxx"> 加进 .tabbar
    ========================================================================= */
 
 var inputPanel = require('./input-panel.js');
@@ -12,7 +13,7 @@ var addScrollHints = inputPanel.addScrollHints;
 (function () {
   'use strict';
 
-  var MODULES = ['home', 'simplex', 'sens', 'ip'];
+  var MODULES = ['home', 'simplex', 'sens', 'ip', 'settings'];
 
   function current() {
     var h = (location.hash || '').replace(/^#\/?/, '').replace(/\/+$/, '');
@@ -21,6 +22,9 @@ var addScrollHints = inputPanel.addScrollHints;
 
   /* ---- 底部导航的滑动指示器 ----
      高亮底由 .tb-pill 一个元素承担，切模块时从旧位置平滑滑到新位置。
+     ★ 底栏只有「首页」和「设置」两个入口，三个算法模块是从首页卡片进的：
+       进到模块页时没有任何标签是当前项，此时指示器整个隐去（而不是错误地
+       一直亮着「首页」）—— 模块页顶部本来就有「← 返回首页」。
      两个必须注意的点：
      ① 位置要用 rect 算，不能用 offsetLeft —— .tabbar 是 position:fixed，
         .tb-pill 是它的绝对定位子元素，pill 的 left:0 参照「padding box」的

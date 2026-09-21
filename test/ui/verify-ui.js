@@ -4,8 +4,10 @@
    3) 图解法：2 变量出现、3 变量不出现
    4) 退化提示
    5) 横向滚动提示
-   6) 深色模式
+   6) 深色模式（跟随系统）
    7) 0 变量 0 约束求解 + 极限尺寸
+   8) 底部标签栏（只剩首页/设置 + 滑动指示器）
+   9) 显示模式三档：跟随系统 / 浅色 / 深色
 */
 'use strict';
 const { spawn } = require('child_process');
@@ -491,8 +493,8 @@ class CDP {
   check(routeBefore.simp === true && routeBefore.home === false && routeBefore.cards === 3,
     '进 #/simplex 时只显示单纯形法模块，首页有 3 个模块入口',
     `home=${routeBefore.home} simplex=${routeBefore.simp} 卡片=${routeBefore.cards}`);
-  check(routeBefore.boxCount === 4,
-    '全站只剩 4 个模块容器（首页 / 单纯形法 / 灵敏度分析 / 整数规划）',
+  check(routeBefore.boxCount === 5,
+    '全站只剩 5 个页面容器（首页 / 单纯形法 / 灵敏度分析 / 整数规划 / 设置）',
     `容器数=${routeBefore.boxCount}`);
 
   await evl(`location.hash = '#/sens'; 'ok'`);
@@ -752,9 +754,11 @@ class CDP {
   /* ---------- 底部导航的滑动指示器 ---------- */
   console.log('\n--- 底部导航滑动指示器 ---');
   /* 高亮底由一个 .tb-pill 元素承担，切模块时用 transform 平移过去。
-     断言四件事：① 元素存在且对齐当前标签；② 高亮不再由 .on 自己画背景
-     （否则切换会「旧的瞬间消失 + 新的瞬间出现」）；③ 过渡挂在 transform 上；
-     ④ 切换后位置真的变了；⑤ 开「减少动态效果」时不做动画。
+     断言六件事：① 底栏就是「首页」「设置」两个入口、顺序对；② 元素存在且对齐
+     当前标签；③ 高亮不再由 .on 自己画背景（否则切换会「旧的瞬间消失 + 新的瞬间
+     出现」）；④ 过渡挂在 transform 上；⑤ 切换后位置真的变了；⑥ 进到不在底栏里的
+     算法模块时指示器整个隐去（而不是错误地亮着「首页」）；
+     再单独验一条：开「减少动态效果」时不做动画。
 
      ★ 必须先显式声明 no-preference：无头 Chrome 默认就把 prefers-reduced-motion
      报成 reduce，而样式表末尾有一条 *{transition:none!important} 的兜底规则 ——
@@ -769,6 +773,7 @@ class CDP {
       var bar = document.querySelector('.tabbar');
       var pill = bar && bar.querySelector('.tb-pill');
       var act = bar && bar.querySelector('a.on');
+      var links = bar ? bar.querySelectorAll('a') : [];
       if(!pill) return { hasPill:false };
       var pr = pill.getBoundingClientRect();
       var ar = act ? act.getBoundingClientRect() : null;
@@ -777,15 +782,19 @@ class CDP {
                armed:pill.classList.contains('on'),
                pl:Math.round(pr.left), pw:Math.round(pr.width),
                label:act ? act.textContent.trim() : null,
+               labels:Array.prototype.map.call(links, function(a){ return a.textContent.trim(); }),
                al:ar ? Math.round(ar.left) : null, aw:ar ? Math.round(ar.width) : null,
                onBg:act ? getComputedStyle(act).backgroundColor : null };
     })())`));
   };
 
-  const n1 = await navTo('#/simplex');
+  const n1 = await navTo('#/');
   check(n1.hasPill, '底部导航里存在滑动指示器元素 .tb-pill');
-  check(n1.label === '单纯形法' && Math.abs(n1.pl - n1.al) <= 1 && Math.abs(n1.pw - n1.aw) <= 2,
-    '指示器与「单纯形法」标签的位置和宽度都对齐',
+  check(n1.labels.join('/') === '首页/设置',
+    '底栏只剩「首页」「设置」两个入口（三个算法模块改为从首页卡片进）',
+    `底栏标签=${n1.labels.join('/')}`);
+  check(n1.label === '首页' && Math.abs(n1.pl - n1.al) <= 1 && Math.abs(n1.pw - n1.aw) <= 2,
+    '指示器与「首页」标签的位置和宽度都对齐',
     `指示器 left=${n1.pl} w=${n1.pw}；标签 left=${n1.al} w=${n1.aw}`);
   check(n1.onBg === 'rgba(0, 0, 0, 0)',
     '高亮底交给指示器承担，.on 自身不再画背景（避免「消失又出现」）',
@@ -808,16 +817,103 @@ class CDP {
     { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] }, sessionId);
   await sleep(200);
 
-  const n2 = await navTo('#/sens');
-  check(n2.label === '灵敏度' && n2.pl > n1.pl,
-    '切到「灵敏度」后指示器向右滑过去（位置变了，而不是原地消失又出现）',
+  const n2 = await navTo('#/settings');
+  check(n2.label === '设置' && n2.pl > n1.pl,
+    '切到「设置」后指示器向右滑过去（位置变了，而不是原地消失又出现）',
     `left ${n1.pl} → ${n2.pl}`);
 
-  const n3 = await navTo('#/');
-  check(n3.label === '首页' && n3.pl < n1.pl, '切回首页后指示器滑回最左', `left ${n3.pl}`);
+  /* ★ 三个算法模块不在底栏里 —— 进到这些页面时不该有任何标签亮着。
+     指示器由 movePill() 在「找不到 a.on」时摘掉 .on 类，于是整块隐去；
+     如果这里改成「亮着首页」就是错的：用户并不在首页。 */
+  const n3 = await navTo('#/simplex');
+  check(n3.armed === false && parseFloat(n3.op) === 0,
+    '进到不在底栏的算法模块时指示器隐去，不会错误地亮着「首页」',
+    `pill.on=${n3.armed} opacity=${n3.op}`);
 
-  await navTo('#/');
+  const n4 = await navTo('#/');
+  check(n4.label === '首页' && n4.armed === true && n4.pl < n2.pl,
+    '切回首页后指示器滑回去并重新高亮', `left ${n2.pl} → ${n4.pl}`);
+
+  /* ---------- 显示模式（跟随系统 / 浅色 / 深色） ---------- */
+  console.log('\n--- 显示模式 ---');
+  /* 主题由 <html data-theme> 驱动（不再是 CSS 媒体查询），所以三档都要验：
+     跟随系统要实时跟、显式选择的要压得住系统、换页/重载要记得住。
+     ★ 第 3 条「系统是深色、用户选浅色」正是媒体查询做不到的用例 —— 媒体查询
+     时代这一档根本无法实现，改属性驱动就是为了它。 */
+  const modeState = async () => JSON.parse(await evl(`JSON.stringify((function(){
+    var seg = document.getElementById('themeSeg');
+    var on = seg ? seg.querySelector('button.on') : null;
+    return {
+      theme: document.documentElement.getAttribute('data-theme'),
+      mode: on ? on.getAttribute('data-mode') : null,
+      label: on ? on.textContent.trim() : null,
+      labels: seg ? Array.prototype.map.call(seg.querySelectorAll('button'), function(b){ return b.textContent.trim(); }) : [],
+      pressed: on ? on.getAttribute('aria-pressed') : null,
+      meta: (document.querySelector('meta[name=theme-color]') || {}).content,
+      bg: getComputedStyle(document.documentElement).backgroundColor,
+      stored: (function(){ try { return localStorage.getItem('or-theme'); } catch (e) { return 'ERR'; } })(),
+      errors: window.__errors.length
+    };
+  })())`));
+
+  await navTo('#/settings');
+  const t0 = await modeState();
+  check(t0.labels.join('/') === '跟随系统/浅色/深色' && t0.mode === 'system',
+    '设置页有三档显示模式，默认是「跟随系统」',
+    `档位=${t0.labels.join('/')} 当前=${t0.label} data-theme=${t0.theme}`);
+  check(t0.theme === 'light' && t0.meta === '#f5f7fa',
+    '「跟随系统」+ 系统浅色 → 渲染浅色，染色也是浅色',
+    `data-theme=${t0.theme} 染色=${t0.meta}`);
+
+  await cdp.send('Emulation.setEmulatedMedia',
+    { features: [{ name: 'prefers-color-scheme', value: 'dark' }] }, sessionId);
+  await sleep(300);
+  const t1 = await modeState();
+  check(t1.theme === 'dark' && lum(t1.bg) < 60,
+    '系统转深色时「跟随系统」实时跟着变深（不用刷新）',
+    `data-theme=${t1.theme} 背景=${t1.bg}`);
+
+  await evl(`document.querySelector('#themeSeg button[data-mode="light"]').click()`);
+  await sleep(250);
+  const t2 = await modeState();
+  check(t2.mode === 'light' && t2.theme === 'light' && lum(t2.bg) > 200,
+    '系统是深色时显式选「浅色」仍然渲染浅色（媒体查询做不到的那一档）',
+    `data-theme=${t2.theme} 背景=${t2.bg}`);
+
+  await evl(`document.querySelector('#themeSeg button[data-mode="dark"]').click()`);
+  await sleep(250);
+  const t3 = await modeState();
+  check(t3.mode === 'dark' && t3.theme === 'dark' && lum(t3.bg) < 60,
+    '显式选「深色」后渲染深色', `data-theme=${t3.theme} 背景=${t3.bg}`);
+  check(t3.pressed === 'true' && t3.stored === 'dark',
+    '当前档位带 aria-pressed="true"，并把选择记进 localStorage',
+    `aria-pressed=${t3.pressed} 存储=${t3.stored}`);
+  check(t3.meta === '#0d1016',
+    '深色下 <meta theme-color> 跟着改深（手机状态栏/地址栏染色不会和页面反着来）',
+    `content=${t3.meta}`);
+
   await cdp.send('Emulation.setEmulatedMedia', { features: [] }, sessionId);
+  await sleep(300);
+  const t4 = await modeState();
+  check(t4.theme === 'dark',
+    '系统转回浅色后，显式选的「深色」不受影响（选择压得住系统）',
+    `data-theme=${t4.theme}`);
+
+  /* 重载：属性是 boot 时按 localStorage 落下的，刷新后必须是同一档 */
+  await cdp.send('Page.navigate', { url: url + '#/settings' }, sessionId);
+  await sleep(1400);
+  const t5 = await modeState();
+  check(t5.mode === 'dark' && t5.theme === 'dark' && t5.meta === '#0d1016',
+    '刷新页面后仍记得「深色」（设置存在本机，不随会话丢失）',
+    `当前=${t5.label} data-theme=${t5.theme} 染色=${t5.meta}`);
+
+  /* 收尾：切回「跟随系统」，免得把状态留给后面的断言 */
+  await evl(`document.querySelector('#themeSeg button[data-mode="system"]').click()`);
+  await sleep(250);
+  const t6 = await modeState();
+  check(t6.mode === 'system' && t6.theme === 'light' && t6.meta === '#f5f7fa' && t6.errors === 0,
+    '切回「跟随系统」后恢复随系统，全程无 JS 错误',
+    `data-theme=${t6.theme} 染色=${t6.meta} 错误=${t6.errors}`);
 
   console.log(`\n合计: ${pass} 通过 / ${fail} 失败`);
   ws.close(); child.kill();
