@@ -15,16 +15,26 @@
      ① 各自算出结果（连同**每一步**的中间过程，供界面按教材写法展示）
      ② 判定自己在当前这道题上到底能不能用（不能用就不输出，理由一并给出）
      ③ 规模过大时给出提示，让界面改为「按用户选择的解法输出」
+
+   本文件只留整数规划**独有**的东西：变量整性 / 0-1 判定、四种方法本身、
+   适用性判定与理由、规模守卫、界面要的过程数据。
+   线性规划的求解与枢轴变换一律复用共享内核 src/core/simplex.js
+   （simplexSolve / pivot），容差判定与数字格式化用 src/core/util.js、format.js。
    ========================================================================= */
 'use strict';
 
-if (typeof module !== 'undefined' && module.exports) {
-  var _sx3 = require('./simplex-core.js');
-  var simplexSolve = _sx3.simplexSolve, fmtNum = _sx3.fmtNum,
-      fmtPair = _sx3.fmtPair, EPS = _sx3.EPS,
-      pAdd = _sx3.pAdd, pSub = _sx3.pSub, pMul = _sx3.pMul, pCmp = _sx3.pCmp,
-      pIsPos = _sx3.pIsPos, pIsZero = _sx3.pIsZero;
-}
+/* 依赖：求解内核 + 公共工具 + 格式化（显式 require，浏览器端由打包器提供 require）。
+   本文件不再自带求解内核的任何一份拷贝：松弛问题、分枝结点问题都走 simplexSolve，
+   割平面的对偶单纯形迭代里枢轴变换也走共享内核的 pivot。 */
+var _core = require('./simplex.js');
+var _util = require('./util.js');
+var _fmt = require('./format.js');
+/* 求解内核 simplex.js：求解入口 + 枢轴变换 */
+var simplexSolve = _core.simplexSolve;
+var pivot = _core.pivot;
+/* 公共工具 util.js / format.js：容差判定 + 数字格式化 */
+var nearZero = _util.nearZero, pIsZero = _util.pIsZero;
+var fmtNum = _fmt.fmtNum;
 
 var IP_EPS = 1e-6;
 
@@ -64,6 +74,17 @@ function ipAllBinary(problem) {
   return true;
 }
 
+/* 追加若干「单变量界」约束（系数只有第 j 位是 1）。0-1 的 x ≤ 1 与分枝定界的
+   每步上下界是同一件事，只写这一份，不再两处各拼一遍系数行。 */
+function ipAppendBinds(p, bounds) {
+  bounds.forEach(function (b) {
+    var coef = [];
+    for (var j = 0; j < p.c.length; j++) coef.push(j === b.j ? 1 : 0);
+    p.constraints.push({ coef: coef, rel: b.rel, rhs: b.val });
+  });
+  return p;
+}
+
 /* 0-1 变量本身自带 0 ≤ x ≤ 1 的界，而单纯形法只知道 x ≥ 0。
    不把上界显式加进去，松弛问题就会给出 x_j = 2 这种「是整数但不是 0-1」的解，
    分枝定界还会把它当成合法整数解收下 —— 结果比真正的最优解还大。 */
@@ -75,14 +96,11 @@ function ipWithVarBounds(problem) {
       return { coef: k.coef.slice(), rel: k.rel, rhs: k.rhs };
     })
   };
+  var binBounds = [];
   for (var j = 0; j < problem.c.length; j++) {
-    if (problem.vtypes && problem.vtypes[j] === 'bin') {
-      var coef = [];
-      for (var t = 0; t < p.c.length; t++) coef.push(t === j ? 1 : 0);
-      p.constraints.push({ coef: coef, rel: '<=', rhs: 1 });
-    }
+    if (problem.vtypes && problem.vtypes[j] === 'bin') binBounds.push({ j: j, rel: '<=', val: 1 });
   }
-  return p;
+  return ipAppendBinds(p, binBounds);
 }
 /* 有没有 0-1 变量（用来决定要不要在输出里说明「已补上 x ≤ 1」） */
 function ipHasBinary(problem) {
@@ -93,20 +111,12 @@ function ipHasBinary(problem) {
 
 /* 复制问题并追加若干上下界约束（分枝定界每走一步都要做这件事） */
 function ipWithBounds(problem, bounds) {
-  var p = ipWithVarBounds(problem);            // 先补上 0-1 的 x ≤ 1
-  bounds.forEach(function (b) {
-    var coef = [];
-    for (var j = 0; j < p.c.length; j++) coef.push(j === b.j ? 1 : 0);
-    p.constraints.push({ coef: coef, rel: b.rel, rhs: b.val });
-  });
-  return p;
+  return ipAppendBinds(ipWithVarBounds(problem), bounds);   // 先补上 0-1 的 x ≤ 1
 }
 
-/* 把解向量按「决策变量」口径取出来（simplexSolve 返回的 solution 已经是这个口径） */
-function ipVector(res) { return res.solution.slice(); }
-
-/* 目标值：max 问题 simplexSolve 直接给，min 问题它也已还原过 */
-function ipObjective(res) { return res.objective; }
+/* 解向量与目标值一律直接取共享内核的 SolveResult：
+   solution 已经是「决策变量」口径，objective 对 max / min 都已还原过，
+   这里不再各包一层同名函数。 */
 
 /* =========================================================================
    1. 松弛问题：把整数限制去掉，得到普通线性规划
@@ -174,8 +184,8 @@ function ipBranchBound(problem, opts) {
     var res = simplexSolve(lp);
     node.lp = lp;
     node.res = res;
-    node.solution = res.status === 'optimal' ? ipVector(res) : null;
-    node.objective = res.status === 'optimal' ? ipObjective(res) : null;
+    node.solution = res.status === 'optimal' ? res.solution.slice() : null;
+    node.objective = res.status === 'optimal' ? res.objective : null;
     node.relaxForView = { vars: res.vars, mConstraints: res.mConstraints,
                           nDecision: res.nDecision, steps: res.steps };
 
@@ -338,8 +348,30 @@ function ipCuttingPlane(problem, opts) {
   /* 哪些列是「原始列」（决策变量 + 原始松弛变量）。割只允许从原始列做基的行推出：
      原始松弛变量 = b − Ax，数据与 x 都是整数时它必为整数；
      而割自己引进的剩余变量不保证是整数，从它的行推出来的割并不成立。 */
-  var isOrigCol = [];
-  for (var c0 = 0; c0 < N; c0++) isOrigCol.push(true);
+  var isOrigCol = new Array(N).fill(true);
+
+  /* 表数据打成「标准型」视图，枢轴变换交给共享内核 simplex.js 的 pivot
+     （m / N 每加一刀都会变，改完要同步回这里）。 */
+  var table = { m: m, N: N, rows: rows, obj: obj, basis: basis };
+
+  /* 割平面的对偶枢轴：消元实现只有共享内核的一份（simplex.js 的 pivot），
+     这里只负责保留原实现在数值上的两处容差约定，好让输出逐位不变：
+       · 入基变量的检验数落进 1e-9 → 该次枢轴整个 σ 行不动（原实现跳过更新）。
+         先把 σ 行存一份，做完再把原样的对象放回去，就与「不动」逐位一致。
+       · |a_ie| < 1e-12 的行原实现整行不消元。先把该格置 0（内核看到 f = 0 就不动这行），
+         枢轴做完再把原值放回，这一行就与原来一样分毫未动。
+     两处都只是 1e-12 以下的毛刺口径，不涉及任何数学推导。 */
+  function ipDualPivot(negRow, enter) {
+    var sigmaKeep = pIsZero(obj[enter]) ? obj.slice() : null;
+    var kept = [];
+    for (var ip = 0; ip < m; ip++) {
+      var av = Math.abs(rows[ip][enter]);
+      if (ip !== negRow && av > 0 && av < 1e-12) { kept.push([ip, rows[ip][enter]]); rows[ip][enter] = 0; }
+    }
+    pivot(table, negRow, enter);
+    if (sigmaKeep) for (var jo = 0; jo <= N; jo++) obj[jo] = sigmaKeep[jo];
+    for (var kp = 0; kp < kept.length; kp++) rows[kept[kp][0]][enter] = kept[kp][1];
+  }
 
   var cuts = [];
   var converged = false;
@@ -381,6 +413,7 @@ function ipCuttingPlane(problem, opts) {
     rows.push(newRow);
     basis.push(newColIdx);
     N = N + 1; m = m + 1;
+    table.N = N; table.m = m;                    // 表宽表长都变了，同步给共享内核的视图
 
     /* ---- 用对偶单纯形法把新表调回可行 ---- */
     var dualSteps = [];
@@ -424,7 +457,8 @@ function ipCuttingPlane(problem, opts) {
           + '比值 |σ ÷ a| 最小的是 ' + vars[enter].name + '，让它入基，'
           + vars[basis[negRow]].name + ' 出基。'
       });
-      ipPivot(rows, obj, basis, N, m, negRow, enter);
+      /* 枢轴变换调共享内核 simplex.js 的 pivot（见上面 ipDualPivot 的两处容差约定） */
+      ipDualPivot(negRow, enter);
       dualSteps[dualSteps.length - 1].snapshot =
         { rows: rows.map(function (r) { return r.slice(); }),
           obj: obj.map(function (o) { return { a: o.a, b: o.b }; }),
@@ -466,21 +500,9 @@ function ipCuttingPlane(problem, opts) {
   };
 }
 
-/* 一张单纯形表上的枢轴变换（与单纯形法核心同一套做法） */
-function ipPivot(rows, obj, basis, N, m, r, e) {
-  var pv = rows[r][e];
-  for (var j = 0; j <= N; j++) rows[r][j] /= pv;
-  for (var i = 0; i < m; i++) {
-    if (i === r || Math.abs(rows[i][e]) < 1e-12) continue;
-    var f = rows[i][e];
-    for (var j2 = 0; j2 <= N; j2++) rows[i][j2] -= f * rows[r][j2];
-  }
-  var fo = obj[e];
-  if (!pIsZero(fo)) {
-    for (var j3 = 0; j3 <= N; j3++) obj[j3] = pSub(obj[j3], pMul(fo, rows[r][j3]));
-  }
-  basis[r] = e;
-}
+/* 注：本文件原先自带一份 ipPivot（表上的枢轴变换），与 simplex.js 的 pivot 是同一套
+   高斯消元，现已删除 —— 割平面的对偶单纯形直接调共享内核的 pivot(table, r, e)。
+   下面进入隐枚举法。 */
 
 /* =========================================================================
    4. 隐枚举法（0-1 规划）
@@ -571,7 +593,7 @@ function ipImplicitEnum(problem, opts) {
         for (var j3 = 0; j3 < n; j3++) lhs += k.coef[j3] * y[j3];
         var sat = (k.rel === '<=') ? (lhs <= k.rhs + 1e-9)
                 : (k.rel === '>=') ? (lhs >= k.rhs - 1e-9)
-                : (Math.abs(lhs - k.rhs) < 1e-9);
+                : nearZero(lhs - k.rhs);
         row.checks.push({ i: i, lhs: lhs, rrel: k.rel, rhs: k.rhs, sat: sat });
         if (!sat) { ok = false; break; }         // 一票否决，后面的约束不必再看
       }
@@ -660,18 +682,15 @@ function ipSolve(problem, opts) {
   };
 }
 
-/* 兼容 Node / 浏览器 */
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    ipSolve: ipSolve,
-    ipBranchBound: ipBranchBound,
-    ipCuttingPlane: ipCuttingPlane,
-    ipImplicitEnum: ipImplicitEnum,
-    ipRelaxation: ipRelaxation,
-    ipWithVarBounds: ipWithVarBounds,
-    ipHasBinary: ipHasBinary,
-    ipIsInt: ipIsInt, ipFrac: ipFrac, ipIntVars: ipIntVars,
-    ipIsPureInteger: ipIsPureInteger, ipAllBinary: ipAllBinary,
-    ipWithBounds: ipWithBounds
-  };
-}
+module.exports = {
+  ipSolve: ipSolve,
+  ipBranchBound: ipBranchBound,
+  ipCuttingPlane: ipCuttingPlane,
+  ipImplicitEnum: ipImplicitEnum,
+  ipRelaxation: ipRelaxation,
+  ipWithVarBounds: ipWithVarBounds,
+  ipHasBinary: ipHasBinary,
+  ipIsInt: ipIsInt, ipFrac: ipFrac, ipIntVars: ipIntVars,
+  ipIsPureInteger: ipIsPureInteger, ipAllBinary: ipAllBinary,
+  ipWithBounds: ipWithBounds
+};

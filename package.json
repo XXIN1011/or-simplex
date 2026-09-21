@@ -1,0 +1,31 @@
+{
+  "name": "or-simplex",
+  "version": "2.0.0",
+  "description": "运筹学计算器：线性规划单纯形法（大M法逐步迭代 / 对偶解 / 灵敏度分析 / 场景与参数分析）与整数规划（分枝定界 / 割平面 / 隐枚举 / 图解）的完整计算过程",
+  "keywords": ["operations-research", "linear-programming", "simplex", "duality", "sensitivity-analysis", "integer-programming", "运筹学", "单纯形法"],
+  "license": "MIT",
+  "private": false,
+  "type": "commonjs",
+  "main": "src/index.js",
+  "bin": {
+    "or-simplex": "src/cli.js"
+  },
+  "files": [
+    "src/",
+    "index.html",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "node src/build.js",
+    "test": "node test/run-all.js",
+    "test:unit": "node --test test/unit/",
+    "test:algorithm": "node test/run-all.js --algorithm",
+    "test:ui": "node test/ui/verify-ui.js",
+    "snapshot": "node test/algorithm/deep-snapshot.js",
+    "verify": "node src/build.js && node test/run-all.js && node test/ui/verify-ui.js",
+    "cli": "node src/cli.js"
+  }
+}

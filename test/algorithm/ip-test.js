@@ -7,9 +7,10 @@
    · 另外验证「适用性判定」本身：不该适用的方法必须被标成不可用，并给出理由。
 */
 'use strict';
-const S = require('../../src/core/simplex-core.js');
-const IP = require('../../src/core/ip-core.js');
-const fmt = S.fmtNum;
+const S = require('../../src/core/simplex.js');
+const F = require('../../src/core/format.js');
+const IP = require('../../src/core/integer.js');
+const fmt = F.fmtNum;
 
 let bad = [];
 const eq = (a, b) => Math.abs(a - b) < 1e-6;

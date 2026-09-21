@@ -14,9 +14,10 @@
 */
 'use strict';
 const fs = require('fs');
-const S = require('../../src/core/simplex-core.js');
-const SC = require('../../src/core/sens-core.js');
-const fmt = S.fmtNum;
+const S = require('../../src/core/simplex.js');
+const F = require('../../src/core/format.js');
+const SC = require('../../src/core/scenario.js');
+const fmt = F.fmtNum;
 
 const rnd = (a, b) => a + Math.random() * (b - a);
 const ri = (a, b) => Math.floor(rnd(a, b + 1));

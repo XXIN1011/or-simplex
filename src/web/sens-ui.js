@@ -6,6 +6,25 @@
      ② 选择要分析的变化：改目标函数系数 / 改右端项 / 增加约束 / 增加变量
      ③ 输出「前置判断」的推导，再把变化后的表接下去迭代，用的还是单纯形法那套表格
    ========================================================================= */
+
+var format = require('../core/format.js');
+var fmtNum = format.fmtNum;
+var fmtAff = format.fmtAff;
+
+var simplex = require('../core/simplex.js');
+var simplexSolve = simplex.simplexSolve;
+
+var scenario = require('../core/scenario.js');
+var sensAnalyze = scenario.sensAnalyze;
+var sensParam = scenario.sensParam;
+
+var inputPanel = require('./input-panel.js');
+var createInputPanel = inputPanel.createInputPanel;
+var addScrollHints = inputPanel.addScrollHints;
+
+var tableRender = require('./table-render.js');
+var renderTable = tableRender.renderTable;
+var explain = tableRender.explain;
 (function () {
   'use strict';
 
@@ -434,3 +453,6 @@
   panel.init();
   $('sSolveBtn').addEventListener('click', solveBase);
 })();
+
+/* 本模块没有对外接口：require 一次即完成灵敏度分析界面初始化（副作用模块）。 */
+module.exports = {};

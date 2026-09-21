@@ -6,6 +6,9 @@
      ① 页面里加一个 <div class="mod" id="mod-xxx"> 容器
      ② 把名字登记到下面的 MODULES 里
    ========================================================================= */
+
+var inputPanel = require('./input-panel.js');
+var addScrollHints = inputPanel.addScrollHints;
 (function () {
   'use strict';
 
@@ -74,3 +77,6 @@
   window.addEventListener('hashchange', function () { show(current()); });
   show(current());
 })();
+
+/* 本模块没有对外接口：require 一次即启动 hash 路由（副作用模块）。 */
+module.exports = {};

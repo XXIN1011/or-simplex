@@ -204,3 +204,9 @@ function createInputPanel(cfg) {
     getProblem: getProblem, el: el
   };
 }
+
+/* 对外接口：createInputPanel 建表 / addScrollHints 插「左右滑动」提示 */
+module.exports = {
+  createInputPanel: createInputPanel,
+  addScrollHints: addScrollHints
+};

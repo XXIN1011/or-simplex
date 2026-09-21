@@ -4,7 +4,10 @@
    思路：把「视口矩形的四条边」也当成约束加进去，于是可行域被限制成有界多边形，
    顶点有限、直接求凸包即可，不必单独写多边形裁剪。
    ========================================================================= */
-(function () {
+
+var format = require('../core/format.js');
+var fmtNum = format.fmtNum;
+var renderGraph = (function () {
   'use strict';
 
   var W = 330, H = 250;
@@ -288,5 +291,13 @@
     return { svg: out.join(''), caption: caption };
   }
 
-  window.renderGraph = renderGraph;
+  /* 原先这行是把 renderGraph 挂到全局对象上给 ui.js / ip-ui.js 取用，现在直接返回 */
+  return renderGraph;
 })();
+
+/* 对外接口：renderGraph(prob, res[, ip]) -> { svg, caption }。
+   跨模块调用一律走 require：ui.js / ip-ui.js 都 require 本模块取用，不再有任何
+   全局挂载（原先那行 global 赋值已删除）。 */
+module.exports = {
+  renderGraph: renderGraph
+};

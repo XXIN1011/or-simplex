@@ -20,119 +20,113 @@
    ========================================================================= */
 'use strict';
 
-/* Node 里每个文件是独立模块，需要把算法层的工具显式引进来；
-   浏览器里各个 <script> 共用全局作用域，这段会自动跳过。 */
-if (typeof module !== 'undefined' && module.exports) {
-  var _sx = require('./simplex-core.js');
-  var EPS = _sx.EPS, pSub = _sx.pSub, pMul = _sx.pMul, pCmp = _sx.pCmp,
-      pIsPos = _sx.pIsPos, pIsZero = _sx.pIsZero, matInverse = _sx.matInverse,
-      fmtNum = _sx.fmtNum, fmtPair = _sx.fmtPair, simplexSolve = _sx.simplexSolve;
-}
+/* 依赖：求解内核 + 输入解析 + 数据模型 + 公共工具 + 格式化。
+   原则是「别的模块已经有的东西一律不再写第二遍」：
+     · 建模与初始表      → parse.js 的 toStandardForm
+     · 入基 / 比值 / 枢轴 → simplex.js 的 selectEnteringDantzig / ratioTest / pivot
+     · 完整求解、对偶解   → simplex.js 的 simplexSolve
+     · 数值判定与矩阵运算 → util.js；数字与 λ 表达式的显示 → format.js
+   本模块只留自己独有的部分：五类场景变换、参数线性规划的分段行走与 λ 区间求解，
+   以及把它们组织成界面要用的报告结构。
+   依赖一律显式 require（浏览器端由 src/build.js 的迷你打包器提供 require）。 */
+var _core = require('./simplex.js');
+var _util = require('./util.js');
+var _fmt = require('./format.js');
+var _parse = require('./parse.js');
+var _model = require('./model.js');
+
+var simplexSolve = _core.simplexSolve;
+var selectEnteringDantzig = _core.selectEnteringDantzig;   // 入基规则（σ_j > 0 中最大者）
+var ratioTest = _core.ratioTest;                           // 最小比值规则
+var pivot = _core.pivot;                                   // 枢轴变换（就地改 rows / obj / basis）
+var toStandardForm = _parse.toStandardForm;                 // 校验 + 规范化 + 建初始表
+var createSnapshot = _model.createSnapshot;                 // 迭代快照（字段与顺序同内核）
+var createConstraint = _model.createConstraint;
+var createLPProblem = _model.createLPProblem;
+
+var EPS = _util.EPS, pAdd = _util.pAdd, pSub = _util.pSub, pMul = _util.pMul,
+    pIsPos = _util.pIsPos, matInverse = _util.matInverse, matVec = _util.matVec,
+    clampSign = _util.clampSign;
+var fmtNum = _fmt.fmtNum, fmtPair = _fmt.fmtPair, fmtAff = _fmt.fmtAff;
 
 /* =========================================================================
-   1. 建模：把问题化成标准化形式，并给出变量表。
-      步骤与 simplex-core.js 的建表完全一致（同样的取负规范化、同样的变量顺序），
-      否则两边算出来的表对不上。这一点由 validate-sens.js 的「模型一致性」检查兜底。
+   1. 建模：把问题化成标准化形式，并给出本模块要用的几个视图。
+      ---------------------------------------------------------------------
+      标准化本身（取负规范化、变量顺序、初始表、检验数行）**一律交给
+      parse.js 的 toStandardForm** —— 与求解内核同一份实现，两边的表不可能分叉
+      （由 test/algorithm/scenario-test.js 的「建表一致性自检」兜底）。
+      这里只把标准型投影成几个视图：cons（系数与关系符都取规范化之后的值）、
+      sCol / aCol（松弛/剩余变量、人工变量的列号）、basis0（标准初始基）、
+      b0（内部右端项）、cObj / A0、colOf（变量名 → 列号）。
+      关系符不靠「再翻一次符号」推，而是从标准型的结构直接读：
+      ≤ 补一个松弛变量；≥ 补松弛变量**并且**补人工变量；= 只补人工变量。
    ========================================================================= */
 function sensBuildModel(problem) {
-  var n = problem.c.length;
-  var m = problem.constraints.length;
-  var swapSign = problem.direction === 'min' ? -1 : 1;
+  var parsed = toStandardForm(problem);
+  if (!parsed.ok) return null;            // 输入不合法：调用方转成 { ok:false, message }
+  var form = parsed.form;
+  var n = form.n, m = form.m, N = form.N;
 
-  var cons = problem.constraints.map(function (k) {
-    return { coef: k.coef.map(Number), rel: k.rel, rhs: Number(k.rhs) };
-  });
-  var flipSign = [];
-  for (var i = 0; i < m; i++) {
-    flipSign[i] = 1;
-    if (cons[i].rhs < -EPS) {
-      cons[i].coef = cons[i].coef.map(function (v) { return -v; });
-      cons[i].rhs = -cons[i].rhs;
-      cons[i].rel = cons[i].rel === '<=' ? '>=' : (cons[i].rel === '>=' ? '<=' : '=');
-      flipSign[i] = -1;
-    }
-    for (var j = 0; j < n; j++) if (Math.abs(cons[i].coef[j]) < EPS) cons[i].coef[j] = 0;
-    if (Math.abs(cons[i].rhs) < EPS) cons[i].rhs = 0;
-  }
-
-  var vars = [];
-  for (var jx = 0; jx < n; jx++) vars.push({ name: 'x' + (jx + 1), kind: 'x' });
-  var sCol = [], aCol = [], basis0 = [];
-  for (var i2 = 0; i2 < m; i2++) {
-    var k2 = cons[i2];
-    if (k2.rel === '<=') {
-      sCol[i2] = vars.length; vars.push({ name: 's' + (i2 + 1), kind: 's' });
-      basis0[i2] = sCol[i2];
-    } else if (k2.rel === '>=') {
-      sCol[i2] = vars.length; vars.push({ name: 's' + (i2 + 1), kind: 's' });
-      aCol[i2] = vars.length; vars.push({ name: 'a' + (i2 + 1), kind: 'a' });
-      basis0[i2] = aCol[i2];
-    } else {
-      aCol[i2] = vars.length; vars.push({ name: 'a' + (i2 + 1), kind: 'a' });
-      basis0[i2] = aCol[i2];
-    }
-  }
-  var N = vars.length;
-
-  var cObj = [];
-  for (var jc = 0; jc < N; jc++) cObj.push({ a: 0, b: 0 });
-  for (var jd = 0; jd < n; jd++) cObj[jd] = { a: swapSign * Number(problem.c[jd]), b: 0 };
-  for (var ia = 0; ia < m; ia++) if (aCol[ia] !== undefined) cObj[aCol[ia]] = { a: 0, b: -1 };
-
-  var A0 = [], b0 = [];
-  for (var ir = 0; ir < m; ir++) {
-    var r = new Array(N).fill(0);
-    for (var jr = 0; jr < n; jr++) r[jr] = cons[ir].coef[jr];
-    if (sCol[ir] !== undefined) r[sCol[ir]] = (cons[ir].rel === '>=' ? -1 : 1);
-    if (aCol[ir] !== undefined) r[aCol[ir]] = 1;
-    A0.push(r);
-    b0.push(cons[ir].rhs);
-  }
-
-  /* 变量名 → 列号，供「用基的名字去新问题里定位」 */
   var colOf = {};
-  for (var v2 = 0; v2 < N; v2++) colOf[vars[v2].name] = v2;
+  for (var v = 0; v < N; v++) colOf[form.vars[v].name] = v;
+
+  var sCol = [], aCol = [], cons = [];
+  for (var i = 0; i < m; i++) {
+    var si = colOf['s' + (i + 1)], ai = colOf['a' + (i + 1)];
+    if (si !== undefined) sCol[i] = si;
+    if (ai !== undefined) aCol[i] = ai;
+    cons.push(createConstraint(form.A0[i].slice(0, n),
+      si === undefined ? '=' : (ai === undefined ? '<=' : '>='),
+      form.consRhs[i]));
+  }
 
   return {
-    n: n, m: m, N: N, swapSign: swapSign, direction: problem.direction,
-    cons: cons, flipSign: flipSign, vars: vars, colOf: colOf,
-    sCol: sCol, aCol: aCol, basis0: basis0, cObj: cObj, A0: A0, b0: b0
+    n: n, m: m, N: N, swapSign: form.swapped ? -1 : 1, direction: form.direction,
+    cons: cons, flipSign: form.flipSign, vars: form.vars, colOf: colOf,
+    sCol: sCol, aCol: aCol, basis0: form.basis.slice(), cObj: form.cObj,
+    A0: form.A0, b0: form.consRhs.slice()
   };
 }
 
 /* =========================================================================
-   2. 用指定的一组基变量构造规范表（等价于对 A0 做 B⁻¹ 变换）
+   2. 用指定的一组基变量构造规范表（等价于对 A0 做 B⁻¹ 变换）。
+      B⁻¹ 交给 util.js 的 matInverse，B⁻¹·[A0 | b] 交给 util.js 的 matVec ——
+      求逆与矩阵乘向量都复用共享实现。返回的对象带 rows / obj / basis / m / N，
+      与 simplex.js 的 pivot / ratioTest / selectEnteringDantzig 所需字段同构，
+      迭代那一段就是直接在这些表上跑内核函数的；Binv 另留给界面显示。
    ========================================================================= */
 function sensTableau(model, basisCols) {
   var m = model.m, N = model.N;
   var B = [];
   for (var i = 0; i < m; i++) {
-    var row = [];
-    for (var k = 0; k < m; k++) row.push(model.A0[i][basisCols[k]]);
-    B.push(row);
+    B.push(basisCols.map(function (c) { return model.A0[i][c]; }));
   }
   var Binv = matInverse(B);
-  if (!Binv) return null;
+  if (!Binv) return null;                 // 基矩阵奇异 → 调用方按「这组基不能用了」处理
 
   var rows = [];
-  for (var i2 = 0; i2 < m; i2++) {
-    var r = new Array(N + 1).fill(0);
-    for (var j = 0; j < N; j++) {
-      var s = 0;
-      for (var k2 = 0; k2 < m; k2++) s += Binv[i2][k2] * model.A0[k2][j];
-      r[j] = Math.abs(s) < 1e-12 ? 0 : s;
-    }
-    var sb = 0;
-    for (var k3 = 0; k3 < m; k3++) sb += Binv[i2][k3] * model.b0[k3];
-    r[N] = Math.abs(sb) < 1e-12 ? 0 : sb;
-    rows.push(r);
+  for (var i2 = 0; i2 < m; i2++) rows.push(new Array(N + 1).fill(0));
+  /* 一列一列地做变换：前 N 列来自 A0，末位是右端项，单独搬 b0 */
+  for (var j = 0; j < N; j++) {
+    var col = matVec(Binv, model.A0.map(function (row) { return row[j]; }));
+    for (var i3 = 0; i3 < m; i3++) rows[i3][j] = snapTiny(col[i3]);
   }
+  var rhs = matVec(Binv, model.b0);
+  for (var i4 = 0; i4 < m; i4++) rows[i4][N] = snapTiny(rhs[i4]);
 
-  var obj = sensObjRow(model, rows, basisCols);
-  return { rows: rows, obj: obj, basis: basisCols.slice(), Binv: Binv };
+  return {
+    rows: rows, obj: sensObjRow(model, rows, basisCols), basis: basisCols.slice(), Binv: Binv,
+    /* 内核的 pivot / ratioTest / selectEnteringDantzig 只认标准型的表部分，即 m 与 N */
+    m: m, N: N
+  };
 }
 
-/* 由 rows 与基算出检验数行，末位存 −z */
+/* 建表时的 1e-12 归零（沿用旧实现；显示层另由 fmtNum 做 1e-9 容差） */
+function snapTiny(v) { return Math.abs(v) < 1e-12 ? 0 : v; }
+
+/* 由 rows 与基算出检验数行，末位存 −z。
+   pair 算术（pSub / pMul）走 util.js；内核里没有「按任意一组基建 σ 行」的入口，
+   parse.js 只建初始基那一份，所以这里按定义算：σⱼ = cⱼ − c_B·(B⁻¹Pⱼ)。 */
 function sensObjRow(model, rows, basisCols) {
   var N = model.N, m = model.m;
   var obj = [];
@@ -147,6 +141,11 @@ function sensObjRow(model, rows, basisCols) {
 
 /* =========================================================================
    3. 继续迭代：检验数有正 → 原始单纯形一步；右端项有负 → 对偶单纯形一步
+      三件数值活全部直接用内核实现：selectEnteringDantzig(T) 选入基、
+      ratioTest(T, e) 做最小比值、pivot(T, r, e) 做枢轴变换。本函数不是第二个
+      求解器，而是「内核四件套 + 对偶分支 + 教材文案」的组装，只剩两件内核没有的
+      东西：本模块独有的判定顺序与说明文字（快照的 note 直接渲染到界面），以及
+      右端项越界时的**对偶单纯形一步**（内核的 solveStandardForm 只走原始单纯形）。
    ========================================================================= */
 function sensIterate(model, T, maxIter) {
   var m = model.m, N = model.N, vars = model.vars;
@@ -154,30 +153,15 @@ function sensIterate(model, T, maxIter) {
   var steps = [], status = 'optimal', iter = 0;
   var limit = maxIter || 200;
 
+  /* 快照：数值与字段顺序都走 model.js 的 createSnapshot（与内核逐字一致）。
+     dual 的默认值放在 extra 的第一位、迭代数默认取当前 iter —— 这样生成出来的
+     快照字段与顺序和旧实现完全一致。 */
   function snap(extra) {
-    var s = {
-      iter: iter, rows: [], obj: [], basis: basis.slice(),
-      entering: null, leaving: null, pivot: null, ratios: null,
-      degenerate: false, note: '', dual: false
-    };
-    for (var x in extra) s[x] = extra[x];
-    for (var i = 0; i < m; i++) s.rows.push(rows[i].slice());
-    for (var j = 0; j <= N; j++) s.obj.push({ a: obj[j].a, b: obj[j].b });
-    return s;
+    var ex = { iter: iter, dual: extra.dual === true };
+    for (var x in extra) ex[x] = extra[x];
+    return createSnapshot(T, ex);
   }
-  function pivot(r, e) {
-    var p = rows[r][e];
-    for (var j = 0; j <= N; j++) rows[r][j] /= p;
-    for (var i = 0; i < m; i++) {
-      if (i === r) continue;
-      var f = rows[i][e];
-      if (f === 0) continue;
-      for (var j2 = 0; j2 <= N; j2++) rows[i][j2] -= f * rows[r][j2];
-    }
-    var fo = obj[e];
-    for (var j3 = 0; j3 <= N; j3++) obj[j3] = pSub(obj[j3], pMul(fo, rows[r][j3]));
-    basis[r] = e;
-  }
+  /* 基里还残留取正值的人工变量 → 原问题的约束并没有被真正满足 */
   function positiveArtificial() {
     for (var i = 0; i < m; i++) {
       if (vars[basis[i]].kind === 'a' && rows[i][N] > 1e-7) return i;
@@ -186,11 +170,8 @@ function sensIterate(model, T, maxIter) {
   }
 
   while (true) {
-    /* 入基候选：σ_j > 0 中最大者（Dantzig） */
-    var e = -1, best = null;
-    for (var j = 0; j < N; j++) {
-      if (pIsPos(obj[j]) && (best === null || pCmp(obj[j], best) > 0)) { best = obj[j]; e = j; }
-    }
+    /* 入基候选：σ_j > 0 中最大者（Dantzig）—— 与内核同一个实现 */
+    var e = selectEnteringDantzig(T);
 
     if (e === -1) {
       /* 检验数全 ≤ 0。此时若还有人工变量取正值，说明原问题无可行解 */
@@ -218,21 +199,8 @@ function sensIterate(model, T, maxIter) {
          比值取 |σⱼ ÷ a_rj|（只在该行的负系数上取）。σⱼ 可能带 M 项（基里残留人工
          变量时），而 M 是形式上的无穷大：必须先比 M 的系数、再比常数项。否则会
          挑中一个人工变量入基 —— 那既不是教材做法，中间解也不再是原问题的可行解。 */
-      var ent = -1, best = null;
-      var dualRatios = [];
-      for (var j4 = 0; j4 < N; j4++) {
-        if (rows[negRow][j4] < -EPS) {
-          var den = rows[negRow][j4];
-          var key = { a: Math.abs(obj[j4].a / den), b: Math.abs(obj[j4].b / den) };
-          dualRatios.push({ col: j4, ratio: key.a, ratioM: key.b, ok: true });
-          if (best === null || key.b < best.b - 1e-12 ||
-              (Math.abs(key.b - best.b) <= 1e-12 && key.a < best.a - 1e-12)) {
-            best = key; ent = j4;
-          }
-        } else {
-          dualRatios.push({ col: j4, ratio: null, ratioM: null, ok: false });
-        }
-      }
+      var dualRatios = dualRatioList(T, negRow);
+      var ent = dualEnter(dualRatios);
       if (ent === -1) {
         steps.push(snap({
           note: '右端项为负的第 ' + (negRow + 1) + ' 行里没有负系数，对偶比值无法计算，' +
@@ -258,23 +226,15 @@ function sensIterate(model, T, maxIter) {
           + vars[basis[negRow]].name + ' 出基。'
           + (Math.abs(rows[negRow][ent]) < 1e-9 ? '（退化：这一步不改变解）' : '') + '</span>'
       }));
-      pivot(negRow, ent);
+      pivot(T, negRow, ent);
       iter++;
       if (iter > limit) { status = 'iteration-limit'; break; }
       continue;
     }
 
     /* ---- 原始单纯形一步 ---- */
-    var ratios = [], r = -1, minRatio = Infinity;
-    for (var i3 = 0; i3 < m; i3++) {
-      if (rows[i3][e] > EPS) {
-        var th = rows[i3][N] / rows[i3][e];
-        ratios.push({ row: i3, theta: th, ok: true });
-        if (th < minRatio - EPS) { minRatio = th; r = i3; }
-      } else {
-        ratios.push({ row: i3, theta: null, ok: false });
-      }
-    }
+    var rt = ratioTest(T, e);
+    var ratios = rt.ratios, r = rt.r, minRatio = rt.minRatio;
     if (r === -1) {
       var ap2 = positiveArtificial();
       if (ap2 >= 0) {
@@ -297,7 +257,7 @@ function sensIterate(model, T, maxIter) {
       iter: iter, entering: e, leaving: r, pivot: rows[r][e], ratios: ratios,
       degenerate: minRatio < 1e-7
     }));
-    pivot(r, e);
+    pivot(T, r, e);
     iter++;
     if (iter > limit) { status = 'iteration-limit'; break; }
   }
@@ -305,8 +265,43 @@ function sensIterate(model, T, maxIter) {
   return { steps: steps, status: status, rows: rows, obj: obj, basis: basis };
 }
 
+/* 对偶比值表 θ′ⱼ = |σⱼ ÷ a_rj|：只在该行（第 r 行）的负系数上取 —— 否则 θ 无法
+   保持右端项非负。σ 可能带 M 项，而 M 是形式上的无穷大：先比 M 的系数、再比常数项，
+   否则会挑中一个人工变量入基。 */
+function dualRatioList(T, r) {
+  var N = T.N, list = [];
+  for (var j = 0; j < N; j++) {
+    if (T.rows[r][j] < -EPS) {
+      var den = T.rows[r][j];
+      list.push({ col: j, ratio: Math.abs(T.obj[j].a / den),
+                  ratioM: Math.abs(T.obj[j].b / den), ok: true });
+    } else {
+      list.push({ col: j, ratio: null, ratioM: null, ok: false });
+    }
+  }
+  return list;
+}
+
+/* 从比值表里挑最小的那一列入基（M 项优先）；没有可用的列返回 −1 */
+function dualEnter(list) {
+  var best = null, col = -1;
+  for (var i = 0; i < list.length; i++) {
+    if (!list[i].ok) continue;
+    var a = list[i].ratio, b = list[i].ratioM;
+    if (best === null || b < best.b - 1e-12 ||
+        (Math.abs(b - best.b) <= 1e-12 && a < best.a - 1e-12)) {
+      best = { a: a, b: b }; col = list[i].col;
+    }
+  }
+  return col;
+}
+
 /* =========================================================================
-   4. 从表里读出解与目标值（沿用 simplex-core 的约定：obj[N] 存 −z）
+   4. 从表里读出解与目标值（沿用内核的约定：obj[N] 存 −z）。
+      没有换成内核的 readOut：它返回整个 SolveResult，而且会按「基里残留取正值的
+      人工变量」把 status 改判成无可行解、把目标值置空 —— 本模块只有取正才算
+      不可行（取 0 时解照读），界面上显示的字符串也不一样，所以按本模块要的
+      四个字段（解 / 目标值 / 基名 / 松弛变量）自己读一遍。
    ========================================================================= */
 function sensReadOut(model, T) {
   var solution = new Array(model.n).fill(0);
@@ -366,6 +361,7 @@ function sensChangeC(baseProblem, scenario) {
   var newProb = sensClone(baseProblem);
   newProb.c = scenario.c.map(Number);
   var model = sensBuildModel(newProb);
+  if (!model) return sensFail('改动后的条件不合法（系数个数或数值对不上），无法建立标准型。');
 
   var baseRes = simplexSolve(baseProblem);
   var baseModel = sensBuildModel(baseProblem);
@@ -449,6 +445,7 @@ function sensChangeB(baseProblem, scenario) {
   var newProb = sensClone(baseProblem);
   scenario.rhs.forEach(function (v, i) { newProb.constraints[i].rhs = Number(v); });
   var model = sensBuildModel(newProb);
+  if (!model) return sensFail('改动后的条件不合法（系数个数或数值对不上），无法建立标准型。');
 
   var baseRes = simplexSolve(baseProblem);
   var baseNames = sensBasisNames(baseRes);
@@ -505,6 +502,7 @@ function sensChangeA(baseProblem, scenario) {
   var oldA = Number(baseProblem.constraints[i].coef[j]);
   newProb.constraints[i].coef[j] = val;
   var model = sensBuildModel(newProb);
+  if (!model) return sensFail('改动后的条件不合法（系数个数或数值对不上），无法建立标准型。');
 
   var baseRes = simplexSolve(baseProblem);
   var baseNames = sensBasisNames(baseRes);
@@ -623,6 +621,7 @@ function sensAddConstraint(baseProblem, scenario) {
     coef: scenario.coef.map(Number), rel: scenario.rel, rhs: Number(scenario.rhs)
   });
   var model = sensBuildModel(newProb);
+  if (!model) return sensFail('新约束不合法（系数个数或数值对不上），无法并入原表。');
   var baseRes = simplexSolve(baseProblem);
   var baseNames = sensBasisNames(baseRes);
 
@@ -679,8 +678,9 @@ function sensAddConstraint(baseProblem, scenario) {
   var basis = basisCols.slice();
   basis.push(model.cons[last].rel === '=' ? model.aCol[last] : model.sCol[last]);
 
-  var T = { rows: rows, obj: null, basis: basis };
-  T.obj = sensObjRow(model, rows, basis);
+  /* 新表：前 mOld 行是原最优表，最后一行是新约束消除基变量后的结果。
+     表对象带上 m / N —— 内核的 pivot / ratioTest / selectEnteringDantzig 要用 */
+  var T = { rows: rows, obj: sensObjRow(model, rows, basis), basis: basis, m: model.m, N: N };
 
   /* 教材式判断：当前最优解是否满足新约束 */
   var lhs = 0;
@@ -712,6 +712,7 @@ function sensAddVar(baseProblem, scenario) {
   newProb.c = newProb.c.concat([Number(scenario.c)]);
   scenario.coef.forEach(function (v, i) { newProb.constraints[i].coef.push(Number(v)); });
   var model = sensBuildModel(newProb);
+  if (!model) return sensFail('新增变量不合法（系数个数或数值对不上），无法并入原表。');
 
   var baseRes = simplexSolve(baseProblem);
   var baseNames = sensBasisNames(baseRes);
@@ -762,18 +763,9 @@ function sensAddVar(baseProblem, scenario) {
            所以用**对偶单纯形法**选入基列）。
    ========================================================================= */
 
-/* λ 的零容差：比它小就当作 0 */
-var LAM_EPS = 1e-9;
-function co0(v) { return Math.abs(v) < LAM_EPS ? 0 : v; }
-
-/* 把 a + b·λ 显示成「2 − 1/2λ」的样子 */
-function fmtAff(p) {
-  var a = co0(p.a), b = co0(p.b);
-  if (b === 0) return fmtNum(a);
-  var bs = (Math.abs(Math.abs(b) - 1) < LAM_EPS ? '' : fmtNum(Math.abs(b))) + 'λ';
-  if (a === 0) return (b < 0 ? '−' : '') + bs;
-  return fmtNum(a) + (b > 0 ? ' + ' : ' − ') + bs;
-}
+/* λ 的零容差（旧实现里的 LAM_EPS）就是全局 EPS，两者同为 1e-9；
+   「小于容差就当 0」用 util.js 的 clampSign，「a + b·λ」的显示用 format.js 的
+   fmtAff（与原实现逐字相同）—— 这两个小工具不再各留一份。 */
 
 /* 把若干条限制（a + b·λ ≤ 0 或 ≥ 0）交成一个 λ 区间；交不出来返回 null。
    b > 0 的式子给上界，b < 0 的给下界，b = 0 的要求自身成立。 */
@@ -782,8 +774,8 @@ function lamInterval(list, sense) {
   for (var i = 0; i < list.length; i++) {
     var a = list[i].a, b = list[i].b;
     if (sense === 'ge') { a = -a; b = -b; }
-    if (Math.abs(b) < LAM_EPS) {
-      if (a > LAM_EPS) return null;                 // 与 λ 无关却恒大于 0
+    if (Math.abs(b) < EPS) {
+      if (a > EPS) return null;                     // 与 λ 无关却恒大于 0
     } else if (b > 0) {
       var t = -a / b;
       if (t < hi) hi = t;
@@ -805,41 +797,21 @@ function paramTau(model, T, basis, d, j) {
     if (bc >= model.n) continue;
     acc -= d[bc] * T.rows[i][j];
   }
-  return co0(acc);
+  return clampSign(acc);
 }
 
-/* B⁻¹·v */
-function matVec(M, v) {
-  var out = [];
-  for (var i = 0; i < M.length; i++) {
-    var s = 0;
-    for (var k = 0; k < v.length; k++) s += M[i][k] * v[k];
-    out.push(Math.abs(s) < 1e-12 ? 0 : s);
-  }
+/* B⁻¹·v：矩阵乘向量走 util.js 的 matVec，末了把 1e-12 以下的毛刺归零 ——
+   与旧实现在每个分量上直接归零等价，λ 区间与 x(λ)/z(λ) 的数字一字不变。 */
+function binvVec(Binv, v) {
+  var out = matVec(Binv, v);
+  for (var i = 0; i < out.length; i++) out[i] = snapTiny(out[i]);
   return out;
-}
-
-/* 对偶单纯形法的入基选择：比值 |σ_j ÷ a_rj|。
-   σ 可能带 M 项，而 M 是形式上的无穷大 —— 必须先比 M 的系数、再比常数项，
-   否则会挑中人工变量（那样既不是教材做法，中间解也不再可行）。 */
-function paramDualEnter(model, T, r) {
-  var N = model.N, best = null, col = -1;
-  for (var j = 0; j < N; j++) {
-    if (T.rows[r][j] >= -EPS) continue;
-    var key = { a: Math.abs(T.obj[j].a / T.rows[r][j]),
-                b: Math.abs(T.obj[j].b / T.rows[r][j]) };
-    if (best === null || key.b < best.b - 1e-12 ||
-        (Math.abs(key.b - best.b) <= 1e-12 && key.a < best.a - 1e-12)) {
-      best = key; col = j;
-    }
-  }
-  return col;
 }
 
 /* 把「这一组基在 λ 上成立的那一段」整理成一条记录 */
 function paramSeg(model, T, basis, kind, data, iv, edge) {
   var n = model.n;
-  var be = (kind === 'b') ? matVec(T.Binv, data) : null;
+  var be = (kind === 'b') ? binvVec(T.Binv, data) : null;
   var xAff = [], i, j;
   for (j = 0; j < n; j++) xAff.push({ a: 0, b: 0 });
   for (i = 0; i < model.m; i++) {
@@ -881,7 +853,7 @@ function walkParam(model, startBasis, kind, data, dir) {
         list.push({ a: T.obj[j].a, b: paramTau(model, T, basis, data, j), col: j });
       }
     } else {
-      be = matVec(T.Binv, data);
+      be = binvVec(T.Binv, data);
       for (i = 0; i < model.m; i++) {
         list.push({ a: T.rows[i][model.N], b: be[i], row: i });
       }
@@ -890,7 +862,7 @@ function walkParam(model, startBasis, kind, data, dir) {
          一旦 b_i(λ) 变号，这套形式就整体换了 —— 所以把「内部右端项保持非负」
          也当成 λ 的限制加进来。它给出的边界不是换基点，而是本模块的适用边界。 */
       for (i = 0; i < model.m; i++) {
-        if (Math.abs(data[i]) < LAM_EPS) continue;
+        if (Math.abs(data[i]) < EPS) continue;
         list.push({ a: model.b0[i], b: data[i], norm: true, row: i });
       }
     }
@@ -915,7 +887,7 @@ function walkParam(model, startBasis, kind, data, dir) {
       for (i = 0; i < model.m; i++) {
         if (model.vars[basis[i]].kind !== 'a') continue;
         var ab = be[i];
-        if (Math.abs(ab) < LAM_EPS) continue;
+        if (Math.abs(ab) < EPS) continue;
         iv.lo = Math.max(iv.lo, 0);
         iv.hi = Math.min(iv.hi, 0);
         artBlock = '基里残留的人工变量 ' + model.vars[basis[i]].name
@@ -936,7 +908,7 @@ function walkParam(model, startBasis, kind, data, dir) {
     /* 找出在边界上恰好取 0 的那一条 → 它决定谁进谁出 */
     var hits = [];
     for (i = 0; i < list.length; i++) {
-      if (Math.abs(list[i].b) < LAM_EPS) continue;
+      if (Math.abs(list[i].b) < EPS) continue;
       if (Math.abs(-list[i].a / list[i].b - edge) > 1e-7) continue;
       var good = (kind === 'c')
         ? (dir > 0 ? list[i].b > 0 : list[i].b < 0)     // σ 上界来自 b>0 的列
@@ -968,7 +940,7 @@ function walkParam(model, startBasis, kind, data, dir) {
       if (lv === -1) { why = '该列在表中没有正分量，λ 越界后目标值无界'; }
     } else {
       lv = pick.row;
-      ent = paramDualEnter(model, T, lv);
+      ent = dualEnter(dualRatioList(T, lv));
       if (ent === -1) { why = '该行在表中没有负系数，对偶比值算不出来 → λ 越界后无可行解'; }
     }
 
@@ -1028,8 +1000,8 @@ function sensParam(baseProblem, scenario) {
   /* 换算回用户口径：解不变；目标值在 min 方向要反号 */
   var sign = model.swapSign;
   segs.forEach(function (s) {
-    s.z = { a: co0(sign * s.z.a), b: co0(sign * s.z.b) };
-    s.x.forEach(function (v) { v.a = co0(v.a); v.b = co0(v.b); });
+    s.z = { a: clampSign(sign * s.z.a), b: clampSign(sign * s.z.b) };
+    s.x.forEach(function (v) { v.a = clampSign(v.a); v.b = clampSign(v.b); });
   });
 
   /* 右端项含参数时的两条提醒（只对 2.6.2 有意义）：
@@ -1072,13 +1044,10 @@ function sensParam(baseProblem, scenario) {
    7. 工具
    ========================================================================= */
 function sensClone(p) {
-  return {
-    direction: p.direction,
-    c: p.c.map(Number),
-    constraints: p.constraints.map(function (k) {
-      return { coef: k.coef.map(Number), rel: k.rel, rhs: Number(k.rhs) };
-    })
-  };
+  /* 结构的定义只留在 model.js 一处 */
+  return createLPProblem(p.direction, p.c.map(Number), p.constraints.map(function (k) {
+    return createConstraint(k.coef.map(Number), k.rel, Number(k.rhs));
+  }));
 }
 function sensBasisNames(res) {
   var last = res.steps[res.steps.length - 1];
@@ -1096,7 +1065,7 @@ function sensMapBasis(model, names) {
 function sensZj(model, T, j) {
   var acc = { a: 0, b: 0 };
   for (var i = 0; i < model.m; i++) {
-    acc = pAdd2(acc, pMul(model.cObj[T.basis[i]], T.rows[i][j]));
+    acc = pAdd(acc, pMul(model.cObj[T.basis[i]], T.rows[i][j]));
   }
   return acc;
 }
@@ -1111,7 +1080,6 @@ function sensZjOf(baseModel, baseRes, j) {
     return pSub(baseModel.cObj[j], sensZj(baseModel, T, j));
   } catch (e) { return null; }
 }
-function pAdd2(x, y) { return { a: x.a + y.a, b: x.b + y.b }; }
 function nm(j) { return 'x' + (j + 1); }
 function sub(k) { return String(k).replace(/[0-9]/g, function (d) {
   return '₀₁₂₃₄₅₆₇₈₉'[+d];
@@ -1147,14 +1115,12 @@ function sensAnalyze(baseProblem, scenario) {
   return r;
 }
 
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    sensAnalyze: sensAnalyze,
-    sensParam: sensParam,
-    sensBuildModel: sensBuildModel,
-    sensTableau: sensTableau,
-    sensIterate: sensIterate,
-    sensReadOut: sensReadOut,
-    fmtAff: fmtAff
-  };
-}
+module.exports = {
+  sensAnalyze: sensAnalyze,
+  sensParam: sensParam,
+  sensBuildModel: sensBuildModel,
+  sensTableau: sensTableau,
+  sensIterate: sensIterate,
+  sensReadOut: sensReadOut,
+  fmtAff: fmtAff
+};

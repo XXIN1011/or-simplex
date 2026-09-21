@@ -8,6 +8,26 @@
            改为提示并按用户勾选的解法输出
          · 不能用的不输出，只留一行「为什么不能用」
    ========================================================================= */
+
+var format = require('../core/format.js');
+var fmtNum = format.fmtNum;
+
+var integer = require('../core/integer.js');
+var ipSolve = integer.ipSolve;
+var ipWithVarBounds = integer.ipWithVarBounds;
+var ipIsInt = integer.ipIsInt;
+var ipFrac = integer.ipFrac;
+
+var inputPanel = require('./input-panel.js');
+var createInputPanel = inputPanel.createInputPanel;
+var addScrollHints = inputPanel.addScrollHints;
+
+var graph = require('./graph.js');
+var renderGraph = graph.renderGraph;
+
+var tableRender = require('./table-render.js');
+var renderTable = tableRender.renderTable;
+var explain = tableRender.explain;
 (function () {
   'use strict';
 
@@ -576,3 +596,6 @@
      脚本没法等，所以把重绘入口挂出来让它们同步触发（真人手点用不到）。 */
   window.__ipRenderTypes = renderTypes;
 })();
+
+/* 本模块没有对外接口：require 一次即完成整数规划界面初始化（副作用模块）。 */
+module.exports = {};

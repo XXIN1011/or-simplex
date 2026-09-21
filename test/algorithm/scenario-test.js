@@ -10,8 +10,9 @@
 */
 'use strict';
 const fs = require('fs');
-const S = require('../../src/core/simplex-core.js');
-const SC = require('../../src/core/sens-core.js');
+const S = require('../../src/core/simplex.js');
+const F = require('../../src/core/format.js');
+const SC = require('../../src/core/scenario.js');
 
 const rnd = (a, b) => a + Math.random() * (b - a);
 const ri = (a, b) => Math.floor(rnd(a, b + 1));
@@ -105,7 +106,7 @@ for (const t of bank) {
   out.push(rec);
 }
 
-/* 模型一致性自检：sensBuildModel 的标准型必须与 simplex-core 建出来的表一致，
+/* 模型一致性自检：sensBuildModel 的标准型必须与共享求解内核建出来的表一致，
    否则说明两套建表逻辑已经分叉（这是最容易悄悄出问题的地方）。 */
 let modelMismatch = 0;
 for (const rec of out.slice(0, 40)) {
@@ -125,5 +126,5 @@ const total = out.reduce((s, r) => s + r.cases.length, 0);
 console.log(`场景题库已生成: scenario-bank.json`);
 console.log(`  ${out.length} 道基准题 × 5 类场景（改 c / 改 a_ij / 改 b / 加约束 / 加变量）
                 + 2 个专挑基变量、非基变量下手的补例 = ${total} 个算例`);
-console.log(`  建表一致性自检: ${modelMismatch ? modelMismatch + ' 处不一致 ✗' : '与 simplex-core 完全一致 ✓'}`);
+console.log(`  建表一致性自检: ${modelMismatch ? modelMismatch + ' 处不一致 ✗' : '与求解内核完全一致 ✓'}`);
 process.exit(modelMismatch ? 1 : 0);

@@ -11,7 +11,8 @@
 */
 'use strict';
 const fs = require('fs');
-const { simplexSolve, fmtNum } = require('../../src/core/simplex-core.js');
+const { simplexSolve } = require('../../src/core/simplex.js');
+const { fmtNum } = require('../../src/core/format.js');
 
 function fmt(v) {
   if (v === Infinity) return '+∞';

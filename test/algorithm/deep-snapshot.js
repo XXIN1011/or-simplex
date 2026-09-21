@@ -22,7 +22,8 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { simplexSolve, fmtNum, fmtPair } = require('../../src/core/simplex-core.js');
+const { simplexSolve } = require('../../src/core/simplex.js');
+const { fmtNum, fmtPair } = require('../../src/core/format.js');
 
 const BANK = path.join(__dirname, 'random-bank.json');
 

@@ -1,6 +1,7 @@
 /* 边界测试：0 个变量 / 0 个约束 */
 'use strict';
-const { simplexSolve, fmtNum, fmtPair } = require('../../src/core/simplex-core.js');
+const { simplexSolve } = require('../../src/core/simplex.js');
+const { fmtNum, fmtPair } = require('../../src/core/format.js');
 
 const cases = [
   ['n=0, m=0（空题目）',            { direction: 'max', c: [], constraints: [] },            'z=0'],

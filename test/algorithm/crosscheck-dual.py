@@ -59,25 +59,34 @@ def solve(t, cons=None):
 
 
 # ---------- 判据一 & 二 ----------
+# 两个判据都必须在【用户输入的空间】里算（2026-09 修正，修正前的版本会误报 56 条）：
+#   JS 给出的 y 是「用户空间」的影子价格（内部算出 y_int 后乘过 flipSign 换算回来），
+#   而内部右端项 b_int = flipSign · b_user。若拿 b_int 去点乘用户空间的 y，
+#   凡是「右端项为负」的约束都会错位 —— 而且 min 问题内部按 max 求解，还要再翻一次符号。
+#   在用户空间里这两个麻烦一起消失，不变式就是最朴素的那条：
+#
+#       Σ b_user,ᵢ · yᵢ = z_user      （max 与 min 都成立）
+#
+#   实测 400 题最大偏差 8.5e-14，即这条才是 y 的定义式。
 s_ok = s_bad = c_ok = c_bad = 0
 bad_detail = []
 for t in bank:
     cons = normalize(t['constraints'])
-    b = np.array([k['rhs'] for k in cons], dtype=float)
+    b_user = np.array([k['rhs'] for k in t['constraints']], dtype=float)   # 用户输入的 b
     y = np.array(t['dual'], dtype=float)
     x = np.array(t['sol'], dtype=float)
     z = t['obj']
 
-    # 强对偶
-    if abs(float(b @ y) - z) <= 1e-6 * max(1.0, abs(z)):
+    # 强对偶（用户空间）
+    if abs(float(b_user @ y) - z) <= 1e-6 * max(1.0, abs(z)):
         s_ok += 1
     else:
         s_bad += 1
-        bad_detail.append(('强对偶', t['id'], float(b @ y), z))
+        bad_detail.append(('强对偶', t['id'], float(b_user @ y), z))
 
-    # 互补松弛
+    # 互补松弛（用户空间：余量按用户原本的关系符算，y 也取用户空间的那一份）
     worst = 0.0
-    for k, con in enumerate(cons):
+    for k, con in enumerate(t['constraints']):
         lhs = float(np.dot(np.array(con['coef'], dtype=float), x))
         if con['rel'] == '<=':
             slack = con['rhs'] - lhs
@@ -92,40 +101,62 @@ for t in bank:
         c_bad += 1
         bad_detail.append(('互补松弛', t['id'], worst, z))
 
-print('判据一 强对偶  bᵀy = z*  : 通过 %d / 失败 %d' % (s_ok, s_bad))
-print('判据二 互补松弛 y·slack=0: 通过 %d / 失败 %d' % (c_ok, c_bad))
+print('判据一 强对偶  Σbᵢyᵢ = z*（用户空间）: 通过 %d / 失败 %d' % (s_ok, s_bad))
+print('判据二 互补松弛 y·slack=0:             通过 %d / 失败 %d' % (c_ok, c_bad))
 for d in bad_detail[:8]:
     print('   失败:', d)
 
 # ---------- 判据三 中心差分扰动（抽样） ----------
-print('\n判据三 中心差分扰动抽样 …')
+# 两个必须注意的地方（2026-09 修正，修正前的版本会误报 7 条「不一致」）：
+#   ① 必须在【用户输入的空间】扰动 b。JS 给出的 y 已经乘过 flipSign、换算回用户量纲
+#      （内部 b = flipSign · 用户 b），若在标准化空间扰动再跟用户空间的 y 比，
+#      凡是「右端项为负」的约束都会整体差一个负号。
+#   ② 最优顶点恰好落在折点上时（扰动 b 会改变最优基），两侧单侧导数不相等，
+#      中心差分（z⁺−z⁻)/2ε 是两个不同斜率的平均，本来就不等于任何一侧的影子价格。
+#      所以先算左、右两个单侧斜率：两者相等 → 严格按两侧值判；不相等 → 只能要求 y
+#      等于其中一侧（正确结论本就只能是单侧的），并单独统计这类「断点」有多少。
+print('\n判据三 单侧/中心差分扰动抽样（在用户输入空间扰动）…')
 EPS = 1e-4
 sample = [t for t in bank if len(t['constraints']) >= 2][:40]
-p_ok = p_bad = p_skip = 0
+p_ok = p_bad = p_skip = p_break = 0
 p_detail = []
+
+
+def user_perturbed_solve(t, i, d):
+    """把第 i 条约束的**用户右端项**挪 d，再按 JS 的规则规范化后交给 scipy 重解。"""
+    cons_u = [{'coef': list(k['coef']), 'rel': k['rel'], 'rhs': k['rhs']} for k in t['constraints']]
+    cons_u[i]['rhs'] += d
+    return solve(t, normalize(cons_u))
+
+
 for t in sample:
     cons = normalize(t['constraints'])
     z0 = solve(t, cons)
     if z0 is None:
         p_skip += 1
         continue
-    for i in range(len(cons)):
-        up = [dict(k) for k in cons]
-        dn = [dict(k) for k in cons]
-        up[i]['rhs'] += EPS
-        dn[i]['rhs'] -= EPS
-        z_up, z_dn = solve(t, up), solve(t, dn)
+    for i in range(len(t['constraints'])):          # 下标按**用户输入**的约束顺序
+        z_up = user_perturbed_solve(t, i, EPS)
+        z_dn = user_perturbed_solve(t, i, -EPS)
         if z_up is None or z_dn is None:
             continue
-        empirical = (z_up - z_dn) / (2 * EPS)
         y_i = t['dual'][i]
-        if abs(empirical - y_i) <= 5e-3 * max(1.0, abs(y_i)):
+        tol = 5e-3 * max(1.0, abs(y_i))
+        left = (z0 - z_dn) / EPS                     # 只把 bᵢ 挪小
+        right = (z_up - z0) / EPS                    # 只把 bᵢ 挪大
+        if abs(left - right) <= tol:                 # 折点之外：两侧一致，严格判
+            ok = abs((left + right) / 2 - y_i) <= tol
+        else:                                        # 折点上：中心差分无定义，只要求等于一侧
+            p_break += 1
+            ok = (abs(left - y_i) <= tol) or (abs(right - y_i) <= tol)
+        if ok:
             p_ok += 1
         else:
             p_bad += 1
             if len(p_detail) < 8:
-                p_detail.append((t['id'], i, round(y_i, 6), round(empirical, 6)))
+                p_detail.append((t['id'], i, round(y_i, 6), round(left, 6), round(right, 6)))
 
-print('  逐项一致 %d / 不一致 %d（跳过 %d 题求解失败）' % (p_ok, p_bad, p_skip))
+print('  逐项一致 %d / 不一致 %d（该行右端项恰好落在折点上 %d 条，按单侧值判；跳过 %d 题求解失败）'
+      % (p_ok, p_bad, p_break, p_skip))
 for d in p_detail:
-    print('   不一致 题id=%s 第%d个约束  JS=%s  实测差分=%s' % d)
+    print('   不一致 题id=%s 第%d个约束  JS=%s  左单侧=%s  右单侧=%s' % d)
