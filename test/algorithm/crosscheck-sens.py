@@ -17,6 +17,13 @@ from scipy.optimize import linprog
 # 题库由同目录的 node 脚本生成；按【脚本自身位置】定位，这样从任何工作目录
 # 运行都能找到（原来用裸文件名，靠 CWD，换目录就会 FileNotFoundError）
 import os
+
+# ★ 裁判不可信的情形（2026-09 记录；改本文件前先读 crosscheck-scenario.py 的文件头）：
+#   HiGHS 的 presolve 会把「无界」误判成「无可行解」，而默认就开着 presolve。
+#   最小实例：min -3x1-5x2-3x3, s.t. -4x1-3x2+2x3 >= -12, 4x1+2x2-x3 >= -9, x>=0
+#   —— 原点可行、射线 (t,0,3t) 对任意 t>0 可行且 z = -12t，数学上确定无界；
+#   而 method='highs' 报 infeasible，presolve=False / highs-ds / interior-point 都报 unbounded。
+#   所以本脚本一旦出现「状态不一致」，先关掉 presolve 复核，再判断是谁错。
 _HERE = os.path.dirname(os.path.abspath(__file__))
 bank = json.load(open(os.path.join(_HERE, 'sens-bank.json'), encoding='utf-8'))
 n_prob = len(bank)

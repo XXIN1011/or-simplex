@@ -350,6 +350,35 @@ node tools/screenshots/shot.js "index.html#/ip" "out.png" 390 0 "@fill-ip-classi
 同理：`test/algorithm/ip-test.js` 里分枝定界有结点上限，触顶时它只保证「目前最好」而不是「最优」，
 测试必须用 `complete` 标志区分，否则会误报（这个坑也踩过）。
 
+**另一类「偶发失败」：不是我们的引擎错，而是裁判（HiGHS）错。** 2026-09 抓到一例，务必记牢：
+场景对拍的 `add-var` 算例里，JS 判 `unbounded` 而 `scipy.optimize.linprog(method='highs')` 判 `infeasible`。
+手算复核后**JS 是对的** ——
+
+```
+min z = -3x₁ - 5x₂ - 3x₃
+s.t.  -4x₁ - 3x₂ + 2x₃ ≥ -12
+        4x₁ + 2x₂ -  x₃ ≥ -9,   x ≥ 0
+```
+
+原点可行（可行性 LP 返回 `status 0`），且射线 `x(t) = (t, 0, 3t)` 对任意 `t > 0` 都满足两条约束、
+`z = -12t → -∞`，数学上确定是**无界**。而各类判定方式实测为：
+
+| 判定方式 | 结果 |
+|---|---|
+| `method='highs'`（presolve 默认开） | `status 2 infeasible` ✗ |
+| `method='highs'`, `options={'presolve': False}` | `status 3 unbounded` ✓ |
+| `method='highs-ds'`, presolve 关 | `status 3 unbounded` ✓ |
+| `method='highs-ipm'`（同样走 presolve） | `status 2 infeasible` ✗ |
+| `method='interior-point'`（旧版） | `unbounded` ✓ |
+
+即 **HiGHS 的 presolve 会把「无界」误判成「无可行解」**，而 `scipy.optimize.linprog` 默认就开着 presolve。
+所以「scipy 说 infeasible、我们说是 unbounded」这类分歧**必须双向怀疑**。
+
+处置（已落地，别回退）：`crosscheck-scenario.py` 与 `crosscheck.py` 在两边状态不一致时**关掉 presolve 再解一次**；
+若此时与 JS 一致，就记入 `presolve_artifacts` 并在末尾单独打印（可复核），**不计失败也不隐藏分歧**。
+其余三个对拍脚本文件头也加了同一份警示。判断这类分歧的通用顺序：
+① 先手算一条可行射线/可行点；② 换 `presolve=False` 或换求解器复核；③ 两边都站得住再回头怀疑引擎。
+
 ### 6.7 一次性排查脚本（已清理）
 
 原先根目录有一批 `diagnose-*.js`（单纯形法 / 灵敏度区间 / 整数规划 / 隐枚举 / 参数 LP 的排查脚本）。

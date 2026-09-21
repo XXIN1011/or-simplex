@@ -4,6 +4,30 @@
   · 状态一致（optimal / infeasible / unbounded）
   · 都是 optimal 时，最优值一致（1e-6），且 JS 给出的解向量确实可行
   · 额外统计：前置判断为「最优基不变」的算例里，JS 的新解应当就是同一个点
+
+★ 已知的「裁判不可信」情形（2026-09 加，务必读完再改本文件）
+
+  HiGHS 的 **presolve 会把「无界」误判成「无可行解」**，而默认就是开着 presolve 的。
+  最小实例（本题库 id=133 的「加变量」算例，已手算射线验证）：
+
+      min z = -3x₁ - 5x₂ - 3x₃
+      s.t. -4x₁ - 3x₂ + 2x₃ ≥ -12
+            4x₁ + 2x₂ -  x₃ ≥ -9,    x ≥ 0
+
+  原点可行（可行性 LP 返回 status 0、x = 0），且射线 x(t) = (t, 0, 3t) 对任意 t > 0 都满足
+  两条约束、z = -12t → -∞ —— 数学上确定是【无界】。实测各判定方式：
+
+      method='highs'（presolve 默认开）      → status 2 infeasible   ✗ 错
+      method='highs', presolve=False         → status 3 unbounded    ✓
+      method='highs-ds', presolve=False      → status 3 unbounded    ✓
+      method='highs-ipm'（同样走 presolve）  → status 2 infeasible   ✗ 错
+      method='interior-point'（旧版）        → unbounded              ✓
+
+  结论：**「scipy 说 infeasible 而我们的求解器说 unbounded」这类分歧里，裁判可能是错的一方。**
+  本脚本的处理方式是「换一个更可靠的裁判」，而不是把分歧藏起来：
+  两边状态不一致时，关掉 presolve 再解一次；若此时与 JS 的结论一致，就把这条分歧
+  记入 presolve_artifacts 并在末尾单独打印（可复核），不计为失败。
+  逐题核对时若看到 presolve_artifacts 非空，请先按上面这段手算复核，再判断谁对。
 """
 import json
 import numpy as np
@@ -18,7 +42,8 @@ total = sum(len(r['cases']) for r in bank)
 print(f'载入 {len(bank)} 道基准题 · {total} 个场景算例')
 
 
-def solve(prob):
+def solve(prob, presolve=True):
+    """presolve=False 用于「与 JS 结论不一致时」的复核 —— 见文件头关于 HiGHS presolve 的说明。"""
     n = len(prob['c'])
     c_orig = np.array(prob['c'], dtype=float)
     is_max = prob['direction'] == 'max'
@@ -37,7 +62,8 @@ def solve(prob):
                 b_ub=np.array(b_ub) if b_ub else None,
                 A_eq=np.array(A_eq) if A_eq else None,
                 b_eq=np.array(b_eq) if b_eq else None,
-                bounds=[(0, None)] * n, method='highs')
+                bounds=[(0, None)] * n, method='highs',
+                options=None if presolve else {'presolve': False})
     if r.status == 0:
         return ('optimal', -r.fun if is_max else r.fun, np.array(r.x))
     if r.status == 2:
@@ -63,7 +89,7 @@ def feasible(prob, x):
     return True
 
 
-stats, fails, skipped = {}, [], []
+stats, fails, skipped, presolve_artifacts = {}, [], [], []
 by_type = {}
 unchanged_ok = unchanged_bad = 0
 
@@ -87,7 +113,14 @@ for rec in bank:
             else:
                 ok = True
         else:
-            fails.append((rec['id'], ty, f'状态 js={case["jsStatus"]} scipy={st}', ''))
+            # 状态不一致：先怀疑裁判（HiGHS 的 presolve 会把无界误判成无可行解，见文件头）。
+            # 关掉 presolve 再解一次，若与 JS 一致就把这条记为「裁判伪影」，不计失败。
+            st2, _, _ = solve(case['prob'], presolve=False)
+            if st2 == case['jsStatus']:
+                presolve_artifacts.append((rec['id'], ty, st, st2))
+                ok = True
+            else:
+                fails.append((rec['id'], ty, f'状态 js={case["jsStatus"]} scipy={st} scipy(no-presolve)={st2}', ''))
         by_type[ty]['ok' if ok else 'bad'] += 1
         if case['changed'] is False:
             if ok:
@@ -103,6 +136,10 @@ for ty, v in by_type.items():
 print(f'\nscipy 状态分布: {json.dumps(stats, ensure_ascii=False)}')
 print(f'前置判断为「最优基不变」的算例: {unchanged_ok} 个通过 / {unchanged_bad} 个失败')
 print(f'JS 直接拒绝的算例（基矩阵奇异等）: {len(skipped)}')
+if presolve_artifacts:
+    print(f'\n裁判伪影（HiGHS presolve 误判，关掉 presolve 后与 JS 一致）: {len(presolve_artifacts)} 条')
+    for tid, ty, st1, st2 in presolve_artifacts[:5]:
+        print(f'  id={tid} [{names.get(ty, ty)}] presolve 开={st1} → 关={st2}（JS 同关掉后的结论）')
 
 if fails:
     print(f'\n!!! 不一致 {len(fails)} 条:')
