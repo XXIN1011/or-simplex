@@ -38,6 +38,8 @@
   --accent:#2563eb; --accent-hi:#5b8cf7; --accent-soft:#eef4ff; --accent-text:#1d4ed8;
   --leave-soft:#fff5e9; --pivot:#f59e0b; --pivot-soft:#fef3c7;
   --violet:#7c3aed; --violet-soft:#f4f0ff;
+  /* 覆盖线的颜色：比 --warn 淡一点，线压在数字旁边时不至于抢走数字的分量 */
+  --line-warn:rgba(180,83,9,.66);
   --ok:#116b33; --ok-soft:#eefbf2;
   --warn:#b45309; --warn-soft:#fff8ea;
   --err:#c02626; --err-soft:#fef3f2;
@@ -75,6 +77,7 @@ html[data-theme="dark"]{
   --accent:#7aa2ff; --accent-hi:#a3bdff; --accent-soft:#1b2740; --accent-text:#9ab8ff;
   --leave-soft:#2e2416; --pivot:#fbbf24; --pivot-soft:#3d320f;
   --violet:#b79bff; --violet-soft:#241d3a;
+  --line-warn:rgba(251,191,36,.62);
   --ok:#4ade80; --ok-soft:#0f2a1c;
   --warn:#fbbf24; --warn-soft:#2f2710;
   --err:#f87171; --err-soft:#301a1a;
@@ -694,17 +697,41 @@ table.mtxout th,table.mtxout td{
 }
 table.mtxout th{font-size:12px;font-weight:650;color:var(--fg2);background:var(--soft)}
 table.mtxout th.lbl{text-align:right;font-size:12.5px}
-table.mtxout td.lr{border-bottom:2.5px solid var(--warn)}
-table.mtxout td.lc{border-left:2.5px solid var(--warn)}
-table.mtxout th.lr{border-bottom:2.5px solid var(--warn)}
-table.mtxout th.cx{border-left:2.5px solid var(--warn)}
+/* 覆盖线画在格子**内部**（距上边 / 左边 3px 处），不画在单元格边框上：
+   画在边框上时，一条横线正好压在第 i 行与第 i+1 行的分界上，看不出它盖的是哪一行
+   （用户反馈的原话：「难以看出具体是哪一行」）。画进格子内部之后，线明确属于这一行
+   / 这一列，从行首的「人员 2」标签一直贯穿到最后一格；同时也不会从数字中间穿过去，
+   免得跟「被划掉的 0」的删除线混起来。
+   双覆盖的格子（既在横线行、又在竖线列）要同时画两条线，所以用两层背景。 */
+table.mtxout th.lr,table.mtxout td.lr{
+  background-image:linear-gradient(var(--line-warn),var(--line-warn));
+  background-size:100% 2.5px;
+  background-position:center 3px;
+  background-repeat:no-repeat;
+}
+table.mtxout th.cx,table.mtxout td.lc{
+  background-image:linear-gradient(var(--line-warn),var(--line-warn));
+  background-size:2.5px 100%;
+  background-position:3px center;
+  background-repeat:no-repeat;
+}
+table.mtxout td.lr.lc{
+  background-image:linear-gradient(var(--line-warn),var(--line-warn)),
+                   linear-gradient(var(--line-warn),var(--line-warn));
+  background-size:100% 2.5px,2.5px 100%;
+  background-position:center 3px,3px center;
+  background-repeat:no-repeat,no-repeat;
+}
+/* 被线盖住的行 / 列，标签也跟着点一下色，方便和下方那行「横线盖住的是行：…」对上 */
+table.mtxout th.lbl.lr{color:var(--warn)}
+table.mtxout th.cx{color:var(--warn)}
 table.mtxout .cv{display:inline-block;min-width:1.7em;padding:1px 4px;border-radius:999px}
 table.mtxout .zero{color:var(--fg2)}
 table.mtxout .circ{border:2px solid var(--ok);color:var(--ok);font-weight:700;padding:0 3px}
 table.mtxout .cross{color:var(--fg3);text-decoration:line-through}
 table.mtxout .forbid{color:var(--fg3)}
 .mtx-legend{font-size:12px;color:var(--fg2);line-height:1.9;margin-top:7px}
-.mtx-legend .lg-warn{color:var(--warn)}
+.mtx-legend .lg-warn{color:var(--warn);font-weight:650}
 /* .meth-body 自己已经有 14px 内边距，.scroll 的负外边距在这里会顶出去 1px */
 .meth-body>.scroll{margin:0;padding:0}
 

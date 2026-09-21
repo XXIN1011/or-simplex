@@ -38,6 +38,8 @@
   --accent:#2563eb; --accent-hi:#5b8cf7; --accent-soft:#eef4ff; --accent-text:#1d4ed8;
   --leave-soft:#fff5e9; --pivot:#f59e0b; --pivot-soft:#fef3c7;
   --violet:#7c3aed; --violet-soft:#f4f0ff;
+  /* 覆盖线的颜色：比 --warn 淡一点，线压在数字旁边时不至于抢走数字的分量 */
+  --line-warn:rgba(180,83,9,.66);
   --ok:#116b33; --ok-soft:#eefbf2;
   --warn:#b45309; --warn-soft:#fff8ea;
   --err:#c02626; --err-soft:#fef3f2;
@@ -75,6 +77,7 @@ html[data-theme="dark"]{
   --accent:#7aa2ff; --accent-hi:#a3bdff; --accent-soft:#1b2740; --accent-text:#9ab8ff;
   --leave-soft:#2e2416; --pivot:#fbbf24; --pivot-soft:#3d320f;
   --violet:#b79bff; --violet-soft:#241d3a;
+  --line-warn:rgba(251,191,36,.62);
   --ok:#4ade80; --ok-soft:#0f2a1c;
   --warn:#fbbf24; --warn-soft:#2f2710;
   --err:#f87171; --err-soft:#301a1a;
@@ -694,17 +697,41 @@ table.mtxout th,table.mtxout td{
 }
 table.mtxout th{font-size:12px;font-weight:650;color:var(--fg2);background:var(--soft)}
 table.mtxout th.lbl{text-align:right;font-size:12.5px}
-table.mtxout td.lr{border-bottom:2.5px solid var(--warn)}
-table.mtxout td.lc{border-left:2.5px solid var(--warn)}
-table.mtxout th.lr{border-bottom:2.5px solid var(--warn)}
-table.mtxout th.cx{border-left:2.5px solid var(--warn)}
+/* 覆盖线画在格子**内部**（距上边 / 左边 3px 处），不画在单元格边框上：
+   画在边框上时，一条横线正好压在第 i 行与第 i+1 行的分界上，看不出它盖的是哪一行
+   （用户反馈的原话：「难以看出具体是哪一行」）。画进格子内部之后，线明确属于这一行
+   / 这一列，从行首的「人员 2」标签一直贯穿到最后一格；同时也不会从数字中间穿过去，
+   免得跟「被划掉的 0」的删除线混起来。
+   双覆盖的格子（既在横线行、又在竖线列）要同时画两条线，所以用两层背景。 */
+table.mtxout th.lr,table.mtxout td.lr{
+  background-image:linear-gradient(var(--line-warn),var(--line-warn));
+  background-size:100% 2.5px;
+  background-position:center 3px;
+  background-repeat:no-repeat;
+}
+table.mtxout th.cx,table.mtxout td.lc{
+  background-image:linear-gradient(var(--line-warn),var(--line-warn));
+  background-size:2.5px 100%;
+  background-position:3px center;
+  background-repeat:no-repeat;
+}
+table.mtxout td.lr.lc{
+  background-image:linear-gradient(var(--line-warn),var(--line-warn)),
+                   linear-gradient(var(--line-warn),var(--line-warn));
+  background-size:100% 2.5px,2.5px 100%;
+  background-position:center 3px,3px center;
+  background-repeat:no-repeat,no-repeat;
+}
+/* 被线盖住的行 / 列，标签也跟着点一下色，方便和下方那行「横线盖住的是行：…」对上 */
+table.mtxout th.lbl.lr{color:var(--warn)}
+table.mtxout th.cx{color:var(--warn)}
 table.mtxout .cv{display:inline-block;min-width:1.7em;padding:1px 4px;border-radius:999px}
 table.mtxout .zero{color:var(--fg2)}
 table.mtxout .circ{border:2px solid var(--ok);color:var(--ok);font-weight:700;padding:0 3px}
 table.mtxout .cross{color:var(--fg3);text-decoration:line-through}
 table.mtxout .forbid{color:var(--fg3)}
 .mtx-legend{font-size:12px;color:var(--fg2);line-height:1.9;margin-top:7px}
-.mtx-legend .lg-warn{color:var(--warn)}
+.mtx-legend .lg-warn{color:var(--warn);font-weight:650}
 /* .meth-body 自己已经有 14px 内边距，.scroll 的负外边距在这里会顶出去 1px */
 .meth-body>.scroll{margin:0;padding:0}
 
@@ -1817,16 +1844,21 @@ function assignSolve(problem, opts) {
 
     /* ④ 覆盖线 */
     var cov = minCover(N, zeroAdj, matchRow);
+    /* 讲解里的行/列一律用**名字**（人员2、工作3），不用「第 2 行」这种序号 ——
+       线画在矩阵上之后，读者要能把它和名字直接对上，而不是回头数第几行。 */
+    var hrNames = namesOf(cov.lineRows, 'row', m, n);
+    var vcNames = namesOf(cov.lineCols, 'col', m, n);
     steps.push(model.createAssignStep({
       round: iter, phase: 'cover', label: '④ 覆盖线',
       title: '用最少数量的直线盖住所有 0 元素',
       matrix: cur, marks: marks,
       lines: { rows: cov.lineRows, cols: cov.lineCols },
       details: [
-        '打 √ 的行（没有圈到 0 的行）：' + (cov.markedRows.length ? cov.markedRows.map(n1).join('、') : '无')
+        '打 √ 的行（没有圈到 0 的行）：' + namesOf(cov.markRow, 'row', m, n)
           + '；再由这些行里含 0 的列打 √，由打 √ 的列里圈了 0 的行打 √，反复直到打不出新的 √。',
-        '打 √ 的列：' + (cov.markedCols.length ? cov.markedCols.map(n1).join('、') : '无') + '。',
-        '于是：**没打 √ 的行**画横线、**打 √ 的列**画竖线 —— 一共 ' + cov.size + ' 条线，'
+        '打 √ 的列：' + namesOf(cov.markCol, 'col', m, n) + '。',
+        '于是：**没打 √ 的行**画横线 —— 横线盖住 ' + hrNames + '；'
+          + '**打 √ 的列**画竖线 —— 竖线盖住 ' + vcNames + '。一共 ' + cov.size + ' 条线，'
           + '盖住了矩阵里全部的 0 元素。',
         '线的条数 ' + cov.size + ' < n = ' + N + '，说明 0 元素还不够「分散」，'
           + '最多只能圈出 ' + cov.size + ' 个互不同行同列的 0（König 定理：最少覆盖线的条数 = 最多独立零元素的个数），'
@@ -1879,8 +1911,9 @@ function assignSolve(problem, opts) {
       lines: { rows: cov.lineRows, cols: cov.lineCols },
       details: [
         'θ = 未被覆盖区域里的最小元素 = ' + fmtNum(theta) + '。',
-        '未覆盖的元素减 θ：打 √ 的行整行减 ' + fmtNum(theta) + '（它们与没打 √ 的列相交处正是未覆盖区）。',
-        '被两条线交叉覆盖的元素加 θ：打 √ 的列整列加 ' + fmtNum(theta) + '。',
+        '未覆盖的元素减 θ：打 √ 的行整行减 ' + fmtNum(theta) + '（这些行是 ' + hrNames + '），'
+          + '它们与没打 √ 的列相交处正是未覆盖区。',
+        '被两条线交叉覆盖的元素加 θ：打 √ 的列整列加 ' + fmtNum(theta) + '（这些列是 ' + vcNames + '）。',
         '只被一条线盖住的元素一减一加刚好抵消，数值不变 —— 这就是教材那句'
           + '「未覆盖的减 θ、交叉的加 θ、其余不变」。',
         '这样调整之后，未覆盖区域里至少会出现一个新的 0，而原来的 0 仍然是 0'
@@ -1983,7 +2016,16 @@ function greedyAssign(N, adj) {
 
 /* ---------------- 步骤与标签 ---------------- */
 
-function n1(x) { return x + 1; }
+/* 把「布尔向量」翻译成名字串：true 的位置就是被选中/被盖住的行（列）。
+   讲解与线要能对上，所以一律用名字，而不是第几行第几列。 */
+function namesOf(flags, kind, m, n) {
+  var out = [];
+  for (var k = 0; k < flags.length; k++) {
+    if (!flags[k]) continue;
+    out.push(kind === 'row' ? labelOfRow(k, m) : labelOfCol(k, n));
+  }
+  return out.length ? out.join('、') : '（无）';
+}
 
 /* 行的显示名：真实行在前、虚拟行在后（虚拟行专门用来表示「多出来的人没活干」） */
 function labelOfRow(i, m) { return i < m ? '人员' + (i + 1) : '虚拟人员' + (i - m + 1); }
@@ -5866,7 +5908,7 @@ var addScrollHints = inputPanel.addScrollHints;
       h += '<div class="iter-head"><span class="name">' + esc(s.label) + '</span>'
         + '<span class="tag' + (s.done ? ' done' : '') + '">' + esc(s.title) + '</span></div>';
       h += matrixHtml(s.matrix, s.marks, s.lines, res.rowLabels, res.colLabels);
-      h += matrixLegend(s);
+      h += matrixLegend(s, res.rowLabels, res.colLabels);
       if (s.details.length) {
         h += '<div class="judge">';
         s.details.forEach(function (d) {
@@ -5879,8 +5921,10 @@ var addScrollHints = inputPanel.addScrollHints;
     return h + '</div></details>';
   }
 
-  /* 每张矩阵下面的一行图例：圈 / 划掉 / 禁止 / 覆盖线，各自是什么 */
-  function matrixLegend(s) {
+  /* 每张矩阵下面的图例：圈 / 划掉 / 禁止 / 覆盖线。
+     ★ 覆盖线一定要**点名**盖住了哪一行、哪一列：线是画在矩阵上的，读者最需要的是
+       「这条线说的是谁」，而不是「横线 = 没打勾的行」这种抽象规则（规则在讲解里已有）。 */
+  function matrixLegend(s, rowLabels, colLabels) {
     var bits = ['〇 圈定的 0（一次指派）'];
     if (s.marks && s.marks.some(function (r) { return r.some(function (v) { return v === 'cross'; }); })) {
       bits.push('<s>0</s> 被划掉的 0（同行同列已经有指派）');
@@ -5888,8 +5932,17 @@ var addScrollHints = inputPanel.addScrollHints;
     if (s.matrix.some(function (r) { return r.some(function (v) { return v === null; }); })) {
       bits.push('× 禁止指派');
     }
-    if (s.lines) bits.push('<span class="lg-warn">—&nbsp;横线 = 没打勾的行，│&nbsp;竖线 = 打勾的列</span>');
-    return '<div class="mtx-legend">' + bits.join('　') + '</div>';
+    if (s.lines) {
+      var hr = [], vc = [];
+      s.lines.rows.forEach(function (v, i) { if (v) hr.push(rowLabels[i] || ('第' + (i + 1) + '行')); });
+      s.lines.cols.forEach(function (v, j) { if (v) vc.push(colLabels[j] || ('第' + (j + 1) + '列')); });
+      bits.push('<span class="lg-warn lg-h">━ 横线盖住的是行：'
+        + esc(hr.length ? hr.join('、') : '无') + '</span>');
+      bits.push('<span class="lg-warn lg-v">┃ 竖线盖住的是列：'
+        + esc(vc.length ? vc.join('、') : '无') + '</span>');
+      bits.push('共 ' + (hr.length + vc.length) + ' 条线');
+    }
+    return '<div class="mtx-legend">' + bits.join('<br>') + '</div>';
   }
 
   /**

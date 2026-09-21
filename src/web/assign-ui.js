@@ -242,7 +242,7 @@ var addScrollHints = inputPanel.addScrollHints;
       h += '<div class="iter-head"><span class="name">' + esc(s.label) + '</span>'
         + '<span class="tag' + (s.done ? ' done' : '') + '">' + esc(s.title) + '</span></div>';
       h += matrixHtml(s.matrix, s.marks, s.lines, res.rowLabels, res.colLabels);
-      h += matrixLegend(s);
+      h += matrixLegend(s, res.rowLabels, res.colLabels);
       if (s.details.length) {
         h += '<div class="judge">';
         s.details.forEach(function (d) {
@@ -255,8 +255,10 @@ var addScrollHints = inputPanel.addScrollHints;
     return h + '</div></details>';
   }
 
-  /* 每张矩阵下面的一行图例：圈 / 划掉 / 禁止 / 覆盖线，各自是什么 */
-  function matrixLegend(s) {
+  /* 每张矩阵下面的图例：圈 / 划掉 / 禁止 / 覆盖线。
+     ★ 覆盖线一定要**点名**盖住了哪一行、哪一列：线是画在矩阵上的，读者最需要的是
+       「这条线说的是谁」，而不是「横线 = 没打勾的行」这种抽象规则（规则在讲解里已有）。 */
+  function matrixLegend(s, rowLabels, colLabels) {
     var bits = ['〇 圈定的 0（一次指派）'];
     if (s.marks && s.marks.some(function (r) { return r.some(function (v) { return v === 'cross'; }); })) {
       bits.push('<s>0</s> 被划掉的 0（同行同列已经有指派）');
@@ -264,8 +266,17 @@ var addScrollHints = inputPanel.addScrollHints;
     if (s.matrix.some(function (r) { return r.some(function (v) { return v === null; }); })) {
       bits.push('× 禁止指派');
     }
-    if (s.lines) bits.push('<span class="lg-warn">—&nbsp;横线 = 没打勾的行，│&nbsp;竖线 = 打勾的列</span>');
-    return '<div class="mtx-legend">' + bits.join('　') + '</div>';
+    if (s.lines) {
+      var hr = [], vc = [];
+      s.lines.rows.forEach(function (v, i) { if (v) hr.push(rowLabels[i] || ('第' + (i + 1) + '行')); });
+      s.lines.cols.forEach(function (v, j) { if (v) vc.push(colLabels[j] || ('第' + (j + 1) + '列')); });
+      bits.push('<span class="lg-warn lg-h">━ 横线盖住的是行：'
+        + esc(hr.length ? hr.join('、') : '无') + '</span>');
+      bits.push('<span class="lg-warn lg-v">┃ 竖线盖住的是列：'
+        + esc(vc.length ? vc.join('、') : '无') + '</span>');
+      bits.push('共 ' + (hr.length + vc.length) + ' 条线');
+    }
+    return '<div class="mtx-legend">' + bits.join('<br>') + '</div>';
   }
 
   /**

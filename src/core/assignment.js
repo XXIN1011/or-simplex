@@ -449,16 +449,21 @@ function assignSolve(problem, opts) {
 
     /* ④ 覆盖线 */
     var cov = minCover(N, zeroAdj, matchRow);
+    /* 讲解里的行/列一律用**名字**（人员2、工作3），不用「第 2 行」这种序号 ——
+       线画在矩阵上之后，读者要能把它和名字直接对上，而不是回头数第几行。 */
+    var hrNames = namesOf(cov.lineRows, 'row', m, n);
+    var vcNames = namesOf(cov.lineCols, 'col', m, n);
     steps.push(model.createAssignStep({
       round: iter, phase: 'cover', label: '④ 覆盖线',
       title: '用最少数量的直线盖住所有 0 元素',
       matrix: cur, marks: marks,
       lines: { rows: cov.lineRows, cols: cov.lineCols },
       details: [
-        '打 √ 的行（没有圈到 0 的行）：' + (cov.markedRows.length ? cov.markedRows.map(n1).join('、') : '无')
+        '打 √ 的行（没有圈到 0 的行）：' + namesOf(cov.markRow, 'row', m, n)
           + '；再由这些行里含 0 的列打 √，由打 √ 的列里圈了 0 的行打 √，反复直到打不出新的 √。',
-        '打 √ 的列：' + (cov.markedCols.length ? cov.markedCols.map(n1).join('、') : '无') + '。',
-        '于是：**没打 √ 的行**画横线、**打 √ 的列**画竖线 —— 一共 ' + cov.size + ' 条线，'
+        '打 √ 的列：' + namesOf(cov.markCol, 'col', m, n) + '。',
+        '于是：**没打 √ 的行**画横线 —— 横线盖住 ' + hrNames + '；'
+          + '**打 √ 的列**画竖线 —— 竖线盖住 ' + vcNames + '。一共 ' + cov.size + ' 条线，'
           + '盖住了矩阵里全部的 0 元素。',
         '线的条数 ' + cov.size + ' < n = ' + N + '，说明 0 元素还不够「分散」，'
           + '最多只能圈出 ' + cov.size + ' 个互不同行同列的 0（König 定理：最少覆盖线的条数 = 最多独立零元素的个数），'
@@ -511,8 +516,9 @@ function assignSolve(problem, opts) {
       lines: { rows: cov.lineRows, cols: cov.lineCols },
       details: [
         'θ = 未被覆盖区域里的最小元素 = ' + fmtNum(theta) + '。',
-        '未覆盖的元素减 θ：打 √ 的行整行减 ' + fmtNum(theta) + '（它们与没打 √ 的列相交处正是未覆盖区）。',
-        '被两条线交叉覆盖的元素加 θ：打 √ 的列整列加 ' + fmtNum(theta) + '。',
+        '未覆盖的元素减 θ：打 √ 的行整行减 ' + fmtNum(theta) + '（这些行是 ' + hrNames + '），'
+          + '它们与没打 √ 的列相交处正是未覆盖区。',
+        '被两条线交叉覆盖的元素加 θ：打 √ 的列整列加 ' + fmtNum(theta) + '（这些列是 ' + vcNames + '）。',
         '只被一条线盖住的元素一减一加刚好抵消，数值不变 —— 这就是教材那句'
           + '「未覆盖的减 θ、交叉的加 θ、其余不变」。',
         '这样调整之后，未覆盖区域里至少会出现一个新的 0，而原来的 0 仍然是 0'
@@ -615,7 +621,16 @@ function greedyAssign(N, adj) {
 
 /* ---------------- 步骤与标签 ---------------- */
 
-function n1(x) { return x + 1; }
+/* 把「布尔向量」翻译成名字串：true 的位置就是被选中/被盖住的行（列）。
+   讲解与线要能对上，所以一律用名字，而不是第几行第几列。 */
+function namesOf(flags, kind, m, n) {
+  var out = [];
+  for (var k = 0; k < flags.length; k++) {
+    if (!flags[k]) continue;
+    out.push(kind === 'row' ? labelOfRow(k, m) : labelOfCol(k, n));
+  }
+  return out.length ? out.join('、') : '（无）';
+}
 
 /* 行的显示名：真实行在前、虚拟行在后（虚拟行专门用来表示「多出来的人没活干」） */
 function labelOfRow(i, m) { return i < m ? '人员' + (i + 1) : '虚拟人员' + (i - m + 1); }
