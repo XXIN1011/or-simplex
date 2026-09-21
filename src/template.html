@@ -721,19 +721,26 @@ table.mtxout td.lr.lc{
   background-position:center,center;
   background-repeat:no-repeat,no-repeat;
 }
-/* 行首标签与列表头这两格例外：线不在它们身上穿过（否则标签文字会被划掉），
-   而是在靠正文那一侧画一小段「起头」，与该行 / 该列正文里的线对齐。 */
+/* 行首标签与列表头也一起贯通：线要横穿整行（从「人员 2」标签一直到最后一列）、
+   竖穿整列（从「工作 3」表头一直到最下面一行），这才叫「盖住该行 / 该列的正中间」。
+   标签文字用一块与表头同底色的「衬底」避让，线在文字周围断开、文字本身不被划掉
+   —— 教材里把线划过去时，字是印在线上的，观感与此一致。 */
 table.mtxout th.lbl.lr{
   background-image:linear-gradient(var(--line-warn),var(--line-warn));
-  background-size:10px 3px;
-  background-position:right 3px center;
+  background-size:100% 3px;
+  background-position:center;
   background-repeat:no-repeat;
 }
 table.mtxout th.cxh{
   background-image:linear-gradient(var(--line-warn),var(--line-warn));
-  background-size:3px 10px;
-  background-position:center bottom 3px;
+  background-size:3px 100%;
+  background-position:center;
   background-repeat:no-repeat;
+}
+/* 行名 / 列名的衬底：不透明，压在线上，于是线在文字处断开 */
+table.mtxout .lbtx{
+  display:inline-block;padding:0 4px;border-radius:5px;
+  background-color:var(--soft);
 }
 /* 被线盖住的行 / 列，标签也跟着点一下色，方便和下方那行「横线盖住的是行：…」对上 */
 table.mtxout th.lbl.lr{color:var(--warn)}

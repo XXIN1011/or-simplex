@@ -291,14 +291,15 @@ var addScrollHints = inputPanel.addScrollHints;
   function matrixHtml(M, marks, lines, rowLabels, colLabels) {
     var h = '<div class="scroll"><table class="mtxout"><thead><tr><th></th>';
     for (var j = 0; j < colLabels.length; j++) {
-      h += '<th' + (lines && lines.cols[j] ? ' class="cxh"' : '') + '>' + esc(colLabels[j]) + '</th>';
+      h += '<th' + (lines && lines.cols[j] ? ' class="cxh"' : '') + '>'
+        + '<span class="lbtx">' + esc(colLabels[j]) + '</span></th>';
     }
     h += '</tr></thead><tbody>';
     for (var i = 0; i < M.length; i++) {
       var cls = [];
       if (lines && lines.rows[i]) cls.push('lr');
       h += '<tr><th class="lbl' + (cls.length ? ' ' + cls.join(' ') : '') + '">'
-        + esc(rowLabels[i] || ('第' + (i + 1) + '行')) + '</th>';
+        + '<span class="lbtx">' + esc(rowLabels[i] || ('第' + (i + 1) + '行')) + '</span></th>';
       for (var j2 = 0; j2 < M[i].length; j2++) {
         var v = M[i][j2], mk = marks ? marks[i][j2] : null;
         /* 覆盖线：横线画在该行的每个格子上、竖线画在该列的每个格子上 —— 类名必须拼进
