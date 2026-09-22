@@ -7,6 +7,9 @@
    ========================================================================= */
 'use strict';
 
+var dom = require('./dom.js');
+var esc = dom.esc;
+
 /* 表格横向溢出时给一句提示：手机上看不见滚动条，不说一声用户不知道右边还有内容。
    只在真的溢出（scrollWidth > clientWidth）时才插入，且不重复插入。 */
 function addScrollHints(root) {
@@ -24,9 +27,58 @@ function addScrollHints(root) {
   });
 }
 
+/* =========================================================================
+   输入区「外壳」的生成：方向段控 + 输入表容器 + 四个增减按钮
+   -------------------------------------------------------------------------
+   这四样东西在四个模块里长得一模一样，只有 id 前缀、按钮文案和表格类名不同。
+   以前它们是四段几乎逐行相同的 HTML 抄在 template.html 里（46 个 id 里有 24 个
+   是这种副本）——改一处（比如换按钮文案、加个 aria）就得改四处，漏一处就不一致。
+
+   现在模板里每个模块只留一个挂载点（如 <div id="simplexPanel"></div>），
+   由调用方给一份配置，这里统一生成。**生成的 id / class / data-* 与原来逐字一致**
+   （回归脚本与截图都依赖这些 id，例如 `#dirSeg button[data-dir="min"]`）。
+
+   cfg 追加字段：
+     mount     'simplexPanel'   外壳插进哪个元素；不给就沿用模板里已有的静态外壳
+     tblClass  'inp' / 'inp mtx' 输入表的类（指派问题的矩阵多一个 mtx）
+     dirOrder  ['max','min']    段控顺序（指派问题默认 min 在前）
+     labels    { addVar, delVar, addCon, delCon } 四个按钮的文案
+   ========================================================================= */
+var DEFAULT_LABELS = { addVar: '+ 变量', delVar: '− 变量', addCon: '+ 约束', delCon: '− 约束' };
+
+function buildChrome(cfg) {
+  if (!cfg.mount) return;                       // 没给挂载点：模板里已有静态外壳
+  var mount = document.getElementById(cfg.mount);
+  if (!mount) throw new Error('输入区挂载点 #' + cfg.mount + ' 不在页面上');
+
+  var state = cfg.state || {};
+  var order = cfg.dirOrder || ['max', 'min'];
+  /* 初始高亮要与 state.dir 一致：模板版靠手写 class="on"，这里由状态推出来，
+     少一个「改了默认方向忘了改 HTML」的坑。 */
+  var on = (order.indexOf(state.dir) >= 0) ? state.dir : order[0];
+  var L = cfg.labels || DEFAULT_LABELS;
+
+  var html = '<div class="seg" id="' + cfg.dirSeg + '">';
+  for (var i = 0; i < order.length; i++) {
+    html += '<button type="button" data-dir="' + order[i] + '"'
+      + (order[i] === on ? ' class="on"' : '') + '>' + order[i] + '</button>';
+  }
+  html += '</div>'
+    + '<div class="scroll"><table class="' + (cfg.tblClass || 'inp') + '" id="' + cfg.tbl + '"></table></div>'
+    + '<div class="ctrls">'
+    + '<button type="button" class="btn" id="' + cfg.addVar + '">' + L.addVar + '</button>'
+    + '<button type="button" class="btn" id="' + cfg.delVar + '">' + L.delVar + '</button>'
+    + '<button type="button" class="btn" id="' + cfg.addCon + '">' + L.addCon + '</button>'
+    + '<button type="button" class="btn" id="' + cfg.delCon + '">' + L.delCon + '</button>'
+    + '</div>';
+
+  mount.innerHTML = html;
+}
+
 /* cfg = { tbl, dirSeg, addVar, delVar, addCon, delCon, state, onChange, maxN, maxM }
    state = { dir, n, m, c: [], cons: [] } */
 function createInputPanel(cfg) {
+  buildChrome(cfg);                             // 外壳先落地，下面的 init() 才取得到元素
   var MAXN = cfg.maxN || 6, MAXM = cfg.maxM || 8;
   var state = cfg.state;
   var onChange = cfg.onChange || function () {};
@@ -40,11 +92,6 @@ function createInputPanel(cfg) {
     if (v === undefined || v === null || isNaN(v)) return '';
     if (Math.abs(v) < 1e-9) return '';
     return (Math.abs(v - Math.round(v)) < 1e-9) ? String(Math.round(v)) : String(v);
-  }
-  function esc(s) {
-    return String(s).replace(/[&<>"]/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
-    });
   }
 
   function render() {
@@ -205,8 +252,9 @@ function createInputPanel(cfg) {
   };
 }
 
-/* 对外接口：createInputPanel 建表 / addScrollHints 插「左右滑动」提示 */
+/* 对外接口：buildChrome 建外壳 / createInputPanel 建表 + 绑事件 / addScrollHints 插提示 */
 module.exports = {
+  buildChrome: buildChrome,
   createInputPanel: createInputPanel,
   addScrollHints: addScrollHints
 };

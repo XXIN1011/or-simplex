@@ -17,10 +17,16 @@ const fs = require('fs');
 const S = require('../../src/core/simplex.js');
 const F = require('../../src/core/format.js');
 const SC = require('../../src/core/scenario.js');
+const RNG = require('../lib/rng.js');
 const fmt = F.fmtNum;
 
-const rnd = (a, b) => a + Math.random() * (b - a);
-const ri = (a, b) => Math.floor(rnd(a, b + 1));
+/* 随机抽样走固定种子（--seed=N 可复现其它批次）：以前用 Math.random()，
+   偶发失败连是哪道题都无从复现。 */
+const SEED = RNG.resolveSeed(3);
+const R = RNG.rng(SEED);
+const rnd = R.between;
+const ri = R.ri;
+console.log(RNG.banner('参数线性规划', SEED));
 const q = v => Math.round(v * 2) / 2;
 
 /* 把 λ 代进 c 或 b，得到一个普通线性规划 */

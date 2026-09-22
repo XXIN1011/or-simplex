@@ -9,86 +9,29 @@
  * 只截视口就与真实浏览一致，fixed 层落在正确位置。
  */
 'use strict';
-const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
+const chrome = require('../../lib/chrome.js');
+const { sleep, resolveTarget, ROOT } = chrome;
+const quiet = require('../../lib/quiet.js');
 
-const CHROME = fs.existsSync('C:/Program Files/Google/Chrome/Application/chrome.exe')
-  ? 'C:/Program Files/Google/Chrome/Application/chrome.exe'
-  : 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
-
-/* 本脚本在 tools/visual/ 下，仓库根要退两级 */
-const ROOT = path.resolve(__dirname, '..', '..');
-const GITBASH = null;
-
-const rawTarget = process.argv[2] || 'index.html';
-const hashAt = rawTarget.indexOf('#');
-const pageFile = hashAt >= 0 ? rawTarget.slice(0, hashAt) : rawTarget;
-const wantHash = hashAt >= 0 ? rawTarget.slice(hashAt) : '';
+const T = resolveTarget(process.argv[2] || 'index.html');
+const wantHash = T.wantHash;
 const outPng = process.argv[3] || 'vp.png';
 const scrollY = parseInt(process.argv[4] || '0', 10);
 const dark = (process.argv[5] || '') === 'dark';
 const fillArg = process.argv[6] || '';
 
 const WIDTH = 390, HEIGHT = 844;
-const PORT = 9200 + Math.floor(Math.random() * 700);
-const url = /^https?:\/\//i.test(pageFile)
-  ? pageFile
-  : 'file:///' + path.resolve(ROOT, pageFile).replace(/\\/g, '/');
-const pageUrl = url + (url.indexOf('#') === -1 ? (wantHash || '#/') : '');
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'orvp-'));
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-class CDP {
-  constructor(ws) {
-    this.ws = ws; this.id = 0; this.pending = new Map();
-    ws.onmessage = e => {
-      const m = JSON.parse(e.data);
-      if (m.id && this.pending.has(m.id)) {
-        const p = this.pending.get(m.id); this.pending.delete(m.id);
-        m.error ? p.reject(new Error(JSON.stringify(m.error))) : p.resolve(m.result);
-      }
-    };
-  }
-  send(method, params, sessionId) {
-    const id = ++this.id;
-    return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
-      this.ws.send(JSON.stringify({ id, method, params: params || {}, sessionId }));
-    });
-  }
-}
+const pageUrl = T.pageUrl + (T.pageUrl.indexOf('#') === -1 ? (wantHash || '#/') : '');
 
 (async () => {
-  const child = spawn(CHROME, [
-    '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
-    '--disable-extensions', '--hide-scrollbars', '--remote-debugging-port=' + PORT,
-    '--user-data-dir=' + tmp, 'about:blank'
-  ], { stdio: 'ignore' });
-
-  let ver = null;
-  for (let i = 0; i < 60; i++) {
-    try { ver = await (await fetch('http://127.0.0.1:' + PORT + '/json/version')).json(); break; }
-    catch (e) { await sleep(250); }
-  }
-  if (!ver) { child.kill(); throw new Error('Chrome 调试端口未就绪'); }
-
-  const ws = new WebSocket(ver.webSocketDebuggerUrl);
-  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
-  const cdp = new CDP(ws);
-  const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
-  const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
-  await cdp.send('Page.enable', {}, sessionId);
-  await cdp.send('Runtime.enable', {}, sessionId);
-  await cdp.send('Emulation.setDeviceMetricsOverride',
-    { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true }, sessionId);
-  if (dark) {
-    await cdp.send('Emulation.setEmulatedMedia',
-      { features: [{ name: 'prefers-color-scheme', value: 'dark' }] }, sessionId);
-  }
-  await cdp.send('Page.navigate', { url: pageUrl }, sessionId);
-  await sleep(1200);
+  const q = quiet.begin('shot-vp');
+  const sess = await chrome.launch({
+    url: pageUrl, width: WIDTH, height: HEIGHT, waitMs: 1200,
+    media: dark ? 'dark' : null
+  });
+  const cdp = sess.cdp, sessionId = sess.sessionId;
 
   if (fillArg) {
     const f = fillArg.replace(/^@/, '');
@@ -106,11 +49,10 @@ class CDP {
       { expression: 'window.scrollTo(0,' + scrollY + ')' }, sessionId);
     await sleep(500);
   }
-  const shot = await cdp.send('Page.captureScreenshot',
-    { format: 'png', captureBeyondViewport: false, fromSurface: true }, sessionId);
+  const shot = await sess.screenshot({ captureBeyondViewport: false });
   fs.writeFileSync(path.join(ROOT, outPng), Buffer.from(shot.data, 'base64'));
   console.log('视口截图 ->', outPng, 'scrollY=' + scrollY, dark ? 'dark' : 'light');
-  ws.close(); child.kill();
-  await sleep(200);
+  q.end(true, '视口截图 ' + outPng);
+  await sess.close();
   process.exit(0);
 })().catch(e => { console.error('FAIL:', e.message); process.exit(1); });

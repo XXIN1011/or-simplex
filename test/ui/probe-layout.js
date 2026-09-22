@@ -1,44 +1,12 @@
 /* 针对性的布局探测：图解 SVG 实际显示尺寸、输入区高度、各区块位置
    用法: node test/ui/probe-layout.js [页面文件或URL] */
 'use strict';
-const { spawn } = require('child_process');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+const chrome = require('../../lib/chrome.js');
+const { sleep, resolveTarget } = chrome;
+const quiet = require('../../lib/quiet.js');
 
-const CHROME = fs.existsSync('C:/Program Files/Google/Chrome/Application/chrome.exe')
-  ? 'C:/Program Files/Google/Chrome/Application/chrome.exe'
-  : 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
-
-const pageFile = process.argv[2] || 'index.html';
-const PORT = 9300 + Math.floor(Math.random() * 600);
-const url = /^https?:\/\//i.test(pageFile)
-  ? pageFile
-  : 'file:///' + path.resolve(__dirname, '..', '..', pageFile).replace(/\\/g, '/');
 /* 应用现在有首页：这些检查都针对「单纯形法」模块，先进去，否则元素隐藏、量不到尺寸 */
-const pageUrl = url.indexOf('#') === -1 ? url + '#/simplex' : url;
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'orprobe-'));
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-class CDP {
-  constructor(ws) {
-    this.ws = ws; this.id = 0; this.pending = new Map();
-    ws.onmessage = e => {
-      const m = JSON.parse(e.data);
-      if (m.id && this.pending.has(m.id)) {
-        const p = this.pending.get(m.id); this.pending.delete(m.id);
-        m.error ? p.reject(new Error(JSON.stringify(m.error))) : p.resolve(m.result);
-      }
-    };
-  }
-  send(method, params, sessionId) {
-    const id = ++this.id;
-    return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
-      this.ws.send(JSON.stringify({ id, method, params: params || {}, sessionId }));
-    });
-  }
-}
+const pageUrl = resolveTarget(process.argv[2] || 'index.html', '#/simplex').pageUrl;
 
 const SETUP = `(function(){
   function fire(el, ev){ el.dispatchEvent(new Event(ev, {bubbles:true})); }
@@ -88,30 +56,9 @@ const PROBE = `(function(){
 })()`;
 
 (async () => {
-  const child = spawn(CHROME, [
-    '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
-    '--disable-extensions', '--hide-scrollbars',
-    '--remote-debugging-port=' + PORT, '--user-data-dir=' + tmp, 'about:blank'
-  ], { stdio: 'ignore' });
-
-  let ver = null;
-  for (let i = 0; i < 60; i++) {
-    try { ver = await (await fetch('http://127.0.0.1:' + PORT + '/json/version')).json(); break; }
-    catch (e) { await sleep(250); }
-  }
-  if (!ver) { child.kill(); throw new Error('Chrome 调试端口未就绪'); }
-
-  const ws = new WebSocket(ver.webSocketDebuggerUrl);
-  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
-  const cdp = new CDP(ws);
-  const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
-  const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
-  await cdp.send('Page.enable', {}, sessionId);
-  await cdp.send('Runtime.enable', {}, sessionId);
-  await cdp.send('Emulation.setDeviceMetricsOverride',
-    { width: 390, height: 844, deviceScaleFactor: 2, mobile: true }, sessionId);
-  await cdp.send('Page.navigate', { url: pageUrl }, sessionId);
-  await sleep(1200);
+  const q = quiet.begin('probe-layout');
+  const sess = await chrome.launch({ url: pageUrl, waitMs: 1200 });
+  const cdp = sess.cdp, sessionId = sess.sessionId;
   await cdp.send('Runtime.evaluate', { expression: SETUP }, sessionId);
   await sleep(900);
   const r = await cdp.send('Runtime.evaluate', { expression: PROBE, returnByValue: true }, sessionId);
@@ -132,7 +79,7 @@ const PROBE = `(function(){
     console.log('\n（本题无图解 SVG）');
   }
 
-  ws.close(); child.kill();
-  await sleep(300);
+  q.end(true, `求解按钮底部 ${d.needScrollToSolve}px / 首屏 ${d.viewportH}px`);
+  await sess.close();
   process.exit(0);
 })().catch(e => { console.error('FAIL:', e.message); process.exit(1); });

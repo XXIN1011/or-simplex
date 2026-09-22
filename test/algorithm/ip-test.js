@@ -10,7 +10,18 @@
 const S = require('../../src/core/simplex.js');
 const F = require('../../src/core/format.js');
 const IP = require('../../src/core/integer.js');
+const RNG = require('../lib/rng.js');
 const fmt = F.fmtNum;
+
+/* 随机题目的种子固定（可用 --seed=N 复现其它批次）。
+   以前直接用 Math.random()，偶发失败没法复现，只能连跑三五次赌运气。
+   默认取 3：各段算例数与其它种子同量级（172/240/105 道），但暴力枚举的总规模小、
+   整套 3.6 秒就跑完（种子 12345 要 42 秒）——回归是高频动作，速度也算质量。
+   想扩大覆盖面就换个种子再跑：node test/algorithm/ip-test.js --seed=12345 */
+const SEED = RNG.resolveSeed(3);
+const R = RNG.rng(SEED);
+const ri = R.ri;
+console.log(RNG.banner('整数规划', SEED));
 
 let bad = [];
 const eq = (a, b) => Math.abs(a - b) < 1e-6;
@@ -144,14 +155,14 @@ console.log('\n════════ 随机纯整数规划（全 ≤、数据
 {
   let cases = 0, cutOk = 0, cutFail = 0;
   for (let t = 0; t < 200; t++) {
-    const n = 2 + Math.floor(Math.random() * 2);           // 2..3 个变量
-    const m = 2 + Math.floor(Math.random() * 2);           // 2..3 条约束
-    const c = Array.from({ length: n }, () => 1 + Math.floor(Math.random() * 6));
+    const n = ri(2, 3);                                    // 2..3 个变量
+    const m = ri(2, 3);                                    // 2..3 条约束
+    const c = Array.from({ length: n }, () => ri(1, 6));
     const constraints = [];
     for (let i = 0; i < m; i++) {
       constraints.push({
-        coef: Array.from({ length: n }, () => Math.floor(Math.random() * 5)),
-        rel: '<=', rhs: 6 + Math.floor(Math.random() * 14)
+        coef: Array.from({ length: n }, () => ri(0, 4)),
+        rel: '<=', rhs: ri(6, 19)
       });
     }
     if (constraints.some(k => k.coef.every(v => v === 0))) continue;   // 空约束跳过
@@ -206,15 +217,15 @@ console.log('\n════════ 随机 0-1 规划（最大化与最小�
   let cases = 0, enOk = 0, filtered = 0, totalPts = 0;
   let minCases = 0, minOk = 0;
   for (let t = 0; t < 240; t++) {
-    const n = 3 + Math.floor(Math.random() * 5);           // 3..7 个变量
-    const m = 2 + Math.floor(Math.random() * 3);           // 2..4 条约束
+    const n = ri(3, 7);                                    // 3..7 个变量
+    const m = ri(2, 4);                                    // 2..4 条约束
     /* 目标系数故意混入负数，逼出 x_j = 1 − y_j 那个替换分支 */
-    const c = Array.from({ length: n }, () => Math.floor(Math.random() * 13) - 5);
+    const c = Array.from({ length: n }, () => ri(-5, 7));
     const constraints = [];
     for (let i = 0; i < m; i++) {
       constraints.push({
-        coef: Array.from({ length: n }, () => Math.floor(Math.random() * 7) - 2),
-        rel: '<=', rhs: Math.floor(Math.random() * 10)
+        coef: Array.from({ length: n }, () => ri(-2, 4)),
+        rel: '<=', rhs: ri(0, 9)
       });
     }
     /* ★ 最大化与最小化都要跑。曾经只测了 max，结果 min 方向上
@@ -272,14 +283,14 @@ console.log('\n════════ 混合整数规划（部分变量连续�
 {
   let cases = 0, ok = 0;
   for (let t = 0; t < 120; t++) {
-    const n = 2 + Math.floor(Math.random() * 2);
-    const m = 2 + Math.floor(Math.random() * 2);
-    const c = Array.from({ length: n }, () => 1 + Math.floor(Math.random() * 6));
+    const n = ri(2, 3);
+    const m = ri(2, 3);
+    const c = Array.from({ length: n }, () => ri(1, 6));
     const constraints = [];
     for (let i = 0; i < m; i++) {
       constraints.push({
-        coef: Array.from({ length: n }, () => Math.floor(Math.random() * 5)),
-        rel: '<=', rhs: 8 + Math.floor(Math.random() * 12)
+        coef: Array.from({ length: n }, () => ri(0, 4)),
+        rel: '<=', rhs: ri(8, 19)
       });
     }
     if (constraints.some(k => k.coef.every(v => v === 0))) continue;

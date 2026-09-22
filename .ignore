@@ -1,0 +1,11 @@
+# ripgrep / 搜索工具的忽略表（**只影响搜索，不影响 git**）
+#
+# 为什么不写进 .gitignore：index.html 是 GitHub Pages 的入口，必须入库。
+# 但它是 380 KB 的构建产物（源码的副本），任何一次全文搜索都会在里面命中一堆
+# 重复结果、把上下文挤爆，还会让人误以为「源码里已经改了」（其实命中在产物里）。
+# 所以：git 继续跟踪它，搜索时跳过它。
+index.html
+index-before.html
+preview/
+test/algorithm/*-bank.json
+_pending/

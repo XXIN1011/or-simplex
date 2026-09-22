@@ -1,96 +1,31 @@
 /* 用 Chrome headless + CDP 在"手机视口"下渲染页面、点击求解、截全页图，并抓运行时错误
    用法: node tools/screenshots/shot.js [页面文件] [输出png] [宽] [是否点求解] */
 'use strict';
-const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
-
-const CHROME = fs.existsSync('C:/Program Files/Google/Chrome/Application/chrome.exe')
-  ? 'C:/Program Files/Google/Chrome/Application/chrome.exe'
-  : 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
+const chrome = require('../../lib/chrome.js');
+const { sleep, resolveTarget } = chrome;
+const quiet = require('../../lib/quiet.js');
 
 /* 允许在文件名后带模块 hash，例如 `node tools/screenshots/shot.js "index.html#/sens" ...` */
-const rawTarget = process.argv[2] || 'index.html';
-const hashAt = rawTarget.indexOf('#');
-const pageFile = hashAt >= 0 ? rawTarget.slice(0, hashAt) : rawTarget;
-const wantHash = hashAt >= 0 ? rawTarget.slice(hashAt) : '';
+const T = resolveTarget(process.argv[2] || 'index.html');
+const wantHash = T.wantHash;
 const outPng   = process.argv[3] || 'shot.png';
 const width    = parseInt(process.argv[4] || '390', 10);
 const doClick  = (process.argv[5] || '1') === '1';
-
-const PORT = 9000 + Math.floor(Math.random() * 900);
-// 参数是 http(s) 开头就直接当线上地址用，否则当作本地文件
-const url = /^https?:\/\//i.test(pageFile)
-  ? pageFile
-  : 'file:///' + path.resolve(__dirname, '..', '..', pageFile).replace(/\\/g, '/');
 /* 应用现在有首页：默认进「单纯形法」模块，否则元素是隐藏的、量不到尺寸。
    想截其它模块就在文件名后带上 hash，例如 index.html#/sens */
-const pageUrl = url.indexOf('#') === -1 ? url + (wantHash || '#/simplex') : url;
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'orchrome-'));
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-class CDP {
-  constructor(ws) {
-    this.ws = ws; this.id = 0; this.pending = new Map(); this.events = [];
-    ws.onmessage = e => {
-      const m = JSON.parse(e.data);
-      if (m.id && this.pending.has(m.id)) {
-        const p = this.pending.get(m.id); this.pending.delete(m.id);
-        m.error ? p.reject(new Error(JSON.stringify(m.error))) : p.resolve(m.result);
-      } else if (m.method) {
-        this.events.push(m);
-      }
-    };
-  }
-  send(method, params, sessionId) {
-    const id = ++this.id;
-    return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
-      this.ws.send(JSON.stringify({ id, method, params: params || {}, sessionId }));
-    });
-  }
-}
+const pageUrl = T.pageUrl.indexOf('#') === -1 ? T.pageUrl + (wantHash || '#/simplex') : T.pageUrl;
 
 (async () => {
-  const child = spawn(CHROME, [
-    '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
-    '--disable-extensions', '--hide-scrollbars',
-    '--remote-debugging-port=' + PORT,
-    '--user-data-dir=' + tmp,
-    'about:blank'
-  ], { stdio: 'ignore' });
-
-  let ver = null;
-  for (let i = 0; i < 60; i++) {
-    try {
-      const r = await fetch('http://127.0.0.1:' + PORT + '/json/version');
-      ver = await r.json(); break;
-    } catch (e) { await sleep(250); }
-  }
-  if (!ver) { child.kill(); throw new Error('Chrome 调试端口未就绪'); }
-
-  const ws = new WebSocket(ver.webSocketDebuggerUrl);
-  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
-  const cdp = new CDP(ws);
-
-  const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
-  const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
-
-  await cdp.send('Page.enable', {}, sessionId);
-  await cdp.send('Runtime.enable', {}, sessionId);
-  await cdp.send('Log.enable', {}, sessionId);
-  await cdp.send('Emulation.setDeviceMetricsOverride',
-    { width, height: 844, deviceScaleFactor: 2, mobile: true }, sessionId);
-
-  // 页面加载前注入错误收集
-  await cdp.send('Page.addScriptToEvaluateOnNewDocument', {
-    source: 'window.__errors=[];window.addEventListener("error",function(e){window.__errors.push(String(e.message))});' +
-            'window.addEventListener("unhandledrejection",function(e){window.__errors.push("promise:"+e.reason)});'
-  }, sessionId);
-
-  await cdp.send('Page.navigate', { url: pageUrl }, sessionId);
-  await sleep(1000);
+  const q = quiet.begin('shot');
+  const sess = await chrome.launch({
+    url: pageUrl, width: width, captureErrors: true, enableLog: true, waitMs: 1000,
+    /* 本脚本额外把「未处理的 Promise 拒绝」也算进 window.__errors */
+    errorHookExtra: 'window.addEventListener("unhandledrejection",function(e){window.__errors.push("promise:"+e.reason)});'
+  });
+  const cdp = sess.cdp, sessionId = sess.sessionId;
+  const events = sess.events;
 
   if (doClick) {
     await cdp.send('Runtime.evaluate',
@@ -105,9 +40,7 @@ class CDP {
     : extraArg;
   // 第 7 个参数若为 dark，则模拟系统深色模式
   if ((process.argv[7] || '') === 'dark') {
-    await cdp.send('Emulation.setEmulatedMedia',
-      { features: [{ name: 'prefers-color-scheme', value: 'dark' }] }, sessionId);
-    await sleep(200);
+    await sess.setMedia('dark');
   }
   if (extraJs) {
     await cdp.send('Runtime.evaluate', { expression: extraJs }, sessionId);
@@ -140,7 +73,7 @@ class CDP {
   if (cdpErrors.length) { console.log('=== CDP 错误 ==='); cdpErrors.forEach(e => console.log(e)); }
   console.log('截图 ->', outPng);
 
-  ws.close(); child.kill();
-  await sleep(300);
+  q.end(probe.result.value.indexOf('"errors":[]') >= 0, '探针已打印，' + outPng);
+  await sess.close();
   process.exit(0);
 })().catch(e => { console.error('FAIL:', e.message); process.exit(1); });

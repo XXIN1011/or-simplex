@@ -21,11 +21,15 @@
   "scripts": {
     "build": "node src/build.js",
     "test": "node test/run-all.js",
-    "test:unit": "node --test test/unit/",
+    "test:unit": "node test/run-all.js --unit",
     "test:algorithm": "node test/run-all.js --algorithm",
     "test:ui": "node test/ui/verify-ui.js",
+    "check": "node tools/check-registry.js && node tools/check-no-dp.js",
+    "check:registry": "node tools/check-registry.js",
     "snapshot": "node test/algorithm/deep-snapshot.js",
-    "verify": "node src/build.js && node test/run-all.js && node test/ui/verify-ui.js",
+    "snapshot:dom": "node tools/dom-snapshot.js index.html preview/dom-snapshot.txt",
+    "audit": "node test/ui/audit.js --quiet",
+    "verify": "node src/build.js && npm run check && node test/run-all.js && node test/ui/verify-ui.js --quiet",
     "cli": "node src/cli.js"
   }
 }

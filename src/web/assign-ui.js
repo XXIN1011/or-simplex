@@ -24,6 +24,9 @@ var assignSymbols = assignment.assignSymbols;
 var inputPanel = require('./input-panel.js');
 var addScrollHints = inputPanel.addScrollHints;
 
+var dom = require('./dom.js');
+var $ = dom.$, esc = dom.esc, subs = dom.subs;
+
 (function () {
   'use strict';
 
@@ -36,15 +39,6 @@ var addScrollHints = inputPanel.addScrollHints;
      重绘时还能原样显示；转成数字只在求解那一刻做（readCost）。 */
   var state = { dir: 'min', rows: 0, cols: 0, cells: [] };
 
-  function $(id) { return document.getElementById(id); }
-  function esc(s) {
-    return String(s).replace(/[&<>"]/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
-    });
-  }
-  function subs(k) {
-    return String(k).replace(/[0-9]/g, function (d) { return '₀₁₂₃₄₅₆₇₈₉'[+d]; });
-  }
   function banner(msg) {
     $('asBanners').innerHTML = msg ? '<div class="banner err">' + esc(msg) + '</div>' : '';
   }
@@ -360,6 +354,19 @@ var addScrollHints = inputPanel.addScrollHints;
   }
 
   /* ===================== 启动 ===================== */
+  /* 输入区外壳（方向段控 + 矩阵容器 + 四个增减按钮）由共用组件生成，
+     与其它三个模块同一份实现；这里只是把「行/列」的文案与 id 传进去。
+     （cfg 里 addVar/delVar/addCon/delCon 四个键装的是**元素 id**，
+       对指派问题而言分别是 加行/减行/加列/减列 —— 键名沿用组件约定。） */
+  inputPanel.buildChrome({
+    mount: 'asPanel',
+    tbl: 'asInTbl', dirSeg: 'asDirSeg', tblClass: 'inp mtx',
+    dirOrder: ['min', 'max'],
+    addVar: 'asAddRow', delVar: 'asDelRow', addCon: 'asAddCol', delCon: 'asDelCol',
+    labels: { addVar: '+ 行', delVar: '− 行', addCon: '+ 列', delCon: '− 列' },
+    state: state
+  });
+
   Array.prototype.forEach.call($('asDirSeg').querySelectorAll('button'), function (b) {
     b.addEventListener('click', function () {
       state.dir = b.dataset.dir;

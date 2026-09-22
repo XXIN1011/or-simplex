@@ -10,24 +10,16 @@
    9) 显示模式三档：跟随系统 / 浅色 / 深色
 */
 'use strict';
-const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
+const chrome = require('../../lib/chrome.js');
+const { sleep, resolveTarget } = chrome;
+const quiet = require('../../lib/quiet.js');
 
-const CHROME = fs.existsSync('C:/Program Files/Google/Chrome/Application/chrome.exe')
-  ? 'C:/Program Files/Google/Chrome/Application/chrome.exe'
-  : 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
-
-const PORT = 9100 + Math.floor(Math.random() * 800);
-const target = process.argv[2] || 'index.html';
-const url = /^https?:\/\//i.test(target)
-  ? target
-  : 'file:///' + path.resolve(__dirname, '..', '..', target).replace(/\\/g, '/');
 /* 应用现在有首页：回归测试要先进到「单纯形法」模块，否则元素是隐藏的、量不到尺寸 */
-const pageUrl = url.indexOf('#') === -1 ? url + '#/simplex' : url;
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'orverify-'));
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+const T = resolveTarget(process.argv[2] || 'index.html', '#/simplex');
+const url = T.url;
+const pageUrl = T.pageUrl;
 
 const HELPERS = `(function(){
   function q(s){ return document.querySelector(s); }
@@ -60,59 +52,12 @@ const PROBE = `JSON.stringify({
   hints: document.querySelectorAll('.scroll-hint').length
 })`;
 
-class CDP {
-  constructor(ws) {
-    this.ws = ws; this.id = 0; this.pending = new Map(); this.events = [];
-    ws.onmessage = e => {
-      const m = JSON.parse(e.data);
-      if (m.id && this.pending.has(m.id)) {
-        const p = this.pending.get(m.id); this.pending.delete(m.id);
-        m.error ? p.reject(new Error(JSON.stringify(m.error))) : p.resolve(m.result);
-      } else if (m.method) this.events.push(m);
-    };
-  }
-  send(method, params, sessionId) {
-    const id = ++this.id;
-    return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
-      this.ws.send(JSON.stringify({ id, method, params: params || {}, sessionId }));
-    });
-  }
-}
-
 (async () => {
-  const child = spawn(CHROME, [
-    '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
-    '--remote-debugging-port=' + PORT, '--user-data-dir=' + tmp, 'about:blank'
-  ], { stdio: 'ignore' });
+  const q = quiet.begin('verify-ui');
+  const sess = await chrome.launch({ url: pageUrl, captureErrors: true, waitMs: 1100 });
+  const cdp = sess.cdp, sessionId = sess.sessionId;
 
-  let ver = null;
-  for (let i = 0; i < 60; i++) {
-    try { ver = await (await fetch('http://127.0.0.1:' + PORT + '/json/version')).json(); break; }
-    catch (e) { await sleep(250); }
-  }
-  if (!ver) { child.kill(); throw new Error('调试端口未就绪'); }
-
-  const ws = new WebSocket(ver.webSocketDebuggerUrl);
-  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
-  const cdp = new CDP(ws);
-  const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
-  const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
-  await cdp.send('Page.enable', {}, sessionId);
-  await cdp.send('Runtime.enable', {}, sessionId);
-  await cdp.send('Emulation.setDeviceMetricsOverride',
-    { width: 390, height: 844, deviceScaleFactor: 2, mobile: true }, sessionId);
-  await cdp.send('Page.addScriptToEvaluateOnNewDocument', {
-    source: 'window.__errors=[];window.addEventListener("error",function(e){window.__errors.push(String(e.message))});'
-  }, sessionId);
-  await cdp.send('Page.navigate', { url: pageUrl }, sessionId);
-  await sleep(1100);
-
-  const evl = async expr => {
-    const r = await cdp.send('Runtime.evaluate', { expression: expr, returnByValue: true }, sessionId);
-    if (r.exceptionDetails) throw new Error('页面执行异常: ' + JSON.stringify(r.exceptionDetails).slice(0, 220));
-    return r.result.value;
-  };
+  const evl = sess.evl;
   let pass = 0, fail = 0;
   const check = (ok, label, detail) => {
     ok ? pass++ : fail++;
@@ -1062,7 +1007,7 @@ class CDP {
     `data-theme=${t6.theme} 染色=${t6.meta} 错误=${t6.errors}`);
 
   console.log(`\n合计: ${pass} 通过 / ${fail} 失败`);
-  ws.close(); child.kill();
-  await sleep(300);
+  q.end(fail === 0, `合计 ${pass} 通过 / ${fail} 失败`);
+  await sess.close();
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('FAIL:', e.message); process.exit(1); });

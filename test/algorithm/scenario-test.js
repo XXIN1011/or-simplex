@@ -13,9 +13,15 @@ const fs = require('fs');
 const S = require('../../src/core/simplex.js');
 const F = require('../../src/core/format.js');
 const SC = require('../../src/core/scenario.js');
+const RNG = require('../lib/rng.js');
 
-const rnd = (a, b) => a + Math.random() * (b - a);
-const ri = (a, b) => Math.floor(rnd(a, b + 1));
+/* 随机扰动走固定种子（--seed=N 可复现其它批次）：以前用 Math.random()，
+   偶发失败无法复现——而这份套件又是「建表一致性」的唯一兜底，必须可复现。 */
+const SEED = RNG.resolveSeed(3);
+const R = RNG.rng(SEED);
+const rnd = R.between;
+const ri = R.ri;
+console.log(RNG.banner('场景分析', SEED));
 const q = v => Math.round(v * 2) / 2;          // 取到 0.5 的倍数，便于人看
 
 const bank = JSON.parse(fs.readFileSync(__dirname + '/random-bank.json', 'utf8'));

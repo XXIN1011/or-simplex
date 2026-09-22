@@ -25,11 +25,16 @@ var addScrollHints = inputPanel.addScrollHints;
 var tableRender = require('./table-render.js');
 var renderTable = tableRender.renderTable;
 var explain = tableRender.explain;
+
+var dom = require('./dom.js');
+var $ = dom.$, esc = dom.esc, subs = dom.subs;
+
 (function () {
   'use strict';
 
   /* 输入表：与单纯形法模块共用同一份组件实现，只是挂到 s* 的 id 上 */
   var panel = createInputPanel({
+    mount: 'sensPanel',
     tbl: 'sInTbl', dirSeg: 'sDirSeg',
     addVar: 'sAddVar', delVar: 'sDelVar', addCon: 'sAddCon', delCon: 'sDelCon',
     maxN: 6, maxM: 8,
@@ -40,12 +45,6 @@ var explain = tableRender.explain;
   var baseProb = null;  // 基准问题本身
   var last = null;      // 最近一次场景分析的结果
 
-  function $(id) { return document.getElementById(id); }
-  function esc(s) {
-    return String(s).replace(/[&<>"]/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
-    });
-  }
 
   /* ---------------- 基准题求解 ---------------- */
   function solveBase() {
@@ -299,9 +298,7 @@ var explain = tableRender.explain;
   }
 
   /* ---------------- 参数线性规划的结果 ---------------- */
-  function subs(k) {
-    return String(k).replace(/[0-9]/g, function (d) { return '₀₁₂₃₄₅₆₇₈₉'[+d]; });
-  }
+  /* 下标转换用 dom.js 的 subs（原先是本文件里的一份副本） */
   /* 下标 j 用的 Unicode 字符（直接写 'j' 会变成正体，看起来像变量名的一部分） */
   var SUBJ = 'ⱼ';
   /* 把 λ 的系数写成「+ λ」「− 2λ」这种带符号的样子 */

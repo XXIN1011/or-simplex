@@ -63,6 +63,9 @@ function main() {
     if (text.indexOf('\u0000') >= 0) continue;                  // 跳过二进制
     const lines = text.split(/\r?\n/);
     for (let i = 0; i < lines.length; i++) {
+      /* 行内逃生阀：这一行本身就是在**说明这条规则**（例如排错文档里写「别用 dp 前缀命名」），
+         标记 `check-no-dp:ignore` 即可跳过。它是给文档用的，别拿它来藏真代码。 */
+      if (lines[i].indexOf('check-no-dp:ignore') >= 0) continue;
       PATTERNS.forEach((p, pi) => {
         p.re.lastIndex = 0;
         if (p.re.test(lines[i])) {

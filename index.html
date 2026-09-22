@@ -1199,17 +1199,9 @@ html[data-theme="dark"] button.btn.primary:active{background-color:rgba(122,162,
   </header>
 
   <section class="card">
-    <div class="seg" id="dirSeg">
-      <button type="button" data-dir="max" class="on">max</button>
-      <button type="button" data-dir="min">min</button>
-    </div>
-    <div class="scroll"><table class="inp" id="inTbl"></table></div>
-    <div class="ctrls">
-      <button type="button" class="btn" id="addVar">+ 变量</button>
-      <button type="button" class="btn" id="delVar">− 变量</button>
-      <button type="button" class="btn" id="addCon">+ 约束</button>
-      <button type="button" class="btn" id="delCon">− 约束</button>
-    </div>
+    <!-- 输入区外壳（方向段控 + 输入表 + 增减按钮）由 src/web/input-panel.js 的
+         buildChrome() 生成，四个模块共用同一份实现；这里只留挂载点。 -->
+    <div id="simplexPanel"></div>
     <div class="actions">
       <button type="button" class="btn primary" id="solveBtn">求　解</button>
     </div>
@@ -1241,17 +1233,7 @@ html[data-theme="dark"] button.btn.primary:active{background-color:rgba(122,162,
     </header>
 
     <section class="card">
-      <div class="seg" id="sDirSeg">
-        <button type="button" data-dir="max" class="on">max</button>
-        <button type="button" data-dir="min">min</button>
-      </div>
-      <div class="scroll"><table class="inp" id="sInTbl"></table></div>
-      <div class="ctrls">
-        <button type="button" class="btn" id="sAddVar">+ 变量</button>
-        <button type="button" class="btn" id="sDelVar">− 变量</button>
-        <button type="button" class="btn" id="sAddCon">+ 约束</button>
-        <button type="button" class="btn" id="sDelCon">− 约束</button>
-      </div>
+      <div id="sensPanel"></div>
       <div class="actions">
         <button type="button" class="btn primary" id="sSolveBtn">求基准最优解</button>
       </div>
@@ -1271,17 +1253,7 @@ html[data-theme="dark"] button.btn.primary:active{background-color:rgba(122,162,
     </header>
 
     <section class="card">
-      <div class="seg" id="ipDirSeg">
-        <button type="button" data-dir="max" class="on">max</button>
-        <button type="button" data-dir="min">min</button>
-      </div>
-      <div class="scroll"><table class="inp" id="ipInTbl"></table></div>
-      <div class="ctrls">
-        <button type="button" class="btn" id="ipAddVar">+ 变量</button>
-        <button type="button" class="btn" id="ipDelVar">− 变量</button>
-        <button type="button" class="btn" id="ipAddCon">+ 约束</button>
-        <button type="button" class="btn" id="ipDelCon">− 约束</button>
-      </div>
+      <div id="ipPanel"></div>
       <div id="ipTypes"></div>
       <div class="actions">
         <button type="button" class="btn primary" id="ipSolveBtn">求　解</button>
@@ -1301,17 +1273,7 @@ html[data-theme="dark"] button.btn.primary:active{background-color:rgba(122,162,
     </header>
 
     <section class="card">
-      <div class="seg" id="asDirSeg">
-        <button type="button" data-dir="min" class="on">min</button>
-        <button type="button" data-dir="max">max</button>
-      </div>
-      <div class="scroll"><table class="inp mtx" id="asInTbl"></table></div>
-      <div class="ctrls">
-        <button type="button" class="btn" id="asAddRow">+ 行</button>
-        <button type="button" class="btn" id="asDelRow">− 行</button>
-        <button type="button" class="btn" id="asAddCol">+ 列</button>
-        <button type="button" class="btn" id="asDelCol">− 列</button>
-      </div>
+      <div id="asPanel"></div>
       <div class="sens-note">行 = 人员（也可以是机器、车辆…），列 = 工作（也可以是任务、地点…）。
         单元格里填数字（费用或收益），<b>填 × 表示这个人不能做这件事</b>；空格按 0 计。
         「− 行 / − 列」删掉的是最后一行 / 最后一列。人数与工作数不一样也能算，程序会自动补虚拟行列。</div>
@@ -5710,6 +5672,9 @@ var assignSymbols = assignment.assignSymbols;
 var inputPanel = require('./input-panel.js');
 var addScrollHints = inputPanel.addScrollHints;
 
+var dom = require('./dom.js');
+var $ = dom.$, esc = dom.esc, subs = dom.subs;
+
 (function () {
   'use strict';
 
@@ -5722,15 +5687,6 @@ var addScrollHints = inputPanel.addScrollHints;
      重绘时还能原样显示；转成数字只在求解那一刻做（readCost）。 */
   var state = { dir: 'min', rows: 0, cols: 0, cells: [] };
 
-  function $(id) { return document.getElementById(id); }
-  function esc(s) {
-    return String(s).replace(/[&<>"]/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
-    });
-  }
-  function subs(k) {
-    return String(k).replace(/[0-9]/g, function (d) { return '₀₁₂₃₄₅₆₇₈₉'[+d]; });
-  }
   function banner(msg) {
     $('asBanners').innerHTML = msg ? '<div class="banner err">' + esc(msg) + '</div>' : '';
   }
@@ -6046,6 +6002,19 @@ var addScrollHints = inputPanel.addScrollHints;
   }
 
   /* ===================== 启动 ===================== */
+  /* 输入区外壳（方向段控 + 矩阵容器 + 四个增减按钮）由共用组件生成，
+     与其它三个模块同一份实现；这里只是把「行/列」的文案与 id 传进去。
+     （cfg 里 addVar/delVar/addCon/delCon 四个键装的是**元素 id**，
+       对指派问题而言分别是 加行/减行/加列/减列 —— 键名沿用组件约定。） */
+  inputPanel.buildChrome({
+    mount: 'asPanel',
+    tbl: 'asInTbl', dirSeg: 'asDirSeg', tblClass: 'inp mtx',
+    dirOrder: ['min', 'max'],
+    addVar: 'asAddRow', delVar: 'asDelRow', addCon: 'asAddCol', delCon: 'asDelCol',
+    labels: { addVar: '+ 行', delVar: '− 行', addCon: '+ 列', delCon: '− 列' },
+    state: state
+  });
+
   Array.prototype.forEach.call($('asDirSeg').querySelectorAll('button'), function (b) {
     b.addEventListener('click', function () {
       state.dir = b.dataset.dir;
@@ -6103,6 +6072,55 @@ require('./settings-ui.js');   /* 设置页 + 显示模式（要在路由之前�
 require('./router.js');        /* 首页 / 模块路由：最后启动 */
 
 module.exports = {};
+});
+
+__define__("src/web/dom.js", function (module, exports, require) {
+/* =========================================================================
+   共用小工具：取元素 / HTML 文本转义 / 下标数字
+   -------------------------------------------------------------------------
+   以前这三点在界面模块里各抄了一份：esc() 出现在 ui / sens-ui / ip-ui /
+   assign-ui / input-panel 五个文件（逐字节相同），$(id) 出现四次，subs() 三
+   次。改一处（例如以后要连单引号一起转义）得改五个地方，漏一个就是不一致。
+
+   ★ 语言纪律：本文件会被原样打包进单文件页面，必须保持 ES5（var / 不用箭头
+     函数 / 不用模板串），否则老 WebView 上会直接语法错误。
+   ★ 这里只放「把数据摆到 DOM 上」的零散工具，不放业务逻辑，也不碰 core。
+   ========================================================================= */
+'use strict';
+
+/**
+ * $(id) —— 取元素。界面里到处都在用，短名字是为了让模板拼接读起来干净。
+ * @param {string} id
+ * @returns {HTMLElement|null}
+ */
+function $(id) { return document.getElementById(id); }
+
+/**
+ * esc(s) —— 拼 HTML 字符串时给数据做转义。
+ * 只要是要塞进 innerHTML 的动态文本都过这一道，避免用户输入里的 < > & "
+ * 把标签撕开（本项目输入以数字为主，但提示文案里也会带变量名与用户填的表达式）。
+ * @param {*} s
+ * @returns {string}
+ */
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+  });
+}
+
+/**
+ * subs(k) —— 把名称里的数字换成 Unicode 下标（x2 -> x₂）。
+ * 界面上直接用 'x2' 会被读成「x 乘 2」或看不出是下标，故统一转成下标字符。
+ * （core/scenario.js 里有一个同语义的 sub()，但分层规定 core 不许 require web，
+ *   所以那份保持独立；两边都只做同一张表的一次映射。）
+ * @param {string|number} k
+ * @returns {string}
+ */
+function subs(k) {
+  return String(k).replace(/[0-9]/g, function (d) { return '₀₁₂₃₄₅₆₇₈₉'[+d]; });
+}
+
+module.exports = { $: $, esc: esc, subs: subs };
 });
 
 __define__("src/web/graph.js", function (module, exports, require) {
@@ -6421,6 +6439,9 @@ __define__("src/web/input-panel.js", function (module, exports, require) {
    ========================================================================= */
 'use strict';
 
+var dom = require('./dom.js');
+var esc = dom.esc;
+
 /* 表格横向溢出时给一句提示：手机上看不见滚动条，不说一声用户不知道右边还有内容。
    只在真的溢出（scrollWidth > clientWidth）时才插入，且不重复插入。 */
 function addScrollHints(root) {
@@ -6438,9 +6459,58 @@ function addScrollHints(root) {
   });
 }
 
+/* =========================================================================
+   输入区「外壳」的生成：方向段控 + 输入表容器 + 四个增减按钮
+   -------------------------------------------------------------------------
+   这四样东西在四个模块里长得一模一样，只有 id 前缀、按钮文案和表格类名不同。
+   以前它们是四段几乎逐行相同的 HTML 抄在 template.html 里（46 个 id 里有 24 个
+   是这种副本）——改一处（比如换按钮文案、加个 aria）就得改四处，漏一处就不一致。
+
+   现在模板里每个模块只留一个挂载点（如 <div id="simplexPanel"></div>），
+   由调用方给一份配置，这里统一生成。**生成的 id / class / data-* 与原来逐字一致**
+   （回归脚本与截图都依赖这些 id，例如 `#dirSeg button[data-dir="min"]`）。
+
+   cfg 追加字段：
+     mount     'simplexPanel'   外壳插进哪个元素；不给就沿用模板里已有的静态外壳
+     tblClass  'inp' / 'inp mtx' 输入表的类（指派问题的矩阵多一个 mtx）
+     dirOrder  ['max','min']    段控顺序（指派问题默认 min 在前）
+     labels    { addVar, delVar, addCon, delCon } 四个按钮的文案
+   ========================================================================= */
+var DEFAULT_LABELS = { addVar: '+ 变量', delVar: '− 变量', addCon: '+ 约束', delCon: '− 约束' };
+
+function buildChrome(cfg) {
+  if (!cfg.mount) return;                       // 没给挂载点：模板里已有静态外壳
+  var mount = document.getElementById(cfg.mount);
+  if (!mount) throw new Error('输入区挂载点 #' + cfg.mount + ' 不在页面上');
+
+  var state = cfg.state || {};
+  var order = cfg.dirOrder || ['max', 'min'];
+  /* 初始高亮要与 state.dir 一致：模板版靠手写 class="on"，这里由状态推出来，
+     少一个「改了默认方向忘了改 HTML」的坑。 */
+  var on = (order.indexOf(state.dir) >= 0) ? state.dir : order[0];
+  var L = cfg.labels || DEFAULT_LABELS;
+
+  var html = '<div class="seg" id="' + cfg.dirSeg + '">';
+  for (var i = 0; i < order.length; i++) {
+    html += '<button type="button" data-dir="' + order[i] + '"'
+      + (order[i] === on ? ' class="on"' : '') + '>' + order[i] + '</button>';
+  }
+  html += '</div>'
+    + '<div class="scroll"><table class="' + (cfg.tblClass || 'inp') + '" id="' + cfg.tbl + '"></table></div>'
+    + '<div class="ctrls">'
+    + '<button type="button" class="btn" id="' + cfg.addVar + '">' + L.addVar + '</button>'
+    + '<button type="button" class="btn" id="' + cfg.delVar + '">' + L.delVar + '</button>'
+    + '<button type="button" class="btn" id="' + cfg.addCon + '">' + L.addCon + '</button>'
+    + '<button type="button" class="btn" id="' + cfg.delCon + '">' + L.delCon + '</button>'
+    + '</div>';
+
+  mount.innerHTML = html;
+}
+
 /* cfg = { tbl, dirSeg, addVar, delVar, addCon, delCon, state, onChange, maxN, maxM }
    state = { dir, n, m, c: [], cons: [] } */
 function createInputPanel(cfg) {
+  buildChrome(cfg);                             // 外壳先落地，下面的 init() 才取得到元素
   var MAXN = cfg.maxN || 6, MAXM = cfg.maxM || 8;
   var state = cfg.state;
   var onChange = cfg.onChange || function () {};
@@ -6454,11 +6524,6 @@ function createInputPanel(cfg) {
     if (v === undefined || v === null || isNaN(v)) return '';
     if (Math.abs(v) < 1e-9) return '';
     return (Math.abs(v - Math.round(v)) < 1e-9) ? String(Math.round(v)) : String(v);
-  }
-  function esc(s) {
-    return String(s).replace(/[&<>"]/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
-    });
   }
 
   function render() {
@@ -6619,8 +6684,9 @@ function createInputPanel(cfg) {
   };
 }
 
-/* 对外接口：createInputPanel 建表 / addScrollHints 插「左右滑动」提示 */
+/* 对外接口：buildChrome 建外壳 / createInputPanel 建表 + 绑事件 / addScrollHints 插提示 */
 module.exports = {
+  buildChrome: buildChrome,
   createInputPanel: createInputPanel,
   addScrollHints: addScrollHints
 };
@@ -6657,6 +6723,10 @@ var renderGraph = graph.renderGraph;
 var tableRender = require('./table-render.js');
 var renderTable = tableRender.renderTable;
 var explain = tableRender.explain;
+
+var dom = require('./dom.js');
+var $ = dom.$, esc = dom.esc, subs = dom.subs;
+
 (function () {
   'use strict';
 
@@ -6665,6 +6735,7 @@ var explain = tableRender.explain;
   var MAX_SHOW_ROWS = 300;         // 隐枚举表一次最多铺这么多行，多了折叠
 
   var panel = createInputPanel({
+    mount: 'ipPanel',
     tbl: 'ipInTbl', dirSeg: 'ipDirSeg',
     addVar: 'ipAddVar', delVar: 'ipDelVar', addCon: 'ipAddCon', delCon: 'ipDelCon',
     maxN: 8, maxM: 8,
@@ -6674,15 +6745,6 @@ var explain = tableRender.explain;
 
   var last = null;
 
-  function $(id) { return document.getElementById(id); }
-  function esc(s) {
-    return String(s).replace(/[&<>"]/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
-    });
-  }
-  function subs(k) {
-    return String(k).replace(/[0-9]/g, function (d) { return '₀₁₂₃₄₅₆₇₈₉'[+d]; });
-  }
   function num(v) { return fmtNum(v); }
   function banner(msg, kind) {
     $('ipBanners').innerHTML = msg
@@ -7246,7 +7308,20 @@ var addScrollHints = inputPanel.addScrollHints;
 (function () {
   'use strict';
 
-  var MODULES = ['home', 'simplex', 'sens', 'ip', 'assign', 'settings'];
+  /* 模块清单**从模板里读**：一个模块 = 一个 <div class="mod" id="mod-xxx">。
+     以前这里硬编码一个数组，加模块要同时改模板（容器）、这份数组、boot.js
+     三处，漏一处就是「点卡片没反应」或「底栏高亮错位」——现在只剩模板一处。
+     （缺容器、href 写错这类问题由 tools/check-registry.js 静态检查兜住。） */
+  function moduleNames() {
+    var out = [];
+    Array.prototype.forEach.call(document.querySelectorAll('.mod'), function (el) {
+      var id = el.id || '';
+      if (id.indexOf('mod-') === 0) out.push(id.slice(4));
+    });
+    return out;
+  }
+
+  var MODULES = moduleNames();
 
   function current() {
     var h = (location.hash || '').replace(/^#\/?/, '').replace(/\/+$/, '');
@@ -7347,11 +7422,16 @@ var addScrollHints = inputPanel.addScrollHints;
 var tableRender = require('./table-render.js');
 var renderTable = tableRender.renderTable;
 var explain = tableRender.explain;
+
+var dom = require('./dom.js');
+var $ = dom.$, esc = dom.esc, subs = dom.subs;
+
 (function () {
   'use strict';
 
   /* 输入表：与单纯形法模块共用同一份组件实现，只是挂到 s* 的 id 上 */
   var panel = createInputPanel({
+    mount: 'sensPanel',
     tbl: 'sInTbl', dirSeg: 'sDirSeg',
     addVar: 'sAddVar', delVar: 'sDelVar', addCon: 'sAddCon', delCon: 'sDelCon',
     maxN: 6, maxM: 8,
@@ -7362,12 +7442,6 @@ var explain = tableRender.explain;
   var baseProb = null;  // 基准问题本身
   var last = null;      // 最近一次场景分析的结果
 
-  function $(id) { return document.getElementById(id); }
-  function esc(s) {
-    return String(s).replace(/[&<>"]/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
-    });
-  }
 
   /* ---------------- 基准题求解 ---------------- */
   function solveBase() {
@@ -7621,9 +7695,7 @@ var explain = tableRender.explain;
   }
 
   /* ---------------- 参数线性规划的结果 ---------------- */
-  function subs(k) {
-    return String(k).replace(/[0-9]/g, function (d) { return '₀₁₂₃₄₅₆₇₈₉'[+d]; });
-  }
+  /* 下标转换用 dom.js 的 subs（原先是本文件里的一份副本） */
   /* 下标 j 用的 Unicode 字符（直接写 'j' 会变成正体，看起来像变量名的一部分） */
   var SUBJ = 'ⱼ';
   /* 把 λ 的系数写成「+ λ」「− 2λ」这种带符号的样子 */
@@ -8007,12 +8079,16 @@ var tableRender = require('./table-render.js');
 var renderTable = tableRender.renderTable;
 var explain = tableRender.explain;
 
+var dom = require('./dom.js');
+var $ = dom.$, esc = dom.esc;
+
 (function () {
   'use strict';
 
   /* 默认打开即为空状态：0 个决策变量、0 个约束，题目全部由用户自己搭建。
      输入表逻辑抽在 input-panel.js，单纯形法与灵敏度分析两个模块共用一份实现。 */
   var panel = createInputPanel({
+    mount: 'simplexPanel',
     tbl: 'inTbl', dirSeg: 'dirSeg',
     addVar: 'addVar', delVar: 'delVar', addCon: 'addCon', delCon: 'delCon',
     maxN: 6, maxM: 8,
@@ -8021,13 +8097,7 @@ var explain = tableRender.explain;
   });
   var state = panel.state;
 
-  /* ---------------- 工具 ---------------- */
-  function $(id) { return document.getElementById(id); }
-  function esc(s) {
-    return String(s).replace(/[&<>"]/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
-    });
-  }
+  /* ---------------- 工具（共用实现见 dom.js） ---------------- */
 
   /* 输入改动后把旧结果标灰，避免"结果与输入不符"的误读 */
   function markStale() {

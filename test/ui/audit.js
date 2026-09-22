@@ -1,52 +1,20 @@
 /* 可访问性 / 移动端体验审查：触摸目标尺寸、文字对比度、表单标注、字号、横向溢出
    用法: node test/ui/audit.js [页面文件或URL] [dark] */
 'use strict';
-const { spawn } = require('child_process');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-
-const CHROME = fs.existsSync('C:/Program Files/Google/Chrome/Application/chrome.exe')
-  ? 'C:/Program Files/Google/Chrome/Application/chrome.exe'
-  : 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
+const chrome = require('../../lib/chrome.js');
+const { sleep, resolveTarget } = chrome;
+const quiet = require('../../lib/quiet.js');
 
 /* 允许在文件名后带模块 hash，例如 `node test/ui/audit.js "index.html#/sens"` */
-const rawTarget = process.argv[2] || 'index.html';
-const hashAt = rawTarget.indexOf('#');
-const pageFile = hashAt >= 0 ? rawTarget.slice(0, hashAt) : rawTarget;
-const wantHash = hashAt >= 0 ? rawTarget.slice(hashAt) : '';
+const T = resolveTarget(process.argv[2] || 'index.html');
+const wantHash = T.wantHash;
 const dark = (process.argv[3] || '') === 'dark';
 const WIDTH = 390;
-
-const PORT = 9200 + Math.floor(Math.random() * 700);
-const url = /^https?:\/\//i.test(pageFile)
-  ? pageFile
-  : 'file:///' + path.resolve(__dirname, '..', '..', pageFile).replace(/\\/g, '/');
+const url = T.url;
 /* 应用现在有首页：默认检查「单纯形法」模块，否则元素隐藏、量不到尺寸。
    想查其它模块就带上 hash，例如 "index.html#/sens" */
-const pageUrl = url.indexOf('#') === -1 ? url + (wantHash || '#/simplex') : url;
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'oraudit-'));
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-class CDP {
-  constructor(ws) {
-    this.ws = ws; this.id = 0; this.pending = new Map(); this.events = [];
-    ws.onmessage = e => {
-      const m = JSON.parse(e.data);
-      if (m.id && this.pending.has(m.id)) {
-        const p = this.pending.get(m.id); this.pending.delete(m.id);
-        m.error ? p.reject(new Error(JSON.stringify(m.error))) : p.resolve(m.result);
-      } else if (m.method) this.events.push(m);
-    };
-  }
-  send(method, params, sessionId) {
-    const id = ++this.id;
-    return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
-      this.ws.send(JSON.stringify({ id, method, params: params || {}, sessionId }));
-    });
-  }
-}
+const pageUrl = T.pageUrl.indexOf('#') === -1 ? T.pageUrl + (wantHash || '#/simplex') : T.pageUrl;
+const isRemote = T.isRemote;
 
 /* 先搭一道有代表性的题（2 变量 3 约束，含 = 与 ≥、负数），再求解，
    这样审查能覆盖迭代表、标准化、图解法、结论、对偶解全部区块 */
@@ -237,45 +205,15 @@ const AUDIT = `(function(){
 })()`;
 
 (async () => {
-  const child = spawn(CHROME, [
-    '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
-    '--disable-extensions', '--hide-scrollbars',
-    '--remote-debugging-port=' + PORT, '--user-data-dir=' + tmp, 'about:blank'
-  ], { stdio: 'ignore' });
-
-  let ver = null;
-  for (let i = 0; i < 60; i++) {
-    try { ver = await (await fetch('http://127.0.0.1:' + PORT + '/json/version')).json(); break; }
-    catch (e) { await sleep(250); }
-  }
-  if (!ver) { child.kill(); throw new Error('Chrome 调试端口未就绪'); }
-
-  const ws = new WebSocket(ver.webSocketDebuggerUrl);
-  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
-  const cdp = new CDP(ws);
-
-  const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
-  const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
-
-  await cdp.send('Page.enable', {}, sessionId);
-  await cdp.send('Runtime.enable', {}, sessionId);
-  await cdp.send('Emulation.setDeviceMetricsOverride',
-    { width: WIDTH, height: 844, deviceScaleFactor: 2, mobile: true }, sessionId);
-  await cdp.send('Page.addScriptToEvaluateOnNewDocument', {
-    source: 'window.__errors=[];window.addEventListener("error",function(e){window.__errors.push(String(e.message))});'
-  }, sessionId);
-
-  if (dark) {
-    await cdp.send('Emulation.setEmulatedMedia',
-      { features: [{ name: 'prefers-color-scheme', value: 'dark' }] }, sessionId);
-  }
-
-  await cdp.send('Page.navigate', { url: pageUrl }, sessionId);
+  const q = quiet.begin('audit');
   /* 审查远程 URL 时要多等一会儿：CDN 慢的时候元素还没渲染完就量尺寸，
      会量出一堆「触摸目标过小」的假警（本地从不出现，线上偶发）。
      所以本地 1200ms、远程 2600ms。 */
-  const isRemote = /^https?:/i.test(url);
-  await sleep(isRemote ? 2600 : 1200);
+  const sess = await chrome.launch({
+    url: pageUrl, width: WIDTH, waitMs: isRemote ? 2600 : 1200,
+    captureErrors: true, media: dark ? 'dark' : null
+  });
+  const cdp = sess.cdp, sessionId = sess.sessionId;
   await cdp.send('Runtime.evaluate',
     { expression: wantHash === '#/sens' ? SENS_SETUP : SETUP }, sessionId);
   await sleep(isRemote ? 1400 : 900);
@@ -311,7 +249,8 @@ const AUDIT = `(function(){
   console.log(`       viewport=${data.viewport}`);
   console.log(`       横向溢出=${data.hOverflow ? '是（' + data.scrollW + ' > ' + data.innerW + '）' : '否'}`);
 
-  ws.close(); child.kill();
-  await sleep(300);
+  q.end(data.smallTargets.length === 0 && data.tinyFonts.length === 0 && !data.hOverflow,
+    `触摸目标<44px ${data.smallTargets.length} 个 / 小字号 ${data.tinyFonts.length} 个 / 横向溢出 ${data.hOverflow ? '有' : '无'}`);
+  await sess.close();
   process.exit(0);
 })().catch(e => { console.error('FAIL:', e.message); process.exit(1); });

@@ -1199,17 +1199,9 @@ html[data-theme="dark"] button.btn.primary:active{background-color:rgba(122,162,
   </header>
 
   <section class="card">
-    <div class="seg" id="dirSeg">
-      <button type="button" data-dir="max" class="on">max</button>
-      <button type="button" data-dir="min">min</button>
-    </div>
-    <div class="scroll"><table class="inp" id="inTbl"></table></div>
-    <div class="ctrls">
-      <button type="button" class="btn" id="addVar">+ 变量</button>
-      <button type="button" class="btn" id="delVar">− 变量</button>
-      <button type="button" class="btn" id="addCon">+ 约束</button>
-      <button type="button" class="btn" id="delCon">− 约束</button>
-    </div>
+    <!-- 输入区外壳（方向段控 + 输入表 + 增减按钮）由 src/web/input-panel.js 的
+         buildChrome() 生成，四个模块共用同一份实现；这里只留挂载点。 -->
+    <div id="simplexPanel"></div>
     <div class="actions">
       <button type="button" class="btn primary" id="solveBtn">求　解</button>
     </div>
@@ -1241,17 +1233,7 @@ html[data-theme="dark"] button.btn.primary:active{background-color:rgba(122,162,
     </header>
 
     <section class="card">
-      <div class="seg" id="sDirSeg">
-        <button type="button" data-dir="max" class="on">max</button>
-        <button type="button" data-dir="min">min</button>
-      </div>
-      <div class="scroll"><table class="inp" id="sInTbl"></table></div>
-      <div class="ctrls">
-        <button type="button" class="btn" id="sAddVar">+ 变量</button>
-        <button type="button" class="btn" id="sDelVar">− 变量</button>
-        <button type="button" class="btn" id="sAddCon">+ 约束</button>
-        <button type="button" class="btn" id="sDelCon">− 约束</button>
-      </div>
+      <div id="sensPanel"></div>
       <div class="actions">
         <button type="button" class="btn primary" id="sSolveBtn">求基准最优解</button>
       </div>
@@ -1271,17 +1253,7 @@ html[data-theme="dark"] button.btn.primary:active{background-color:rgba(122,162,
     </header>
 
     <section class="card">
-      <div class="seg" id="ipDirSeg">
-        <button type="button" data-dir="max" class="on">max</button>
-        <button type="button" data-dir="min">min</button>
-      </div>
-      <div class="scroll"><table class="inp" id="ipInTbl"></table></div>
-      <div class="ctrls">
-        <button type="button" class="btn" id="ipAddVar">+ 变量</button>
-        <button type="button" class="btn" id="ipDelVar">− 变量</button>
-        <button type="button" class="btn" id="ipAddCon">+ 约束</button>
-        <button type="button" class="btn" id="ipDelCon">− 约束</button>
-      </div>
+      <div id="ipPanel"></div>
       <div id="ipTypes"></div>
       <div class="actions">
         <button type="button" class="btn primary" id="ipSolveBtn">求　解</button>
@@ -1301,17 +1273,7 @@ html[data-theme="dark"] button.btn.primary:active{background-color:rgba(122,162,
     </header>
 
     <section class="card">
-      <div class="seg" id="asDirSeg">
-        <button type="button" data-dir="min" class="on">min</button>
-        <button type="button" data-dir="max">max</button>
-      </div>
-      <div class="scroll"><table class="inp mtx" id="asInTbl"></table></div>
-      <div class="ctrls">
-        <button type="button" class="btn" id="asAddRow">+ 行</button>
-        <button type="button" class="btn" id="asDelRow">− 行</button>
-        <button type="button" class="btn" id="asAddCol">+ 列</button>
-        <button type="button" class="btn" id="asDelCol">− 列</button>
-      </div>
+      <div id="asPanel"></div>
       <div class="sens-note">行 = 人员（也可以是机器、车辆…），列 = 工作（也可以是任务、地点…）。
         单元格里填数字（费用或收益），<b>填 × 表示这个人不能做这件事</b>；空格按 0 计。
         「− 行 / − 列」删掉的是最后一行 / 最后一列。人数与工作数不一样也能算，程序会自动补虚拟行列。</div>

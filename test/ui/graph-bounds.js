@@ -2,44 +2,12 @@
    做法：对多道题分别求解，读取 svg.getBBox() 与 viewBox 比较
    用法: node test/ui/graph-bounds.js [页面文件或URL] */
 'use strict';
-const { spawn } = require('child_process');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+const chrome = require('../../lib/chrome.js');
+const { sleep, resolveTarget } = chrome;
+const quiet = require('../../lib/quiet.js');
 
-const CHROME = fs.existsSync('C:/Program Files/Google/Chrome/Application/chrome.exe')
-  ? 'C:/Program Files/Google/Chrome/Application/chrome.exe'
-  : 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
-
-const pageFile = process.argv[2] || 'index.html';
-const PORT = 9400 + Math.floor(Math.random() * 500);
-const url = /^https?:\/\//i.test(pageFile)
-  ? pageFile
-  : 'file:///' + path.resolve(__dirname, '..', '..', pageFile).replace(/\\/g, '/');
 /* 应用现在有首页：这些检查都针对「单纯形法」模块，先进去，否则元素隐藏、量不到尺寸 */
-const pageUrl = url.indexOf('#') === -1 ? url + '#/simplex' : url;
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'orbounds-'));
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-class CDP {
-  constructor(ws) {
-    this.ws = ws; this.id = 0; this.pending = new Map();
-    ws.onmessage = e => {
-      const m = JSON.parse(e.data);
-      if (m.id && this.pending.has(m.id)) {
-        const p = this.pending.get(m.id); this.pending.delete(m.id);
-        m.error ? p.reject(new Error(JSON.stringify(m.error))) : p.resolve(m.result);
-      }
-    };
-  }
-  send(method, params, sessionId) {
-    const id = ++this.id;
-    return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
-      this.ws.send(JSON.stringify({ id, method, params: params || {}, sessionId }));
-    });
-  }
-}
+const pageUrl = resolveTarget(process.argv[2] || 'index.html', '#/simplex').pageUrl;
 
 /* 几道有代表性的题：顶点贴右边缘、顶点在坐标轴上、大数值、小数值 */
 const CASES = [
@@ -122,30 +90,9 @@ const CHECK = `(function(){
 })()`;
 
 (async () => {
-  const child = spawn(CHROME, [
-    '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
-    '--disable-extensions', '--hide-scrollbars',
-    '--remote-debugging-port=' + PORT, '--user-data-dir=' + tmp, 'about:blank'
-  ], { stdio: 'ignore' });
-
-  let ver = null;
-  for (let i = 0; i < 60; i++) {
-    try { ver = await (await fetch('http://127.0.0.1:' + PORT + '/json/version')).json(); break; }
-    catch (e) { await sleep(250); }
-  }
-  if (!ver) { child.kill(); throw new Error('Chrome 调试端口未就绪'); }
-
-  const ws = new WebSocket(ver.webSocketDebuggerUrl);
-  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
-  const cdp = new CDP(ws);
-  const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
-  const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
-  await cdp.send('Page.enable', {}, sessionId);
-  await cdp.send('Runtime.enable', {}, sessionId);
-  await cdp.send('Emulation.setDeviceMetricsOverride',
-    { width: 390, height: 844, deviceScaleFactor: 2, mobile: true }, sessionId);
-  await cdp.send('Page.navigate', { url: pageUrl }, sessionId);
-  await sleep(1200);
+  const q = quiet.begin('graph-bounds');
+  const sess = await chrome.launch({ url: pageUrl, waitMs: 1200 });
+  const cdp = sess.cdp, sessionId = sess.sessionId;
   await cdp.send('Runtime.evaluate', { expression: HELPERS }, sessionId);
 
   console.log('===== 图解法内容是否超出画布 =====\n');
@@ -173,7 +120,7 @@ const CHECK = `(function(){
   }
   console.log(`合计: ${CASES.length - bad} 通过 / ${bad} 越界`);
 
-  ws.close(); child.kill();
-  await sleep(300);
+  q.end(bad === 0, `合计 ${CASES.length - bad} 通过 / ${bad} 越界`);
+  await sess.close();
   process.exit(bad ? 1 : 0);
 })().catch(e => { console.error('FAIL:', e.message); process.exit(1); });

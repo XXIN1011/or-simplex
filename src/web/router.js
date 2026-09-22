@@ -13,7 +13,20 @@ var addScrollHints = inputPanel.addScrollHints;
 (function () {
   'use strict';
 
-  var MODULES = ['home', 'simplex', 'sens', 'ip', 'assign', 'settings'];
+  /* 模块清单**从模板里读**：一个模块 = 一个 <div class="mod" id="mod-xxx">。
+     以前这里硬编码一个数组，加模块要同时改模板（容器）、这份数组、boot.js
+     三处，漏一处就是「点卡片没反应」或「底栏高亮错位」——现在只剩模板一处。
+     （缺容器、href 写错这类问题由 tools/check-registry.js 静态检查兜住。） */
+  function moduleNames() {
+    var out = [];
+    Array.prototype.forEach.call(document.querySelectorAll('.mod'), function (el) {
+      var id = el.id || '';
+      if (id.indexOf('mod-') === 0) out.push(id.slice(4));
+    });
+    return out;
+  }
+
+  var MODULES = moduleNames();
 
   function current() {
     var h = (location.hash || '').replace(/^#\/?/, '').replace(/\/+$/, '');

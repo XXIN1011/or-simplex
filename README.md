@@ -183,73 +183,23 @@ node src/cli.js 题目.json --integer       # 按整数规划求解（四种方�
 两层之间靠显式 `require` 交互，不再有跨文件的全局变量。
 
 ```
-index.html           成品（单文件，构建产物）—— 必须留在根，它是 GitHub Pages 的入口
-package.json         npm 脚本 / 库入口 / CLI 入口
-README.md            项目说明
-HANDOFF.md           交接手册（给接手本项目的 agent 看）
-src/
-  index.js            库的统一出口（require('or-simplex')）
-  cli.js              命令行入口（node src/cli.js）
-  build.js            构建：迷你打包器，把 core/ + web/ 打成单文件 index.html
-  template.html       HTML 骨架 + CSS（视觉主题、主题令牌、一个 script 占位符）
-  core/               ── 领域层：纯算法，不碰 DOM、不做 IO
-    errors.js           异常模块：结局码 E_INVALID_INPUT / E_INFEASIBLE / E_UNBOUNDED …
-    util.js             公共工具：EPS、pair(a+bM) 运算、矩阵求逆/乘向量、容差判定
-    model.js            数据模型层：LPProblem / StandardForm / StepSnapshot / SolveResult
-    parse.js            输入解析模块：校验 → 规范化 → 标准型（变量表 + 初始表）
-    simplex.js          核心求解模块：迭代内核（选入基/比值检验/枢轴/终止）+ 扩展点
-    sensitivity.js      灵敏度分析：保持最优基不变时 c 与 b 的允许变化范围
-    scenario.js         场景分析 + 参数线性规划（复用求解内核，不再自带一套迭代）
-    integer.js          整数规划：分枝定界 / 割平面 / 隐枚举 / 图解的适用性与过程
-    format.js           结果格式化模块：分数/带 M 项/区间文本 + 纯文本完整报告
-  web/                ── 表现层：只碰 DOM
-    boot.js              页面启动入口（按顺序 require 各界面模块，最后交给路由）
-    ui.js sens-ui.js ip-ui.js assign-ui.js   各模块界面（指派问题界面在这里）
-    settings-ui.js       设置页 + 显示模式（解析系统偏好、落 <html data-theme>、记本机）
-    input-panel.js       共用组件：线性规划输入表（模块各挂一份实例）
-    table-render.js      共用组件：迭代表与逐步讲解的 HTML 渲染（三个模块共用）
-    graph.js             图解法：可行域 / 等值线 / 最优点的 SVG 绘制
-    router.js            共用组件：首页 / 模块的 hash 路由 + 底部导航滑动指示器
-test/                ── 验证
-  run-all.js           一条命令跑完单元测试 + 算法回归，输出汇总表
-  unit/                单元测试（node:test，6 个文件）：逐模块验接口与数学性质
-    util.test.js  errors.test.js  model.test.js  parse.test.js  simplex.test.js  format.test.js
-  algorithm/           算法对拍：node 生成题库 → python 用 scipy/HiGHS 复核
-    edge-test.js         0 变量 / 0 约束等边界情形
-    test-simplex.js      经典例题 + 生成 2000 题随机题库
-    deep-snapshot.js     深度行为快照：把 2000 题每次迭代的每个格子哈希，重构前后逐字节比对
-    crosscheck.py        2000 道随机题对拍 scipy/HiGHS
-    dual-test.js         对偶解经典例题 + 生成 400 题题库
-    crosscheck-dual.py   对偶解的强对偶 + 互补松弛 + 中心差分扰动
-    sens-test.js         区间分析的手算例题 + 区间紧致性代数校验
-    crosscheck-sens.py   区间内/外的样本交 scipy 复算，核对线性预测
-    scenario-test.js     场景分析随机算例（含 a_ij 的基列/非基列两支）+ 建表一致性自检
-    crosscheck-scenario.py 700 个场景算例与 scipy 从头重解结果比对
-    param-test.js        参数线性规划分段 + 段内抽样 + 端点紧致性 + scipy 抽样
-    crosscheck-param.py  1110 个 λ 抽样点交 scipy 从头重解比对
-    ip-test.js           四种方法与暴力枚举整数解逐项对拍
-    assignment-test.js    指派问题：逐步过程逐格重算 + 子集 DP 口径对拍 + 生成题库
-    crosscheck-assign.py  指派问题题库交 scipy.optimize.linear_sum_assignment 再解一遍
-  ui/                  界面与无障碍
-    verify-ui.js         无头浏览器 UI 回归（133 项，含路由、底栏、显示模式与四个模块的全部场景）
-    audit.js             触摸目标尺寸、文字对比度、表单标注（移动端 / 无障碍）
-    graph-bounds.js      图解 SVG 内容是否超出画布（6 道不同题）
-    probe-layout.js      输入区高度、求解按钮是否需要滚动才能点到
-tools/               ── 开发辅助（不参与构建）
-  check-no-dp.js       残留核查：扫全仓库确认历史模块相关代码/注释/资源已归零
-  screenshots/
-    shot.js              整页长截图（可模拟深色模式、可指定模块 hash）
-    fill-*.js            截图前的表单填充脚本
-  visual/                视觉量测：半透明（玻璃/极光）背景下的权威对比度校验
-    shot-vp.js           只截「视口」的截图 —— 整页长图里 position:fixed 的
-                         极光层渲染位置不可靠，量出来的是假数据
-    probe-color.js       量出各关键元素的位置/颜色，输出 JSON
-    measure-contrast.py  读截图像素算 WCAG 对比度（取底色的两个坑见文件头注释）
-    check-overlap.py     固定底部标签栏是否遮住页面末尾的内容
-  setup/
-    deploy-github.py     一次性建仓 / 开启 Pages 脚本（已用过）
-  verify-visual.sh       一键跑「5 个页面 × 2 主题」的像素级对比度实测
+index.html      成品（单文件，构建产物）—— 必须留在根，它是 GitHub Pages 的入口
+src/core/       领域层：errors util model parse simplex sensitivity scenario integer assignment format
+src/web/        表现层：boot（唯一入口） router dom input-panel table-render graph settings-ui
+                以及四个模块界面 ui / sens-ui / ip-ui / assign-ui
+src/build.js    构建：迷你打包器，把 core/ + web/ 打成单文件 index.html
+src/template.html  HTML 骨架 + 全部 CSS（视觉主题、主题令牌、一个 script 占位符）
+src/cli.js src/index.js   命令行入口 / 库的统一出口
+lib/            开发工具（不进产物）：chrome.js 无头浏览器启动器、quiet.js 静默模式
+test/           验证：unit（单元）/ algorithm（算法回归 + scipy 对拍）/ ui（无头浏览器）
+                test/lib/rng.js 是可复现随机源（固定种子，--seed=N 换批次）
+tools/          构建-验证-发布用的小工具：status / check-registry / check-no-dp / dom-snapshot
+                / screenshots（截图与填充脚本）/ visual（像素级量测）/ verify-visual.sh
+docs/           主题文档（架构与约定 / 验证手册 / 踩坑与排错 / 推送与部署）
 ```
+
+> 每个文件的职责、分层规则、加模块与加算法的步骤见 **`docs/架构与约定.md`**（权威版）；
+> 本文件只给概览，避免两边各写一份、改了一处忘另一处。
 
 > **`index.html` 为什么必须在仓库根**：GitHub Pages 以仓库根为发布目录，入口只能是
 > `/index.html`；挪进子目录，线上地址就会从 `https://xxin1011.github.io/or-simplex/`
@@ -303,42 +253,21 @@ CSS 分三层：① `html` 上的基质色；② `body::before` / `body::after` 
 ## 构建与验证
 
 ```bash
-# 构建与库
-npm run build                              # 等价于 node src/build.js：重新生成 index.html
-node src/cli.js 题目.json                  # 命令行求解（完整报告）
-node src/cli.js 题目.json --json           # 只要结果 JSON
-
-# 全量回归（推荐入口）
-npm test                                   # 单元测试 + 8 套算法回归，末尾给汇总表
-npm run test:unit                          # 只跑单元测试（6 个文件 60 条断言，约 0.3 秒）
-npm run test:algorithm                     # 只跑算法回归（含题库重生，约 40 秒）
-npm run verify                             # 构建 + 全量回归 + UI 回归（提交前一键）
-
-# 单跑某几项
-node test/algorithm/test-simplex.js        # 经典例题 + 生成随机题库
-node test/algorithm/deep-snapshot.js       # 深度行为快照（重构前后 diff 用）
-python test/algorithm/crosscheck.py        # 2000 道随机题对拍 scipy（需 numpy/scipy）
-node test/algorithm/sens-test.js           # 灵敏度：手算例题 + 区间紧致性校验
-python test/algorithm/crosscheck-sens.py   # 灵敏度：区间内/外样本交 scipy 复算
-node test/algorithm/scenario-test.js       # 场景分析：生成随机算例
-python test/algorithm/crosscheck-scenario.py  # 场景分析：与 scipy 从头重解结果比对
-node test/algorithm/param-test.js          # 参数线性规划：抽样 + 端点紧致性
-python test/algorithm/crosscheck-param.py  # 参数线性规划：λ 抽样点交 scipy 复算
-node test/algorithm/ip-test.js             # 整数规划：四种方法与暴力枚举对拍
-node test/algorithm/assignment-test.js      # 指派问题：逐步过程自检 + 子集 DP 对拍，并生成题库
-python test/algorithm/crosscheck-assign.py   # 指派问题：交 scipy 的 linear_sum_assignment 再解一遍
-node test/ui/verify-ui.js                  # 无头浏览器 UI 回归（需 Chrome）
-node test/ui/audit.js                      # 触摸目标 / 对比度审查（近似值）
-node test/ui/audit.js "index.html#/sens"        # 审查可指定页面（默认单纯形法）
-node test/ui/audit.js "index.html#/sens" dark   # 再加一轮深色模式
-node test/ui/audit.js "index.html#/settings"    # 设置页也照查一遍
-bash tools/verify-visual.sh                # 像素级对比度实测（5 个页面 × 2 主题，权威校验）
-node tools/check-no-dp.js                  # 残留核查：命中即列出 file:line 并退出码 1
-node tools/screenshots/shot.js "index.html#/ip" out.png 390 0 "@fill-ip-classic.js"
+npm run build          # 等价于 node src/build.js：重新生成根目录的 index.html
+npm run verify         # 提交前一键：构建 + 静态检查 + 单元 + 8 套算法回归 + UI 回归（约 10 秒）
+npm test               # 单元测试 + 8 套算法回归（末尾给汇总表）
+npm run check          # 静态检查：注册一致性 + 历史模块残留（几十毫秒）
+node tools/status.js   # 现状自查：产物是否最新 / 模块清单 / 单元测试条数
+node src/cli.js 题目.json [--json|--no-tables|--integer|--assign]   # 命令行求解
 ```
 
-> 所有脚本的页面路径都**按仓库根解析**，所以从仓库根直接跑即可；
-> 随机题库生成在 `test/algorithm/` 下（与生成它的脚本同目录），已被 `.gitignore` 排除。
+各套件的逐条命令、期望输出、scipy 对拍规程、deep-snapshot 前后 diff、
+像素级对比度实测（`bash tools/verify-visual.sh`）与手机视口截图，都在
+**`docs/验证手册.md`** —— 那份是「做完」的判据，本文件不重复。
+
+> 所有脚本的页面路径都**按仓库根解析**，从仓库根直接跑即可；
+> 随机题库生成在 `test/algorithm/` 下（与生成它的脚本同目录），已被 `.gitignore` 排除；
+> 仓库里另有一份 `.ignore`（ripgrep 用）：搜索时跳过 380 KB 的 `index.html` 产物与题库。
 
 ## 关于正确性
 
@@ -346,7 +275,7 @@ node tools/screenshots/shot.js "index.html#/ip" out.png 390 0 "@fill-ip-classic.
 
 1. **算法层**：2000 道随机题（刻意混入高比例 `≥`/`=` 约束与负右端项）与 scipy 的 HiGHS 求解器对拍，**目标值、问题状态、解向量可行性三层全部一致**。
    > ⚠️ 但**裁判也会错**：HiGHS 的 presolve 会把「无界」误判成「无可行解」（默认就开着 presolve）。
-   > 场景对拍里抓到过一例，手算射线证明是我方正确 —— 详细的最小实例、各求解器对照与处置规则见 `HANDOFF.md` 第 6.6 节。
+   > 场景对拍里抓到过一例，手算射线证明是我方正确 —— 详细的最小实例、各求解器对照与处置规则见 `docs/验证手册.md` 第 6 节。
    > 所以对拍脚本在两边状态不一致时会**关掉 presolve 复核**，并把这种「裁判伪影」单独打印出来，既不计失败也不隐藏。
 2. **行为快照**：`test/algorithm/deep-snapshot.js` 把每道题的**每一次迭代、每一个表格格子、每一段显示文本**都哈希成一个指纹。重构前后各跑一次、`diff` 为空，就等于「算法行为逐字节未变」——这比只比最终答案严格得多（迭代方向写反、边界条件给错都可能碰巧给出同一个最优值）。
 3. **单元测试**：`test/unit/` 逐模块验接口与数学性质 —— 例如对偶解不写死数字，而是用**中心差分扰动**独立验算「影子价格 = 最优值对右端项的偏导数」；σ 行不抄实现，而是在测试里**独立重算** `c_j − c_B·P_j` 再核对。

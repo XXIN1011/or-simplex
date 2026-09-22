@@ -20,12 +20,16 @@ var tableRender = require('./table-render.js');
 var renderTable = tableRender.renderTable;
 var explain = tableRender.explain;
 
+var dom = require('./dom.js');
+var $ = dom.$, esc = dom.esc;
+
 (function () {
   'use strict';
 
   /* 默认打开即为空状态：0 个决策变量、0 个约束，题目全部由用户自己搭建。
      输入表逻辑抽在 input-panel.js，单纯形法与灵敏度分析两个模块共用一份实现。 */
   var panel = createInputPanel({
+    mount: 'simplexPanel',
     tbl: 'inTbl', dirSeg: 'dirSeg',
     addVar: 'addVar', delVar: 'delVar', addCon: 'addCon', delCon: 'delCon',
     maxN: 6, maxM: 8,
@@ -34,13 +38,7 @@ var explain = tableRender.explain;
   });
   var state = panel.state;
 
-  /* ---------------- 工具 ---------------- */
-  function $(id) { return document.getElementById(id); }
-  function esc(s) {
-    return String(s).replace(/[&<>"]/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
-    });
-  }
+  /* ---------------- 工具（共用实现见 dom.js） ---------------- */
 
   /* 输入改动后把旧结果标灰，避免"结果与输入不符"的误读 */
   function markStale() {

@@ -28,6 +28,10 @@ var renderGraph = graph.renderGraph;
 var tableRender = require('./table-render.js');
 var renderTable = tableRender.renderTable;
 var explain = tableRender.explain;
+
+var dom = require('./dom.js');
+var $ = dom.$, esc = dom.esc, subs = dom.subs;
+
 (function () {
   'use strict';
 
@@ -36,6 +40,7 @@ var explain = tableRender.explain;
   var MAX_SHOW_ROWS = 300;         // 隐枚举表一次最多铺这么多行，多了折叠
 
   var panel = createInputPanel({
+    mount: 'ipPanel',
     tbl: 'ipInTbl', dirSeg: 'ipDirSeg',
     addVar: 'ipAddVar', delVar: 'ipDelVar', addCon: 'ipAddCon', delCon: 'ipDelCon',
     maxN: 8, maxM: 8,
@@ -45,15 +50,6 @@ var explain = tableRender.explain;
 
   var last = null;
 
-  function $(id) { return document.getElementById(id); }
-  function esc(s) {
-    return String(s).replace(/[&<>"]/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
-    });
-  }
-  function subs(k) {
-    return String(k).replace(/[0-9]/g, function (d) { return '₀₁₂₃₄₅₆₇₈₉'[+d]; });
-  }
   function num(v) { return fmtNum(v); }
   function banner(msg, kind) {
     $('ipBanners').innerHTML = msg
