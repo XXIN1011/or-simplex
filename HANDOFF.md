@@ -36,7 +36,7 @@
 <!-- STATUS:BEGIN（本区块由 node tools/status.js --write 生成，不要手改） -->
 | 项 | 值 |
 |---|---|
-| 分支 / HEAD | `main` · `ede304d` （**有 30 个文件未提交**） |
+| 分支 / HEAD | `main` · `b61b5b8` （工作区干净） |
 | 构建产物 | `index.html` 386.4 KB，已是最新（重建无差异） |
 | 算法层 | `src/core/` 10 个模块 / 4251 行 |
 | 表现层 | `src/web/` 11 个模块 / 2752 行 |
