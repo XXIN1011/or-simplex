@@ -30,7 +30,10 @@ function git(args) {
 const branch = git(['rev-parse', '--abbrev-ref', 'HEAD']) || '(未知)';
 const head = git(['rev-parse', '--short', 'HEAD']) || '(未知)';
 const headMsg = git(['log', '-1', '--pretty=%s']) || '';
-const dirty = git(['status', '--porcelain']).split('\n').filter(Boolean).length;
+/* 未提交文件数：**排除 HANDOFF.md 自己** —— 现状卡就写在它里面，生成卡片这件事
+   本身会让它变脏，不排除的话卡片永远自报「有 1 个文件未提交」。 */
+const dirty = git(['status', '--porcelain']).split('\n')
+  .filter(Boolean).filter(l => !/HANDOFF\.md$/.test(l)).length;
 const remoteUrl = git(['remote', 'get-url', 'origin']) || '(无 origin)';
 
 /* ---------------- ② 构建产物与源码是否一致 ----------------
