@@ -40,7 +40,9 @@ function runUnitTests() {
     .map(f => path.join('test', 'unit', f));
   const r = spawnSync(process.execPath, ['--test', ...files], { cwd: ROOT, encoding: 'utf8' });
   const out = (r.stdout || '') + (r.stderr || '');
-  const m = out.match(/# tests (\d+)[\s\S]*?# pass (\d+)[\s\S]*?# fail (\d+)/);
+  /* Node 24 起 `node --test` 的 spec reporter 用 `ℹ tests 76` 取代了 TAP 的 `# tests 76`，
+     两种格式都要认（CI 的 Node 22 与本地 Node 24 各命中一种） */
+  const m = out.match(/(?:#|ℹ)\s*tests\s+(\d+)[\s\S]*?(?:#|ℹ)\s*pass\s+(\d+)[\s\S]*?(?:#|ℹ)\s*fail\s+(\d+)/);
   const tests = m ? Number(m[1]) : null, pass = m ? Number(m[2]) : null, fail = m ? Number(m[3]) : null;
   return {
     name: '单元测试（' + files.length + ' 个文件）',
