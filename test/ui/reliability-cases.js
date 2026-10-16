@@ -22,14 +22,14 @@ module.exports = async function reliabilityCases(sess, check, url) {
     // 单纯形：坏输入必须保留、标红且拒绝求解；好输入必须按原意计算。
     click('addVar');click('addCon');
     set('#inTbl [data-k=a]', '1');set('#inTbl [data-k=b]', '1');
-    ['1/2','1,5','abc','-','.','1e','1e999'].forEach(function(raw) {
+    ['1/0','1,5','abc','-','.','1e','1e999'].forEach(function(raw) {
       set('#inTbl [data-k=c]',raw);click('addCon');click('delCon');
       expect(q('#inTbl [data-k=c]').value===raw,'非法输入重绘后保留原文：'+raw);
       expect(q('#inTbl [data-k=c]').getAttribute('aria-invalid')==='true','非法输入标注：'+raw);
       click('solveBtn');
       expect(!q('#result').classList.contains('show') && /输入有误/.test(q('#banners').textContent),'非法输入禁止求解：'+raw);
     });
-    [['1e3','1000'],['−2','-2'],['','0']].forEach(function(pair) {
+    [['1e3','1000'],['−2','-2'],['1/2','1/2'],['','0']].forEach(function(pair) {
       set('#inTbl [data-k=c]',pair[0]);q('#dirSeg [data-dir=min]').click();
       set('#inTbl select','=', 'change');click('solveBtn');
       expect(q('#inTbl [data-k=c]').getAttribute('aria-invalid')==='false' && q('#result .zv').textContent===pair[1], '正确解析并求解：'+pair[0]);
@@ -63,7 +63,7 @@ module.exports = async function reliabilityCases(sess, check, url) {
     expect(!!q('#sBase .verdict'),'灵敏度基准求解成功');
     function analyze(){set('#sensForm [data-f=c]','3');click('sensGo')}
     analyze();expect(!!q('#sensOut'),'灵敏度场景求解成功');
-    set('#sensForm [data-f=c]','1/2');
+    set('#sensForm [data-f=c]','1/0');
     expect(!q('#sensOut'),'场景输入修改清除旧分析');click('sensGo');
     expect(!q('#sensOut') && q('#sensForm input').getAttribute('aria-invalid')==='true','场景非法数字拒绝分析');
     analyze();q('#sensTabs [data-t=b]').click();expect(!q('#sensOut'),'切换场景清除旧分析');
@@ -74,7 +74,7 @@ module.exports = async function reliabilityCases(sess, check, url) {
     // 指派：同一解析规则，但保留禁止指派符号；行列变化也须清除旧结果。
     click('asAddRow');set('#asInTbl input','1e3');click('asSolveBtn');
     expect(/1000/.test(q('#asOut').textContent),'指派科学计数法正确');
-    ['1/2','abc','1e999'].forEach(function(raw){set('#asInTbl input',raw);click('asSolveBtn');expect(!q('#asOut').textContent && q('#asInTbl input').getAttribute('aria-invalid')==='true' && /不是有效数字/.test(q('#asBanners').textContent),'指派非法数字拒绝：'+raw)});
+    ['1/0','abc','1e999'].forEach(function(raw){set('#asInTbl input',raw);click('asSolveBtn');expect(!q('#asOut').textContent && q('#asInTbl input').getAttribute('aria-invalid')==='true' && /不是有效数字/.test(q('#asBanners').textContent),'指派非法数字拒绝：'+raw)});
     set('#asInTbl input','−2');click('asSolveBtn');expect(/-2/.test(q('#asOut').textContent),'指派数学负号正确');
     set('#asInTbl input','×');click('asSolveBtn');expect(/无可行解/.test(q('#asOut').textContent),'禁止指派仍有效');
     set('#asInTbl input','2');

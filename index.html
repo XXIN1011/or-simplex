@@ -1104,6 +1104,15 @@ html[data-theme="dark"]{--content-surface:rgba(21,26,35,.97)}
 .input-guide.has-model>.guide-note,.input-guide.has-model .guide-intro p{display:none}
 .result-nav{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 18px}
 .result-nav .btn{min-height:44px}
+.study-toolbar{padding:12px!important}
+.study-toolbar .seg{display:inline-flex}
+.study-controls{margin-top:12px}
+.study-progress{font-size:13px;font-weight:650;line-height:1.6;margin-bottom:8px;overflow-wrap:anywhere}
+.study-actions{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
+.study-actions .btn{min-height:44px}
+.study-picker{display:flex;flex:1;min-width:100px;flex-direction:column;gap:4px;font-size:12px}
+.study-picker select{width:100%;min-width:0;min-height:44px;padding:6px;font:inherit;font-size:13px;color:inherit;background:var(--input);border:1px solid var(--line2);border-radius:var(--r-sm)}
+.study-step[hidden],.study-controls[hidden],.study-caption[hidden],[data-study-part][hidden]{display:none}
 .result-work{margin:14px 0}
 .result-work>summary{padding:8px 14px;border:1px solid var(--line2);border-radius:var(--r);background:var(--content-surface);margin-bottom:16px}
 [data-section]{scroll-margin-top:18px}
@@ -2291,6 +2300,7 @@ __define__("src/core/format.js", function (module, exports, require) {
 'use strict';
 
 var EPS = require('./util.js').EPS;
+var parseNumber = require('./number-input.js').parseNumber;
 
 /**
  * asFraction —— 尝试把小数写成漂亮的分数。
@@ -2476,6 +2486,14 @@ function report(res, problem, opts) {
   if (!res.ok) {
     return '输入有误：' + res.message;
   }
+
+  /* CLI 可以直接传入含分数的 JSON。报告也用同一解析器，避免计算正确却把原问题印成 NaN。 */
+  problem = {
+    c: problem.c.map(function (v) { return parseNumber(v); }),
+    constraints: problem.constraints.map(function (k) {
+      return { coef: k.coef.map(function (v) { return parseNumber(v); }), rel: k.rel, rhs: parseNumber(k.rhs) };
+    })
+  };
 
   /* ① 原问题 */
   out.push('原问题：');
@@ -3797,16 +3815,27 @@ module.exports = {
 __define__("src/core/number-input.js", function (module, exports, require) {
 'use strict';
 
-/* 完整解析十进制/科学计数法；只规范化数学负号，不删除未知字符。
+/* 完整解析十进制、科学计数法及单个分数；只规范化数学符号，不执行算术表达式。
    UI 的空格按 0，库入口的空值则应当报错。非法值用 NaN 交给校验层拦截。 */
+var DECIMAL = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
+function decimal(s) {
+  if (!DECIMAL.test(s)) return NaN;
+  var n = Number(s);
+  return isFinite(n) ? n : NaN;
+}
 function parseNumber(value, blankAsZero) {
   if (typeof value === 'number') return isFinite(value) ? value : NaN;
   if (typeof value !== 'string') return NaN;
-  var s = value.trim().replace(/\u2212/g, '-');
+  var s = value.trim().replace(/\u2212/g, '-').replace(/[\u2044\u2215]/g, '/');
   if (!s) return blankAsZero ? 0 : NaN;
-  if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(s)) return NaN;
-  var n = Number(s);
-  return isFinite(n) ? n : NaN;
+  var parts = s.split('/');
+  if (parts.length === 1) return decimal(s);
+  if (parts.length !== 2) return NaN;
+  var numerator = decimal(parts[0].trim());
+  var denominator = decimal(parts[1].trim());
+  if (!isFinite(numerator) || !isFinite(denominator) || denominator === 0) return NaN;
+  var ratio = numerator / denominator;
+  return isFinite(ratio) ? ratio : NaN;
 }
 
 module.exports = { parseNumber: parseNumber };
@@ -5947,6 +5976,7 @@ var assignment = require('../core/assignment.js');
 var assignSolve = assignment.assignSolve;
 var parseNumber = require('../core/number-input.js').parseNumber;
 var resultLayout = require('./result-layout.js');
+var study = require('./study-view.js');
 var assignSymbols = assignment.assignSymbols;
 
 var inputPanel = require('./input-panel.js');
@@ -6150,10 +6180,11 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
       if (!byRound[s.round]) byRound[s.round] = [];
       byRound[s.round].push(s);
     });
+    var rounds = '';
     Object.keys(byRound).map(Number).sort(function (a, b) { return a - b; }).forEach(function (r) {
-      h += roundSection(res, r, byRound[r]);
+      rounds += roundSection(res, r, byRound[r]);
     });
-    return h;
+    return h + study.wrap(rounds, '匈牙利法矩阵步骤学习');
   }
 
   function roundSection(res, round, steps) {
@@ -6165,13 +6196,14 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
         + (last.phase === 'adjust' ? '　θ = ' + fmtNum(last.theta) : '')
         + (tryStep.done ? '　✓ 完成' : '')
       : '';
-    var h = '<details class="meth" open><summary class="meth-h">'
+    var h = '<details class="meth" data-study-part open><summary class="meth-h">'
       + '<span class="meth-i">' + round + '</span>'
       + '<span class="meth-n">第 ' + round + ' 轮迭代' + (round === 1 ? '（行归约 → 列归约 → 试指派' : '（试指派') + '…）</span>'
       + (chip ? '<span class="meth-c">' + chip + '</span>' : '')
       + '<span class="meth-x"></span></summary><div class="meth-body">';
     steps.forEach(function (s) {
-      h += '<div class="iter-head"><span class="name">' + esc(s.label) + '</span>'
+      h += '<div class="study-step" data-study-step data-step-title="' + esc('第 ' + round + ' 轮 · ' + s.label) + '">'
+        + '<div class="iter-head"><span class="name">' + esc(s.label) + '</span>'
         + '<span class="tag' + (s.done ? ' done' : '') + '">' + esc(s.title) + '</span></div>';
       h += matrixHtml(s.matrix, s.marks, s.lines, res.rowLabels, res.colLabels);
       h += matrixLegend(s, res.rowLabels, res.colLabels);
@@ -6183,6 +6215,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
         h += '</div>';
       }
       if (s.note) h += '<div class="sens-note">→ ' + esc(s.note) + '</div>';
+      h += '</div>';
     });
     return h + '</div></details>';
   }
@@ -6926,7 +6959,7 @@ function markup(matrix, maxN, maxM) {
     + '<button type="button" class="btn" data-guide="apply">设置规模</button></div>'
     + '<p class="guide-note">缩小规模会移除末尾数据；载入示例会替换当前输入。</p></details>'
     + '<p class="guide-note">' + (matrix ? '行是人员，列是工作；填 × 表示禁止指派。' : '先选 max / min，再填写目标系数和各条约束。')
-    + ' 空白按 0；支持小数和 1e3，分数请先换成小数。</p></div>';
+    + ' 空白按 0；支持小数、1e3 和分数（如 1/2、-3/4），分母不能为 0。</p></div>';
 }
 
 function attach(mount, cfg) {
@@ -7072,7 +7105,7 @@ function createInputPanel(cfg) {
     /* 目标函数行 */
     html += '<tr><td class="lbl">z =</td>';
     for (var j2 = 0; j2 < n; j2++) {
-      html += '<td><input class="num" type="text" inputmode="decimal" placeholder="0" '
+      html += '<td><input class="num" type="text" inputmode="text" placeholder="0" '
         + 'aria-label="目标函数中 x' + (j2 + 1) + ' 的系数" '
         + 'data-k="c" data-j="' + j2 + '" value="' + esc(fmtIn(state.c[j2])) + '"></td>';
     }
@@ -7092,7 +7125,7 @@ function createInputPanel(cfg) {
       var k = state.cons[i];
       html += '<tr><td class="lbl">' + (i + 1) + '</td>';
       for (var j3 = 0; j3 < n; j3++) {
-        html += '<td><input class="num" type="text" inputmode="decimal" placeholder="0" '
+        html += '<td><input class="num" type="text" inputmode="text" placeholder="0" '
           + 'aria-label="第 ' + (i + 1) + ' 条约束中 x' + (j3 + 1) + ' 的系数" '
           + 'data-k="a" data-i="' + i + '" data-j="' + j3 + '" value="' + esc(fmtIn(k.coef[j3])) + '"></td>';
       }
@@ -7103,7 +7136,7 @@ function createInputPanel(cfg) {
           return '<option value="' + r + '"' + (k.rel === r ? ' selected' : '') + '>' + r + '</option>';
         }).join('')
         + '</select></td>';
-      html += '<td><input class="num" type="text" inputmode="decimal" placeholder="0" '
+      html += '<td><input class="num" type="text" inputmode="text" placeholder="0" '
         + 'aria-label="第 ' + (i + 1) + ' 条约束的右端项 b' + (i + 1) + '" '
         + 'data-k="b" data-i="' + i + '" value="' + esc(fmtIn(k.rhs)) + '"></td>';
       html += '<td><button type="button" class="delvar" data-i="' + i + '" aria-label="删除第 ' + (i + 1) + ' 条约束">&times;</button></td>';
@@ -7124,7 +7157,7 @@ function createInputPanel(cfg) {
   function validateInput(inp) {
     var invalid = !isFinite(parseNumber(inp.value, true));
     inp.setAttribute('aria-invalid', invalid ? 'true' : 'false');
-    inp.title = invalid ? '请输入完整数字（支持小数和科学计数法）' : '';
+    inp.title = invalid ? '请输入完整数字或分数（如 1/2），分母不能为 0' : '';
   }
 
   function bind() {
@@ -7274,6 +7307,7 @@ var renderTable = tables.renderTable, explain = tables.explain;
 var dom = require('./dom.js');
 var $ = dom.$, esc = dom.esc, subs = dom.subs;
 var resultLayout = require('./result-layout.js');
+var study = require('./study-view.js');
 var TYPE_NAMES = { cont: '连续', int: '整数', bin: '0-1' };
 var MAX_ENUM_POINTS = 4096, MAX_SHOW_ROWS = 300;
 function num(v) { return fmtNum(v); }
@@ -7339,10 +7373,11 @@ function relaxIterations(res) {
   var shown = res.steps.filter(function (s) { return s.entering !== null; });
   var lastStep = res.steps[res.steps.length - 1];
   var all = shown.concat([lastStep].filter(function (s) { return shown.indexOf(s) < 0; }));
-  return all.map(function (step, k) {
-    return '<div class="iter-head"><span class="name">第 ' + (k + 1) + ' 张表</span></div>'
-      + renderTable(res, step) + explain(res, step);
-  }).join('');
+  return study.group(all.map(function (step, k) {
+    var title = '第 ' + (k + 1) + ' 张表';
+    return { title: title, html: '<div class="iter-head"><span class="name">' + title + '</span></div>'
+      + renderTable(res, step) + explain(res, step) };
+  }), '整数规划松弛问题迭代学习');
 }
 
 function methodListOnly(r) {
@@ -7407,6 +7442,7 @@ function renderMethods(prob, r) {
   var box = $('ipMethods');
   if (!box) return;
   box.innerHTML = buildMethods(prob, r);
+  study.wire(box);
   addScrollHints(document);
 }
 
@@ -7894,6 +7930,7 @@ function navigation(items) {
 
 /* 章节跳转不改 hash，避免与模块路由冲突；从折叠状态跳转时先展开。 */
 function wire(root) {
+  require('./study-view.js').wire(root);
   Array.prototype.forEach.call(root.querySelectorAll('[data-jump]'), function (button) {
     button.addEventListener('click', function () {
       var section = root.querySelector('[data-section="' + button.getAttribute('data-jump') + '"]');
@@ -8050,6 +8087,7 @@ var dom = require('./dom.js');
 var $ = dom.$, esc = dom.esc, subs = dom.subs;
 var parseNumber = require('../core/number-input.js').parseNumber;
 var resultLayout = require('./result-layout.js');
+var study = require('./study-view.js');
 
 (function () {
   'use strict';
@@ -8175,7 +8213,7 @@ var resultLayout = require('./result-layout.js');
   function renderForm(t) {
     clearAnalysis();
     var n = baseProb.c.length, m = baseProb.constraints.length, h = '';
-    var small = ' class="num sm" type="text" inputmode="decimal" placeholder="0"';
+    var small = ' class="num sm" type="text" inputmode="text" placeholder="0"';
 
     if (t === 'c') {
       h += '<div class="sens-note">填入新的目标函数系数（不改的照着原样填）。</div>'
@@ -8266,7 +8304,7 @@ var resultLayout = require('./result-layout.js');
   function renderParamBody() {
     clearAnalysis();
     var n = baseProb.c.length, m = baseProb.constraints.length, h = '', k;
-    var small = ' class="num sm" type="text" inputmode="decimal" placeholder="0"';
+    var small = ' class="num sm" type="text" inputmode="text" placeholder="0"';
     if (paramKind === 'c') {
       h += '<div class="sens-note">填各变量系数的 λ 系数 d<sub>j</sub>，'
         + '即 c<sub>j</sub>(λ) = c<sub>j</sub> + λ·d<sub>j</sub>（不变的填 0，至少填一个非 0）。</div>';
@@ -8452,16 +8490,19 @@ var resultLayout = require('./result-layout.js');
 
     h += '<h2 class="sec">' + (r.restart ? '重新求解（从标准初始基重跑大 M 法）'
                                           : '在原最优表上继续迭代') + '</h2>';
-    all.forEach(function (step, k) {
-      h += '<div class="card">'
+    var studySteps = all.map(function (step, k) {
+      var title = step.dual ? '对偶单纯形 · 第 ' + (k + 1) + ' 步' : (step.entering === null ? '终点' : '第 ' + (k + 1) + ' 步');
+      var card = '<div class="card">'
         + '<div class="iter-head"><span class="name">'
-        + (step.dual ? '对偶单纯形 · 第 ' + (k + 1) + ' 步' : (step.entering === null ? '终点' : '第 ' + (k + 1) + ' 步'))
+        + title
         + '</span>' + (step.degenerate ? '<span class="tag">退化</span>' : '')
         + (step.dual ? '<span class="tag">对偶</span>' : '') + '</div>'
         + renderTable(r, step)
         + explain(r, step)
         + '</div>';
+      return { title: title, html: card };
     });
+    h += study.group(studySteps, '灵敏度分析迭代学习');
 
     /* ③ 结论 */
     var reasoning = h;
@@ -8943,6 +8984,96 @@ module.exports = {
 };
 });
 
+__define__("src/web/study-view.js", function (module, exports, require) {
+/* 同一份算法快照在完整阅读与单步学习之间切换，不重新计算或改动求解结果。 */
+'use strict';
+var esc = require('./dom.js').esc;
+var addScrollHints = require('./input-panel.js').addScrollHints;
+
+function wrap(content, label) {
+  return content ? '<div class="study-view" data-study role="region" aria-label="' + esc(label) + '">' + content + '</div>' : '';
+}
+
+function group(items, label) {
+  return wrap(items.map(function (item) {
+    return '<div class="study-step" data-study-step data-step-title="' + esc(item.title) + '">' + item.html + '</div>';
+  }).join(''), label);
+}
+
+function toolbar(steps) {
+  var h = '<div class="seg sm" role="group" aria-label="过程查看方式">'
+    + '<button type="button" data-study-mode="all" class="on" aria-pressed="true">完整过程</button>'
+    + '<button type="button" data-study-mode="single" aria-pressed="false">单步学习</button></div>'
+    + '<p class="sens-note study-caption">共 ' + steps.length + ' 步，可切换为单步查看。</p>'
+    + '<div class="study-controls" hidden><div class="study-progress" role="status" aria-live="polite"></div>'
+    + '<div class="study-actions"><button type="button" class="btn" data-study-prev>上一步</button>'
+    + '<label class="study-picker">跳转步骤<select aria-label="选择学习步骤" data-study-select>';
+  Array.prototype.forEach.call(steps, function (step, i) {
+    h += '<option value="' + i + '">' + (i + 1) + '. ' + esc(step.getAttribute('data-step-title')) + '</option>';
+  });
+  return h + '</select></label><button type="button" class="btn" data-study-next>下一步</button></div></div>';
+}
+
+function wire(root) {
+  Array.prototype.forEach.call(root.querySelectorAll('[data-study]'), function (box) {
+    if (box.getAttribute('data-study-ready')) return;
+    var steps = box.querySelectorAll('[data-study-step]');
+    if (!steps.length) return;
+    box.setAttribute('data-study-ready', 'true');
+    var bar = document.createElement('div');
+    bar.className = 'card study-toolbar';
+    bar.innerHTML = toolbar(steps);
+    box.insertBefore(bar, box.firstChild);
+    var parts = box.querySelectorAll('[data-study-part]');
+    var wasOpen = [];
+    var controls = box.querySelector('.study-controls');
+    var progress = box.querySelector('.study-progress');
+    var picker = box.querySelector('[data-study-select]');
+    var prev = box.querySelector('[data-study-prev]');
+    var next = box.querySelector('[data-study-next]');
+    var mode = 'all', index = 0;
+    function show() {
+      controls.hidden = mode === 'all';
+      box.querySelector('.study-caption').hidden = mode === 'single';
+      Array.prototype.forEach.call(steps, function (step, i) { step.hidden = mode === 'single' && i !== index; });
+      Array.prototype.forEach.call(parts, function (part) {
+        part.hidden = mode === 'single' && !part.contains(steps[index]);
+        if (mode === 'single' && !part.hidden) part.open = true;
+      });
+      Array.prototype.forEach.call(box.querySelectorAll('[data-study-mode]'), function (button) {
+        var active = button.getAttribute('data-study-mode') === mode;
+        button.classList.toggle('on', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+      picker.value = String(index);
+      prev.disabled = index === 0;
+      next.disabled = index === steps.length - 1;
+      progress.textContent = '第 ' + (index + 1) + ' / ' + steps.length + ' 步 · ' + steps[index].getAttribute('data-step-title');
+      addScrollHints(box);
+    }
+    Array.prototype.forEach.call(box.querySelectorAll('[data-study-mode]'), function (button) {
+      button.addEventListener('click', function () {
+        var selected = button.getAttribute('data-study-mode');
+        if (selected === mode) return;
+        if (selected === 'single') wasOpen = Array.prototype.map.call(parts, function (part) { return part.open; });
+        mode = selected;
+        show();
+        if (mode === 'all') Array.prototype.forEach.call(parts, function (part, i) { part.open = wasOpen[i]; });
+      });
+    });
+    prev.addEventListener('click', function () { if (index > 0) { index--; show(); } });
+    next.addEventListener('click', function () { if (index < steps.length - 1) { index++; show(); } });
+    picker.addEventListener('change', function () {
+      var selected = Number(picker.value);
+      if (selected >= 0 && selected < steps.length && Math.floor(selected) === selected) { index = selected; show(); }
+    });
+    show();
+  });
+}
+
+module.exports = { group: group, wrap: wrap, wire: wire };
+});
+
 __define__("src/web/table-render.js", function (module, exports, require) {
 /* =========================================================================
    迭代表 + 迭代讲解的渲染
@@ -9059,6 +9190,7 @@ var sensCard = report.sensCard;
 var standardCard = report.standardCard;
 var graphCard = report.graphCard;
 var resultLayout = require('./result-layout.js');
+var study = require('./study-view.js');
 
 (function () {
   'use strict';
@@ -9115,7 +9247,7 @@ var resultLayout = require('./result-layout.js');
     html += graphCard(prob, res);
 
     html += '<section data-section="iterations"><h2 class="sec">迭代过程（共 ' + (res.steps.length - 1) + ' 次迭代）</h2>';
-    res.steps.forEach(function (step, idx) {
+    var studySteps = res.steps.map(function (step, idx) {
       var title = idx === 0 ? '初始表' : '第 ' + idx + ' 次迭代';
       var isLast = (idx === res.steps.length - 1);
       var tag = '';
@@ -9123,12 +9255,14 @@ var resultLayout = require('./result-layout.js');
       else if (isLast) tag = '<span class="tag stop">终止</span>';
       else tag = '<span class="tag">' + (idx === 0 ? '起点' : '迭代 ' + idx) + '</span>';
 
-      html += '<div class="card">'
+      var card = '<div class="card">'
         + '<div class="iter-head"><span class="name">' + title + '</span>' + tag + '</div>'
         + renderTable(res, step)
         + explain(res, step)
         + '</div>';
+      return { title: title, html: card };
     });
+    html += study.group(studySteps, '单纯形法迭代学习');
 
     html += '</section></details>';
     if (extra) html += '<details class="result-work result-extra"><summary>扩展分析：对偶解与灵敏度区间</summary>'

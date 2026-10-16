@@ -18,6 +18,7 @@
 'use strict';
 
 var EPS = require('./util.js').EPS;
+var parseNumber = require('./number-input.js').parseNumber;
 
 /**
  * asFraction —— 尝试把小数写成漂亮的分数。
@@ -203,6 +204,14 @@ function report(res, problem, opts) {
   if (!res.ok) {
     return '输入有误：' + res.message;
   }
+
+  /* CLI 可以直接传入含分数的 JSON。报告也用同一解析器，避免计算正确却把原问题印成 NaN。 */
+  problem = {
+    c: problem.c.map(function (v) { return parseNumber(v); }),
+    constraints: problem.constraints.map(function (k) {
+      return { coef: k.coef.map(function (v) { return parseNumber(v); }), rel: k.rel, rhs: parseNumber(k.rhs) };
+    })
+  };
 
   /* ① 原问题 */
   out.push('原问题：');

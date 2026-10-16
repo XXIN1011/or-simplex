@@ -30,6 +30,7 @@ var dom = require('./dom.js');
 var $ = dom.$, esc = dom.esc, subs = dom.subs;
 var parseNumber = require('../core/number-input.js').parseNumber;
 var resultLayout = require('./result-layout.js');
+var study = require('./study-view.js');
 
 (function () {
   'use strict';
@@ -155,7 +156,7 @@ var resultLayout = require('./result-layout.js');
   function renderForm(t) {
     clearAnalysis();
     var n = baseProb.c.length, m = baseProb.constraints.length, h = '';
-    var small = ' class="num sm" type="text" inputmode="decimal" placeholder="0"';
+    var small = ' class="num sm" type="text" inputmode="text" placeholder="0"';
 
     if (t === 'c') {
       h += '<div class="sens-note">填入新的目标函数系数（不改的照着原样填）。</div>'
@@ -246,7 +247,7 @@ var resultLayout = require('./result-layout.js');
   function renderParamBody() {
     clearAnalysis();
     var n = baseProb.c.length, m = baseProb.constraints.length, h = '', k;
-    var small = ' class="num sm" type="text" inputmode="decimal" placeholder="0"';
+    var small = ' class="num sm" type="text" inputmode="text" placeholder="0"';
     if (paramKind === 'c') {
       h += '<div class="sens-note">填各变量系数的 λ 系数 d<sub>j</sub>，'
         + '即 c<sub>j</sub>(λ) = c<sub>j</sub> + λ·d<sub>j</sub>（不变的填 0，至少填一个非 0）。</div>';
@@ -432,16 +433,19 @@ var resultLayout = require('./result-layout.js');
 
     h += '<h2 class="sec">' + (r.restart ? '重新求解（从标准初始基重跑大 M 法）'
                                           : '在原最优表上继续迭代') + '</h2>';
-    all.forEach(function (step, k) {
-      h += '<div class="card">'
+    var studySteps = all.map(function (step, k) {
+      var title = step.dual ? '对偶单纯形 · 第 ' + (k + 1) + ' 步' : (step.entering === null ? '终点' : '第 ' + (k + 1) + ' 步');
+      var card = '<div class="card">'
         + '<div class="iter-head"><span class="name">'
-        + (step.dual ? '对偶单纯形 · 第 ' + (k + 1) + ' 步' : (step.entering === null ? '终点' : '第 ' + (k + 1) + ' 步'))
+        + title
         + '</span>' + (step.degenerate ? '<span class="tag">退化</span>' : '')
         + (step.dual ? '<span class="tag">对偶</span>' : '') + '</div>'
         + renderTable(r, step)
         + explain(r, step)
         + '</div>';
+      return { title: title, html: card };
     });
+    h += study.group(studySteps, '灵敏度分析迭代学习');
 
     /* ③ 结论 */
     var reasoning = h;

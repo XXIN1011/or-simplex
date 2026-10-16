@@ -122,7 +122,7 @@ function createInputPanel(cfg) {
     /* 目标函数行 */
     html += '<tr><td class="lbl">z =</td>';
     for (var j2 = 0; j2 < n; j2++) {
-      html += '<td><input class="num" type="text" inputmode="decimal" placeholder="0" '
+      html += '<td><input class="num" type="text" inputmode="text" placeholder="0" '
         + 'aria-label="目标函数中 x' + (j2 + 1) + ' 的系数" '
         + 'data-k="c" data-j="' + j2 + '" value="' + esc(fmtIn(state.c[j2])) + '"></td>';
     }
@@ -142,7 +142,7 @@ function createInputPanel(cfg) {
       var k = state.cons[i];
       html += '<tr><td class="lbl">' + (i + 1) + '</td>';
       for (var j3 = 0; j3 < n; j3++) {
-        html += '<td><input class="num" type="text" inputmode="decimal" placeholder="0" '
+        html += '<td><input class="num" type="text" inputmode="text" placeholder="0" '
           + 'aria-label="第 ' + (i + 1) + ' 条约束中 x' + (j3 + 1) + ' 的系数" '
           + 'data-k="a" data-i="' + i + '" data-j="' + j3 + '" value="' + esc(fmtIn(k.coef[j3])) + '"></td>';
       }
@@ -153,7 +153,7 @@ function createInputPanel(cfg) {
           return '<option value="' + r + '"' + (k.rel === r ? ' selected' : '') + '>' + r + '</option>';
         }).join('')
         + '</select></td>';
-      html += '<td><input class="num" type="text" inputmode="decimal" placeholder="0" '
+      html += '<td><input class="num" type="text" inputmode="text" placeholder="0" '
         + 'aria-label="第 ' + (i + 1) + ' 条约束的右端项 b' + (i + 1) + '" '
         + 'data-k="b" data-i="' + i + '" value="' + esc(fmtIn(k.rhs)) + '"></td>';
       html += '<td><button type="button" class="delvar" data-i="' + i + '" aria-label="删除第 ' + (i + 1) + ' 条约束">&times;</button></td>';
@@ -174,7 +174,7 @@ function createInputPanel(cfg) {
   function validateInput(inp) {
     var invalid = !isFinite(parseNumber(inp.value, true));
     inp.setAttribute('aria-invalid', invalid ? 'true' : 'false');
-    inp.title = invalid ? '请输入完整数字（支持小数和科学计数法）' : '';
+    inp.title = invalid ? '请输入完整数字或分数（如 1/2），分母不能为 0' : '';
   }
 
   function bind() {

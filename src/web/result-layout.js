@@ -10,6 +10,7 @@ function navigation(items) {
 
 /* 章节跳转不改 hash，避免与模块路由冲突；从折叠状态跳转时先展开。 */
 function wire(root) {
+  require('./study-view.js').wire(root);
   Array.prototype.forEach.call(root.querySelectorAll('[data-jump]'), function (button) {
     button.addEventListener('click', function () {
       var section = root.querySelector('[data-section="' + button.getAttribute('data-jump') + '"]');

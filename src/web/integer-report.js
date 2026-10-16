@@ -10,6 +10,7 @@ var renderTable = tables.renderTable, explain = tables.explain;
 var dom = require('./dom.js');
 var $ = dom.$, esc = dom.esc, subs = dom.subs;
 var resultLayout = require('./result-layout.js');
+var study = require('./study-view.js');
 var TYPE_NAMES = { cont: '连续', int: '整数', bin: '0-1' };
 var MAX_ENUM_POINTS = 4096, MAX_SHOW_ROWS = 300;
 function num(v) { return fmtNum(v); }
@@ -75,10 +76,11 @@ function relaxIterations(res) {
   var shown = res.steps.filter(function (s) { return s.entering !== null; });
   var lastStep = res.steps[res.steps.length - 1];
   var all = shown.concat([lastStep].filter(function (s) { return shown.indexOf(s) < 0; }));
-  return all.map(function (step, k) {
-    return '<div class="iter-head"><span class="name">第 ' + (k + 1) + ' 张表</span></div>'
-      + renderTable(res, step) + explain(res, step);
-  }).join('');
+  return study.group(all.map(function (step, k) {
+    var title = '第 ' + (k + 1) + ' 张表';
+    return { title: title, html: '<div class="iter-head"><span class="name">' + title + '</span></div>'
+      + renderTable(res, step) + explain(res, step) };
+  }), '整数规划松弛问题迭代学习');
 }
 
 function methodListOnly(r) {
@@ -143,6 +145,7 @@ function renderMethods(prob, r) {
   var box = $('ipMethods');
   if (!box) return;
   box.innerHTML = buildMethods(prob, r);
+  study.wire(box);
   addScrollHints(document);
 }
 

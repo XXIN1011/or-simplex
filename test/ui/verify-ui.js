@@ -1009,6 +1009,7 @@ const PROBE = `JSON.stringify({
   await require('./reliability-cases.js')(sess, check, url);
   await require('./workflow-cases.js')(sess, check, url);
   await require('./draft-cases.js')(sess, check, url);
+  await require('./fraction-study-cases.js')(sess, check, url);
 
   console.log(`\n合计: ${pass} 通过 / ${fail} 失败`);
   q.end(fail === 0, `合计 ${pass} 通过 / ${fail} 失败`);

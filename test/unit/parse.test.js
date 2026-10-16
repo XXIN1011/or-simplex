@@ -26,7 +26,7 @@ test('非法结构返回输入错误，不抛异常或当成空题', () => {
 
 test('逐个校验所有系数、右端项及关系符，阻止 NaN/无穷/隐式零', () => {
   const solve = require('../../src/core/simplex.js').simplexSolve;
-  for (const value of ['oops', Infinity, -Infinity, NaN, null, true, '', '1/2', '1e999']) {
+  for (const value of ['oops', Infinity, -Infinity, NaN, null, true, '', '1/0', '1e999']) {
     for (const p of [P('max', [value], []), P('max', [1], [C([value], '<=', 1)]),
       P('max', [1], [C([1], '<=', value)])]) {
       const r = solve(p);
@@ -37,6 +37,14 @@ test('逐个校验所有系数、右端项及关系符，阻止 NaN/无穷/隐�
   assert.equal(parse.validate(P('max', [1], [C([1], '<', 1)])).ok, false);
   assert.equal(parse.validate(P('max', new Array(1), [])).ok, false);
   assert.equal(parse.validate(P('max', [1], [C(new Array(1), '<=', 1)])).ok, false);
+});
+
+test('分数系数、约束和右端项与等值小数给出一致的求解过程', () => {
+  const solve = require('../../src/core/simplex.js').simplexSolve;
+  const fractions = P('max', ['1/2', '3/4'], [C(['1/3', '1/2'], '<=', '5/2'), C(['1', '0'], '<=', '3')]);
+  const decimals = P('max', [0.5, 0.75], [C([1 / 3, 0.5], '<=', 2.5), C([1, 0], '<=', 3)]);
+  assert.deepEqual(solve(fractions), solve(decimals));
+  assert.equal(solve(fractions).status, 'optimal');
 });
 
 test('规范化与校验使用同一数字解析规则', () => {

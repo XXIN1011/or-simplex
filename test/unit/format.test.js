@@ -11,6 +11,16 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const F = require('../../src/core/format.js');
 
+test('分数 JSON 的纯文本报告与等值数字报告一致，且不修改原始输入', () => {
+  const solve = require('../../src/core/simplex.js').simplexSolve;
+  const raw = { direction: 'min', c: ['−1/2'], constraints: [{ coef: ['1/3'], rel: '<=', rhs: '1/2' }] };
+  const numeric = { direction: 'min', c: [-0.5], constraints: [{ coef: [1 / 3], rel: '<=', rhs: 0.5 }] };
+  const text = F.report(solve(raw), raw);
+  assert.strictEqual(text, F.report(solve(numeric), numeric));
+  assert.ok(text.includes('min z = -1/2x1'));
+  assert.strictEqual(raw.c[0], '−1/2');
+});
+
 test('asFraction：分母小于 200 的有理数显示成分数，试不出来返回 null', () => {
   assert.strictEqual(F.asFraction(0.5), '1/2');
   assert.strictEqual(F.asFraction(1.8), '9/5');

@@ -19,7 +19,8 @@ const format = require('../../src/core/format.js');
 test('指派数字完整解析：科学计数法和数学负号合法，非法格式不能隐式转换', () => {
   assert.strictEqual(A.assignSolve({cost:[['1e3']]}).objective, 1000);
   assert.strictEqual(A.assignSolve({cost:[['−2']]}).objective, -2);
-  for (const value of ['abc','1/2','1,5','0x10','1e999',Infinity,NaN]) {
+  assert.strictEqual(A.assignSolve({cost:[['1/2']]}).objective, 0.5);
+  for (const value of ['abc','1/0','1,5','0x10','1e999',Infinity,NaN]) {
     assert.strictEqual(A.assignSolve({cost:[[value]]}).ok, false);
   }
 });

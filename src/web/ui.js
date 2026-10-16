@@ -22,6 +22,7 @@ var sensCard = report.sensCard;
 var standardCard = report.standardCard;
 var graphCard = report.graphCard;
 var resultLayout = require('./result-layout.js');
+var study = require('./study-view.js');
 
 (function () {
   'use strict';
@@ -78,7 +79,7 @@ var resultLayout = require('./result-layout.js');
     html += graphCard(prob, res);
 
     html += '<section data-section="iterations"><h2 class="sec">迭代过程（共 ' + (res.steps.length - 1) + ' 次迭代）</h2>';
-    res.steps.forEach(function (step, idx) {
+    var studySteps = res.steps.map(function (step, idx) {
       var title = idx === 0 ? '初始表' : '第 ' + idx + ' 次迭代';
       var isLast = (idx === res.steps.length - 1);
       var tag = '';
@@ -86,12 +87,14 @@ var resultLayout = require('./result-layout.js');
       else if (isLast) tag = '<span class="tag stop">终止</span>';
       else tag = '<span class="tag">' + (idx === 0 ? '起点' : '迭代 ' + idx) + '</span>';
 
-      html += '<div class="card">'
+      var card = '<div class="card">'
         + '<div class="iter-head"><span class="name">' + title + '</span>' + tag + '</div>'
         + renderTable(res, step)
         + explain(res, step)
         + '</div>';
+      return { title: title, html: card };
     });
+    html += study.group(studySteps, '单纯形法迭代学习');
 
     html += '</section></details>';
     if (extra) html += '<details class="result-work result-extra"><summary>扩展分析：对偶解与灵敏度区间</summary>'

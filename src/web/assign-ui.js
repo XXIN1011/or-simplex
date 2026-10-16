@@ -21,6 +21,7 @@ var assignment = require('../core/assignment.js');
 var assignSolve = assignment.assignSolve;
 var parseNumber = require('../core/number-input.js').parseNumber;
 var resultLayout = require('./result-layout.js');
+var study = require('./study-view.js');
 var assignSymbols = assignment.assignSymbols;
 
 var inputPanel = require('./input-panel.js');
@@ -224,10 +225,11 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
       if (!byRound[s.round]) byRound[s.round] = [];
       byRound[s.round].push(s);
     });
+    var rounds = '';
     Object.keys(byRound).map(Number).sort(function (a, b) { return a - b; }).forEach(function (r) {
-      h += roundSection(res, r, byRound[r]);
+      rounds += roundSection(res, r, byRound[r]);
     });
-    return h;
+    return h + study.wrap(rounds, '匈牙利法矩阵步骤学习');
   }
 
   function roundSection(res, round, steps) {
@@ -239,13 +241,14 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
         + (last.phase === 'adjust' ? '　θ = ' + fmtNum(last.theta) : '')
         + (tryStep.done ? '　✓ 完成' : '')
       : '';
-    var h = '<details class="meth" open><summary class="meth-h">'
+    var h = '<details class="meth" data-study-part open><summary class="meth-h">'
       + '<span class="meth-i">' + round + '</span>'
       + '<span class="meth-n">第 ' + round + ' 轮迭代' + (round === 1 ? '（行归约 → 列归约 → 试指派' : '（试指派') + '…）</span>'
       + (chip ? '<span class="meth-c">' + chip + '</span>' : '')
       + '<span class="meth-x"></span></summary><div class="meth-body">';
     steps.forEach(function (s) {
-      h += '<div class="iter-head"><span class="name">' + esc(s.label) + '</span>'
+      h += '<div class="study-step" data-study-step data-step-title="' + esc('第 ' + round + ' 轮 · ' + s.label) + '">'
+        + '<div class="iter-head"><span class="name">' + esc(s.label) + '</span>'
         + '<span class="tag' + (s.done ? ' done' : '') + '">' + esc(s.title) + '</span></div>';
       h += matrixHtml(s.matrix, s.marks, s.lines, res.rowLabels, res.colLabels);
       h += matrixLegend(s, res.rowLabels, res.colLabels);
@@ -257,6 +260,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
         h += '</div>';
       }
       if (s.note) h += '<div class="sens-note">→ ' + esc(s.note) + '</div>';
+      h += '</div>';
     });
     return h + '</div></details>';
   }

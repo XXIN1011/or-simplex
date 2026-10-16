@@ -16,7 +16,7 @@ function markup(matrix, maxN, maxM) {
     + '<button type="button" class="btn" data-guide="apply">设置规模</button></div>'
     + '<p class="guide-note">缩小规模会移除末尾数据；载入示例会替换当前输入。</p></details>'
     + '<p class="guide-note">' + (matrix ? '行是人员，列是工作；填 × 表示禁止指派。' : '先选 max / min，再填写目标系数和各条约束。')
-    + ' 空白按 0；支持小数和 1e3，分数请先换成小数。</p></div>';
+    + ' 空白按 0；支持小数、1e3 和分数（如 1/2、-3/4），分母不能为 0。</p></div>';
 }
 
 function attach(mount, cfg) {
