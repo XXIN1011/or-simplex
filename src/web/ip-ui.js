@@ -110,6 +110,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
     banner('');
     last = r;
     render(prob, r);
+    savedProblems.record();
   }
 
   /* ===================== 启动 ===================== */
@@ -117,7 +118,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
   syncVtypes();
   $('ipSolveBtn').addEventListener('click', solve);
   renderTypes();
-  require('./draft.js').attachLinear({
+  var savedProblems = require('./draft.js').attachLinear({
     key: 'ip', mount: 'ipPanel', panel: panel, maxN: 8, watch: ['ipTypes'],
     readExtra: function (p) { syncVtypes(); p.vtypes = vtypes.slice(); }
   });

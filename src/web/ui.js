@@ -113,12 +113,13 @@ var study = require('./study-view.js');
     var prob = panel.getProblem();
     var res = simplexSolve(prob);
     renderResult(res, prob);
+    if (res.ok) savedProblems.record();
   }
 
   /* ---------------- 事件绑定与启动 ---------------- */
   /* 输入表（按钮、max/min 切换、首屏渲染）全部交给共用组件 */
   panel.init();
-  require('./draft.js').attachLinear({
+  var savedProblems = require('./draft.js').attachLinear({
     key: 'simplex', mount: 'simplexPanel', panel: panel,
     clearExtra: function () {
       $('result').innerHTML = '';

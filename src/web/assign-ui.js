@@ -146,6 +146,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
     if (!res.ok) { banner(res.message || '输入有误'); return; }
     banner('');
     render(res);
+    savedProblems.record();
   }
 
   /* ===================== 输出 ===================== */
@@ -425,7 +426,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
     return 'filled';
   };
   var draft = require('./draft.js');
-  draft.attach({
+  var savedProblems = draft.attach({
     key: 'assign', mount: 'asPanel', valid: draft.validAssignment,
     read: function () {
       return { direction: state.dir, rows: state.rows, cols: state.cols, cells: state.cells };

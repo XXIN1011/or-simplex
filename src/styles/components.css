@@ -2,13 +2,8 @@
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;scroll-padding-top:14px}
 body{
   margin:0;color:var(--fg);background-color:var(--bg);
-  /* 两团光晕只铺在顶部两侧，往下自然消失 —— 页面很长，中段仍是干净的底色 */
-  background-image:
-    radial-gradient(820px 380px at 6% -6%,var(--glow-1) 0%,rgba(0,0,0,0) 62%),
-    radial-gradient(680px 340px at 98% 0%,var(--glow-2) 0%,rgba(0,0,0,0) 58%);
-  background-repeat:no-repeat;background-attachment:fixed;
   font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","HarmonyOS Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
-  font-size:15px;line-height:1.6;
+  font-size:16px;line-height:1.65;
   padding:0 0 env(safe-area-inset-bottom);
 }
 ::selection{background:var(--accent-soft);color:var(--fg)}
@@ -23,17 +18,17 @@ input:focus-visible,select:focus-visible{outline:none}
 input[aria-invalid="true"]{border-color:var(--err)!important;box-shadow:0 0 0 1px var(--err)}
 
 /* 底部有固定的模块导航条，正文要给它让出位置，否则最后一屏会被压住 */
-.wrap{max-width:820px;margin:0 auto;padding:18px 14px calc(108px + env(safe-area-inset-bottom))}
+.wrap{max-width:820px;margin:0 auto;padding:24px 20px calc(108px + env(safe-area-inset-bottom))}
 
 /* ---------- 头部 ---------- */
 header{margin:0 2px 16px}
-h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.25}
-header p{margin:4px 0 0;font-size:13px;color:var(--fg2);letter-spacing:.01em}
+h1{margin:0;font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1.3;text-wrap:balance}
+header p{margin:8px 0 0;font-size:14px;color:var(--fg2);letter-spacing:.01em}
 
 /* ---------- 卡片 ---------- */
 .card{
   background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);
-  padding:15px;margin-bottom:12px;box-shadow:var(--shadow-1);
+  padding:20px;margin-bottom:16px;box-shadow:var(--shadow-1);
 }
 
 /* ---------- 符号说明（可折叠） ---------- */
@@ -83,7 +78,7 @@ header p{margin:4px 0 0;font-size:13px;color:var(--fg2);letter-spacing:.01em}
 .seg button.on{background:var(--card);color:var(--accent);box-shadow:var(--shadow-1);font-weight:700}
 
 /* ---------- 输入表 ---------- */
-.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -15px;padding:0 15px}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -20px;padding:0 20px}
 .scroll-hint{
   font-size:12px;color:var(--fg2);text-align:center;
   margin:-1px 0 8px;transition:opacity .2s;
@@ -107,7 +102,7 @@ table{border-collapse:collapse;font-variant-numeric:tabular-nums}
 .inp tbody tr:first-child td:first-child{border-radius:var(--r-sm) 0 0 var(--r-sm)}
 input.num{
   width:58px;height:44px;padding:0 2px;text-align:center;
-  border:1px solid var(--line2);border-radius:var(--r-sm);
+  border:1px solid var(--control-line);border-radius:var(--r-sm);
   font:inherit;font-size:16px;color:var(--fg);background:var(--input);
   font-variant-numeric:tabular-nums;
   transition:border-color .15s,box-shadow .15s,background .15s;
@@ -117,11 +112,11 @@ input.num:focus{
   box-shadow:var(--focus);
 }
 /* 没填的格子显示一个淡灰的 0：既看得出「不填就是 0」，又不会让人以为里面已经有内容 */
-input.num::placeholder{color:var(--fg3);opacity:.75}
+input.num::placeholder{color:var(--fg3);opacity:1}
 select.rel{
   /* 原来 43px，比右边的系数格矮一点；补到 44px 后两者齐高，也好点中 */
   width:58px;height:44px;padding:0 4px 0 2px;
-  border:1px solid var(--line2);border-radius:var(--r-sm);
+  border:1px solid var(--control-line);border-radius:var(--r-sm);
   font:inherit;font-size:15px;color:var(--fg);background:var(--input);
   -webkit-appearance:none;appearance:none;text-align:center;text-align-last:center;
   background-image:var(--caret);
@@ -152,10 +147,9 @@ button.btn{
 button.btn:active{background:var(--soft);transform:translateY(1px)}
 button.btn:disabled{opacity:.38;cursor:default}
 button.btn.primary{
-  flex:1;background-image:linear-gradient(180deg,var(--accent-hi),var(--accent));
-  background-color:var(--accent);border-color:transparent;color:#fff;
-  font-size:15px;font-weight:700;letter-spacing:.14em;padding:11px 13px;
-  box-shadow:0 8px 18px -10px var(--accent);
+  flex:1;background-color:var(--button-bg);border-color:transparent;color:var(--button-fg);
+  font-size:16px;font-weight:650;letter-spacing:.06em;padding:12px 16px;
+  box-shadow:none;
 }
 button.btn.primary:active{filter:brightness(.94);transform:translateY(1px)}
 /* 输入表里的空状态提示 */
@@ -253,15 +247,11 @@ html[data-theme="dark"] .graph .g-ipoptlbl{fill:#4ade80}
 #result{display:none}
 #result.show{display:block}
 #result.stale{opacity:.38;transition:opacity .15s}
-/* 章节标题：左侧一小段强调色竖条 + 加粗字，比单纯换个字号更容易扫读 */
+/* 章节靠字号与留白建立层级，避免用重复装饰抢走公式的注意力。 */
 h2.sec{
   display:flex;align-items:center;gap:8px;
-  font-size:13px;font-weight:700;color:var(--fg);
-  margin:26px 2px 10px;letter-spacing:.04em;
-}
-h2.sec::before{
-  content:'';flex:none;width:3px;height:14px;border-radius:2px;
-  background-image:linear-gradient(180deg,var(--accent-hi),var(--accent));
+  font-size:16px;font-weight:700;color:var(--fg);
+  margin:28px 2px 12px;
 }
 h2.sec:first-child{margin-top:14px}
 
@@ -322,22 +312,18 @@ table.tb th.leave{color:var(--warn);background:var(--leave-soft)}
 .explain .row{display:block}
 
 /* ---------- 结论 ---------- */
-/* 结论块下方必须留出与 .card 一致的外边距：它和对偶解块背景同为 --card，
-   不留缝的话两块白底会贴成一整块，看不出是两张卡片。
-   左侧那道 4px 色条按结论类型变色（绿=最优 / 红=无解 / 琥珀=无界），
-   不用读文字也能先看出结果好坏。 */
+/* 状态通过标题、边框与淡色背景共同区分；保持数字承载面稳定。 */
 .verdict{
   position:relative;border-radius:var(--r-lg);padding:16px 16px 16px 18px;
   background-color:var(--card);border:1px solid var(--line);
-  border-left:4px solid var(--fg3);
   box-shadow:var(--shadow-1);margin-bottom:12px;
 }
 .verdict .vtitle{font-size:13px;font-weight:700;margin-bottom:10px}
-.verdict.opt{border-left-color:var(--ok);background-image:linear-gradient(180deg,var(--ok-soft) 0%,rgba(0,0,0,0) 46%)}
+.verdict.opt{border-color:var(--ok);background-color:var(--ok-soft)}
 .verdict.opt .vtitle{color:var(--ok)}
-.verdict.no{border-left-color:var(--err);background-image:linear-gradient(180deg,var(--err-soft) 0%,rgba(0,0,0,0) 46%)}
+.verdict.no{border-color:var(--err);background-color:var(--err-soft)}
 .verdict.no .vtitle{color:var(--err)}
-.verdict.unb{border-left-color:var(--warn);background-image:linear-gradient(180deg,var(--warn-soft) 0%,rgba(0,0,0,0) 46%)}
+.verdict.unb{border-color:var(--warn);background-color:var(--warn-soft)}
 .verdict.unb .vtitle{color:var(--warn)}
 .sol{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.85}
 .sol .v{color:var(--accent-text)}
@@ -365,89 +351,24 @@ a.back{
 }
 a.back:active{opacity:.6}
 
-/* 首页头部做成一块「品牌区」：图标 + 标题 + 一句话定位 + 特性标签。
-   渐变只铺在左上角、右下角收到全透明，于是正文始终落在纯 --card 上 —— 副标题按
-   --fg2 对 --card 算对比度（浅色 5.5:1、深色 7.7:1），不会被渐变稀释掉。
-   只作用于 .hero，其它模块的 header 保持原样。 */
-.hero{
-  position:relative;overflow:hidden;
-  background-color:var(--card);
-  background-image:
-    radial-gradient(320px 200px at 0% 0%,var(--accent-soft) 0%,rgba(0,0,0,0) 70%),
-    linear-gradient(135deg,var(--accent-soft) 0%,rgba(0,0,0,0) 58%);
-  border:1px solid var(--line);border-radius:var(--r-xl);
-  padding:20px;margin:0 0 12px;box-shadow:var(--shadow-1);
-}
-/* 右上角一层极淡的点阵，给纯色卡片一点质感；不承载文字，纯装饰 */
-.hero::after{
-  content:'';position:absolute;inset:0;pointer-events:none;opacity:.5;
-  background-image:radial-gradient(currentColor 1px,rgba(0,0,0,0) 1px);
-  background-size:14px 14px;
-  color:var(--line2);
-  -webkit-mask-image:linear-gradient(120deg,rgba(0,0,0,0) 42%,#000 100%);
-  mask-image:linear-gradient(120deg,rgba(0,0,0,0) 42%,#000 100%);
-}
-.hero>*{position:relative;z-index:1}
-.hero .mark{display:block;margin-bottom:12px}
-.hero .mark svg{display:block;width:48px;height:48px;border-radius:14px;box-shadow:0 8px 20px -10px rgba(37,99,235,.75)}
-.hero h1{font-size:23px}
-.hero .feats{display:flex;flex-wrap:wrap;gap:6px;margin:13px 0 0;padding:0;list-style:none}
-.hero .feats li{
-  /* 12px 是审查脚本的「过小字号」下限，别再往下调 */
-  font-size:12px;color:var(--fg2);background:var(--soft);
-  border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-weight:600;
-}
-
-/* 首页模块卡：图标 + 标题 + 说明 + 圆形箭头。
-   图标底色与强调色按模块区分（蓝 / 琥珀 / 绿），全部取自 :root 里已有的变量，
-   这样浅色、深色两套配色自动跟着走，不用再写一份深色规则。 */
-a.modcard{
-  display:flex;align-items:flex-start;gap:13px;
-  text-decoration:none;position:relative;overflow:hidden;
-  background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);
-  padding:16px;margin-bottom:11px;
-  box-shadow:var(--shadow-1);
-  transition:box-shadow .16s,border-color .16s,transform .16s;
-}
-a.modcard::before{
-  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
-  background-image:linear-gradient(180deg,var(--mi),rgba(0,0,0,0));
-  opacity:0;transition:opacity .16s;
-}
-a.modcard:active{background:var(--soft)}
-/* 悬停效果只在真有指针的设备上给：手机上 :hover 会「粘」在最后点过的那张卡上 */
-@media (hover:hover){
-  a.modcard:hover{box-shadow:var(--shadow-2);transform:translateY(-2px);border-color:var(--line2)}
-  a.modcard:hover::before{opacity:1}
-  a.modcard:hover .go{background:var(--mi);color:#fff;transform:translateX(2px)}
-  a.modcard:hover .mi{transform:scale(1.06)}
-}
-a.modcard .mi{
-  flex:none;width:44px;height:44px;border-radius:14px;
-  display:flex;align-items:center;justify-content:center;
-  background:var(--mi-bg);color:var(--mi);
-  transition:transform .16s;
-}
-a.modcard .mi svg{display:block;width:23px;height:23px}
-a.modcard.m-simplex{--mi:var(--accent);--mi-bg:var(--accent-soft)}
-a.modcard.m-sens{--mi:var(--warn);--mi-bg:var(--warn-soft)}
-a.modcard.m-ip{--mi:var(--ok);--mi-bg:var(--ok-soft)}
-/* 指派问题用紫色：前面三张卡已经占掉蓝 / 琥珀 / 绿，第四个模块需要一个能一眼分开的
-   ——紫色的对比度与它们相当，浅深两套各自调过（见设计令牌里的 --violet / --violet-soft）。 */
-a.modcard.m-assign{--mi:var(--violet);--mi-bg:var(--violet-soft)}
+/* 首页采用模块索引：标题与说明共用一个阅读轴，避免重复卡片外框。 */
+.hero{position:relative;background:transparent;border:0;border-bottom:2px solid var(--line2);border-radius:0;padding:0 0 24px;margin:0 0 16px;box-shadow:none}
+.hero .mark{display:block;margin-bottom:16px}
+.hero .mark svg{display:block;width:36px;height:36px;border-radius:9px}
+.hero h1{font-size:28px}
+.hero p{max-width:42em;font-size:13px;line-height:1.8}
+.hero .feats{display:flex;flex-wrap:wrap;gap:16px;margin:18px 0 0;padding:0;list-style:none}
+.hero .feats li{font-size:12px;font-weight:500;color:var(--fg2)}
+a.modcard{display:flex;align-items:center;gap:16px;text-decoration:none;background:var(--card);border:0;border-bottom:1px solid var(--line);border-radius:0;padding:20px 16px;margin:0;transition:background var(--duration-fast)}
+a.modcard:first-of-type{border-radius:var(--r-lg) var(--r-lg) 0 0}
+a.modcard.m-assign{border-radius:0 0 var(--r-lg) var(--r-lg);border-bottom-color:transparent}
 a.modcard .mb{display:block;flex:1;min-width:0}
-a.modcard .mt{
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
-  font-size:17px;font-weight:700;color:var(--fg);letter-spacing:-.01em;
-}
-a.modcard .go{
-  flex:none;display:inline-flex;align-items:center;justify-content:center;
-  width:28px;height:28px;border-radius:50%;
-  background:var(--accent-soft);color:var(--accent);
-  transition:background .16s,color .16s,transform .16s;
-}
-a.modcard .go svg{display:block;width:14px;height:14px}
-a.modcard .md{display:block;margin-top:6px;font-size:12.5px;color:var(--fg2);line-height:1.7}
+a.modcard .mt{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:18px;font-weight:650;color:var(--fg);line-height:1.4}
+a.modcard .md{display:block;max-width:65ch;margin-top:7px;font-size:13px;color:var(--fg2);line-height:1.8}
+a.modcard .go{display:inline-flex;align-items:center;justify-content:center;flex:none;width:24px;height:24px;color:var(--fg3)}
+a.modcard .go svg{display:block;width:16px;height:16px}
+a.modcard:active{background:var(--accent-soft)}
+@media(hover:hover){a.modcard:hover{background:var(--soft)}a.modcard:hover .go{color:var(--accent-text)}}
 
 /* 首页底部提示：手机上「添加到桌面」才是主要入口，值得占一行 */
 .foottip{
@@ -485,15 +406,14 @@ a.modcard .md{display:block;margin-top:6px;font-size:12.5px;color:var(--fg2);lin
 }
 .scen-tabs button:active{background:var(--soft);transform:translateY(1px)}
 .scen-tabs button.on{
-  background-color:var(--accent);
-  background-image:linear-gradient(180deg,var(--accent-hi),var(--accent));
-  border-color:transparent;color:#fff;font-weight:700;
-  box-shadow:0 8px 16px -10px var(--accent);
+  background-color:var(--button-bg);
+  border-color:transparent;color:var(--button-fg);font-weight:700;
+  box-shadow:none;
 }
 /* 前置判断的推导 */
 .judge{
   margin-top:9px;padding:12px 14px;border-radius:var(--r);
-  background:var(--soft);border-left:3px solid var(--line2);
+  background:var(--soft);border:1px solid var(--line);
   font-size:13px;color:var(--fg2);line-height:1.85;
   font-variant-numeric:tabular-nums;word-break:break-word;
 }
@@ -541,8 +461,7 @@ table.sens.en td.nm{color:var(--fg2);font-variant-numeric:tabular-nums}
   display:flex;align-items:center;flex-wrap:wrap;gap:5px 10px;
   min-height:54px;padding:10px 14px;border-radius:var(--r-lg);
   background-color:var(--card);
-  background-image:linear-gradient(90deg,var(--accent-soft) 0%,rgba(0,0,0,0) 42%);
-  border:1px solid var(--line);border-left:4px solid var(--accent);
+  border:1px solid var(--line);
   box-shadow:var(--shadow-1);
   transition:box-shadow .15s;
 }
@@ -554,10 +473,9 @@ table.sens.en td.nm{color:var(--fg2);font-variant-numeric:tabular-nums}
   flex:0 0 auto;line-height:1;
   display:inline-flex;align-items:center;justify-content:center;
   width:24px;height:24px;border-radius:50%;
-  background-image:linear-gradient(180deg,var(--accent-hi),var(--accent));
-  background-color:var(--accent);color:#fff;
+  background-color:var(--button-bg);color:var(--button-fg);
   font-size:13px;font-weight:700;
-  box-shadow:0 6px 14px -8px var(--accent);
+  box-shadow:none;
 }
 .meth-n{
   flex:1 1 auto;min-width:0;

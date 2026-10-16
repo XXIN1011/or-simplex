@@ -93,6 +93,7 @@ var study = require('./study-view.js');
     renderBase();
     renderScenario();
     if (savedScenario) restoreScenario(savedScenario);
+    savedProblems.record();
   }
 
   function statusName(s) {
@@ -327,6 +328,7 @@ var study = require('./study-view.js');
     last = r;
     if (r.parameter) renderParam(r);
     else renderAnalysis(r);
+    savedProblems.record();
   }
 
   /* ---------------- 参数线性规划的结果 ---------------- */
@@ -541,7 +543,7 @@ var study = require('./study-view.js');
   });
   $('sScenario').addEventListener('change', clearAnalysis);
   $('sSolveBtn').addEventListener('click', solveBase);
-  require('./draft.js').attachLinear({
+  var savedProblems = require('./draft.js').attachLinear({
     key: 'sens', mount: 'sensPanel', panel: panel, watch: ['sScenario', 'sSolveBtn'],
     validExtra: validScenario,
     readExtra: function (p) { p.scenario = readScenario(); },

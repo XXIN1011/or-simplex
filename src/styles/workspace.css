@@ -1,9 +1,8 @@
-/* 输入与结果工作区：品牌/导航保留玻璃，长篇数字内容使用稳定底色。 */
-:root{--content-surface:rgba(255,255,255,.96)}
-html[data-theme="dark"]{--content-surface:rgba(21,26,35,.97)}
+/* 输入、历史与结果共用实色承载面，保证长篇数字始终清楚。 */
+:root{--content-surface:var(--card)}
 .input-guide{margin:0 0 16px;padding:0 0 14px;border-bottom:1px solid var(--line2)}
 .guide-intro{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.guide-intro b{font-size:14px}
+.guide-intro b{font-size:16px}
 .guide-intro p{margin:3px 0 0;color:var(--fg2);font-size:12.5px}
 .guide-intro .btn{flex-shrink:0}
 .guide-size{margin-top:8px}
@@ -17,7 +16,29 @@ html[data-theme="dark"]{--content-surface:rgba(21,26,35,.97)}
 .guide-actions{display:flex;gap:8px;flex-shrink:0}
 .draft-tools{margin-top:8px}
 .draft-tools .guide-note{margin:0}
+.problem-history{margin-top:8px}
+.problem-history>summary{min-height:44px;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:650;color:var(--fg)}
+.problem-history>summary::before{content:'＋';color:var(--accent)}
+.problem-history[open]>summary::before{content:'−'}
+.history-count{min-width:24px;text-align:center;color:var(--fg2);font-size:12px;font-weight:500}
+.problem-history .guide-note:empty{display:none}
+.history-toolbar{display:flex;justify-content:flex-end;padding:4px 0 8px}
+.history-list{list-style:none;margin:0;padding:0;max-height:360px;overflow:auto;overscroll-behavior:contain}
+.history-list>li{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line2)}
+.history-info{flex:1;min-width:0}
+.history-info b{display:block;font-size:13px;line-height:1.6;overflow-wrap:anywhere}
+.history-info time{display:block;margin-top:2px;color:var(--fg2);font-size:12px}
+.history-info p{margin:4px 0 0;color:var(--fg2);font-size:12px;line-height:1.6;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.history-actions{display:flex;gap:6px;flex-shrink:0}
+.history-actions .btn,.history-toolbar .btn{min-height:44px}
+.history-delete{width:44px;padding:0;font-size:22px}
+@media(max-width:480px){.history-list>li{align-items:flex-start;flex-direction:column;gap:8px}.history-actions{align-self:flex-end}}
 .input-guide.has-model>.guide-note,.input-guide.has-model .guide-intro p{display:none}
+/* 费用矩阵有更多行：收紧辅助区间距，并让求解紧接矩阵，长说明接在操作之后。
+   44px 的按钮和折叠入口保持不变，避免主操作落在浮动导航的遮挡位置。 */
+#mod-assign>header{margin-bottom:12px}
+#asPanel .input-guide{margin-bottom:12px;padding-bottom:8px}
+#asPanel .guide-size,#asPanel .draft-tools,#asPanel .problem-history{margin-top:4px}
 .result-nav{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 18px}
 .result-nav .btn{min-height:44px}
 .study-toolbar{padding:12px!important}
@@ -30,17 +51,18 @@ html[data-theme="dark"]{--content-surface:rgba(21,26,35,.97)}
 .study-picker select{width:100%;min-width:0;min-height:44px;padding:6px;font:inherit;font-size:13px;color:inherit;background:var(--input);border:1px solid var(--line2);border-radius:var(--r-sm)}
 .study-step[hidden],.study-controls[hidden],.study-caption[hidden],[data-study-part][hidden]{display:none}
 .result-work{margin:14px 0}
-.result-work>summary{padding:8px 14px;border:1px solid var(--line2);border-radius:var(--r);background:var(--content-surface);margin-bottom:16px}
+.result-work>summary{padding:10px 16px;border:1px solid var(--line);border-radius:var(--r);background:var(--content-surface);margin-bottom:16px}
 [data-section]{scroll-margin-top:18px}
 #result .card,#ipOut .card,#sensOut .card,#asOut .card{
-  background:var(--content-surface);backdrop-filter:none;-webkit-backdrop-filter:none;
+  background:var(--content-surface);
   box-shadow:var(--shadow-1);border-color:var(--line);border-radius:var(--r);
 }
-.result-nav .btn{backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:var(--shadow-1)}
-@media(min-width:1000px){.wrap{max-width:1000px}.hero{padding:26px 30px}.modcard .md{font-size:14px}}
+.result-nav .btn{box-shadow:var(--shadow-1)}
+@media(min-width:1000px){.wrap{max-width:1000px}.hero{padding:8px 0 28px}.hero h1{font-size:36px}.modcard .md{font-size:14px}}
 @media(min-width:1100px){
   .wrap{max-width:1240px}
   #mod-home,#mod-ip,#mod-sens,#mod-assign,#mod-settings{max-width:1000px;margin:0 auto}
+  #mod-settings{max-width:680px}
   #mod-simplex.on.has-result{display:grid;grid-template-columns:minmax(340px,420px) minmax(0,1fr);grid-template-rows:auto auto auto 1fr;column-gap:24px;align-items:start}
   #mod-simplex.has-result>header{grid-column:1/-1;grid-row:1}
   #mod-simplex.has-result>.card{grid-column:1;grid-row:2}

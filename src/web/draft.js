@@ -1,6 +1,6 @@
 /* 每个模块只保留当前题目。存原始输入，不存计算结果，恢复后仍由用户重新求解。 */
 'use strict';
-var PREFIX = 'or-simplex-draft:';
+var createStore = require('./local-store.js').createStore;
 
 function scalar(v) {
   return typeof v === 'string' || (typeof v === 'number' && isFinite(v));
@@ -21,35 +21,6 @@ function validAssignment(p) {
   return !!p && ['min', 'max'].indexOf(p.direction) >= 0
     && size(p.rows, 8) && size(p.cols, 8) && Array.isArray(p.cells) && p.cells.length === p.rows
     && p.cells.every(function (row) { return Array.isArray(row) && row.length === p.cols && row.every(scalar); });
-}
-
-/* 单独封装存储，浏览器拒绝访问、配额不足或旧数据损坏都不能阻止录题与求解。 */
-function createStore(key, valid, storage) {
-  var access = storage || function () { return window.localStorage; };
-  return {
-    load: function () {
-      var raw;
-      try { raw = access().getItem(PREFIX + key); }
-      catch (e) { return { status: 'unavailable' }; }
-      if (raw === null) return { status: 'empty' };
-      try {
-        if (raw.length > 1048576) return { status: 'invalid' };
-        var record = JSON.parse(raw);
-        if (!record || record.version !== 1 || !valid(record.data)) return { status: 'invalid' };
-        return { status: 'restored', data: record.data };
-      } catch (e2) { return { status: 'invalid' }; }
-    },
-    save: function (data) {
-      try {
-        access().setItem(PREFIX + key, JSON.stringify({ version: 1, data: data }));
-        return true;
-      } catch (e) { return false; }
-    },
-    clear: function () {
-      try { access().removeItem(PREFIX + key); return true; }
-      catch (e) { return false; }
-    }
-  };
 }
 
 function attach(cfg) {
@@ -98,10 +69,21 @@ function attach(cfg) {
     var root = document.getElementById(id);
     ['input', 'change', 'click'].forEach(function (name) { root.addEventListener(name, save); });
   });
+  var history = require('./problem-history.js').attach({
+    key: cfg.key, mount: mount, valid: cfg.valid,
+    restore: function (data) {
+      cfg.reset();
+      cfg.restore(data);
+      var saved = store.save(cfg.read());
+      previous = saved ? JSON.stringify(cfg.read()) : '';
+      message(saved ? '已从历史记录恢复题目，请重新求解。' : '题目已恢复，但未能自动保存，请保持页面打开。');
+    }
+  });
+  return { record: function () { save(); return history.record(cfg.read()); } };
 }
 
 function attachLinear(cfg) {
-  attach({
+  return attach({
     key: cfg.key, mount: cfg.mount, watch: cfg.watch,
     valid: function (p) {
       return validLinear(p, cfg.maxN || 6, cfg.maxM || 8) && (!cfg.validExtra || cfg.validExtra(p));
