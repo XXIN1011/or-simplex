@@ -11,3 +11,10 @@ test('安静模式失败或未收尾不能以零退出码通过', () => {
     assert.match(run.stdout,/FAIL/);
   }
 });
+
+test('安静模式失败时在 CI 输出中保留异常原因', () => {
+  const quiet = path.resolve(__dirname,'../../lib/quiet.js');
+  const run = spawnSync(process.execPath,['-e',`process.argv.push('--quiet');const q=require(${JSON.stringify(quiet)}).begin('exit-test');console.error('Chrome startup diagnostic');q.end(false,'故意失败')`],{encoding:'utf8'});
+  assert.equal(run.status,1);
+  assert.match(run.stderr,/Chrome startup diagnostic/);
+});
