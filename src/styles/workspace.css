@@ -14,6 +14,9 @@ html[data-theme="dark"]{--content-surface:rgba(21,26,35,.97)}
 .guide-fields label{display:flex;flex:1;min-width:90px;flex-direction:column;gap:5px;font-size:12px;color:var(--fg2)}
 .guide-fields select{min-height:44px;width:100%;padding:8px 12px;font:inherit;font-size:15px;color:var(--fg);background:var(--input);border:1px solid var(--line2);border-radius:var(--r-sm)}
 .guide-note{font-size:12px;line-height:1.65;color:var(--fg2);margin:8px 0 0}
+.guide-actions{display:flex;gap:8px;flex-shrink:0}
+.draft-tools{margin-top:8px}
+.draft-tools .guide-note{margin:0}
 .input-guide.has-model>.guide-note,.input-guide.has-model .guide-intro p{display:none}
 .result-nav{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 18px}
 .result-nav .btn{min-height:44px}

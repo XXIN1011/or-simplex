@@ -67,7 +67,7 @@ function dualCard(res, prob) {
 
 /* 灵敏度分析：保持当前最优基不变时，c 与 b 的允许变化范围。
    算法层已经把区间算好（见 core/sensitivity.js 的 sensitivityAnalysis），
-   这里只负责把区间写成教材里那种不等式。 */
+   这里只负责把区间写成不等式。 */
 function sensCard(res) {
   var s = res.sensitivity;
   if (!s || (!s.c.length && !s.b.length)) return '';

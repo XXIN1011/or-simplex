@@ -260,6 +260,16 @@ function createInputPanel(cfg) {
   }
 
   /* 按当前输入拼出求解器要的问题对象 */
+  function getDraft() {
+    return {
+      direction: state.dir,
+      c: state.c.slice(0, state.n),
+      constraints: state.cons.slice(0, state.m).map(function (k) {
+        return { coef: k.coef.slice(0, state.n), rel: k.rel, rhs: k.rhs };
+      })
+    };
+  }
+
   function getProblem() {
     return {
       direction: state.dir,
@@ -289,7 +299,7 @@ function createInputPanel(cfg) {
   return {
     state: state, init: init, render: render,
     setN: setN, setM: setM, setDir: setDir,
-    getProblem: getProblem, el: el
+    getProblem: getProblem, getDraft: getDraft, loadProblem: loadProblem, el: el
   };
 }
 

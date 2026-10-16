@@ -54,7 +54,7 @@ function bruteForce(cost, direction) {
   return best;
 }
 
-test('教材式 4×4 最小化：z = 28，且逐行指派正确', () => {
+test('4×4 最小化：z = 28，且逐行指派正确', () => {
   const cost = [[2, 15, 13, 4], [10, 4, 14, 15], [9, 14, 16, 13], [7, 8, 11, 9]];
   const res = A.assignSolve({ direction: 'min', cost: cost });
   assert.strictEqual(res.ok, true);

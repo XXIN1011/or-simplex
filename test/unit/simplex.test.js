@@ -2,7 +2,7 @@
    单元测试 · 核心求解模块（core/simplex.js）
    -------------------------------------------------------------------------
    断言分三类，都不依赖「跑一遍代码看看输出是啥」：
-     ① 手算答案：7 道教材例题 + 边界情形，答案是人算出来的；
+     ① 手算答案：7 道手算算例 + 边界情形，答案是人算出来的；
      ② 独立第二实现：对偶解用「中心差分扰动」重算，验的是「yᵢ 等于最优值对右端项的偏导数」；
      ③ 结构契约：status 取值、快照字段、扩展点（入基规则 / 迭代上限）行为。
    ========================================================================= */
@@ -43,7 +43,7 @@ test('例题3 min z=4x1+x2（含 = 与 ≥）：x1=2/5, x2=9/5, z=17/5', () => {
   assert.strictEqual(r.status, 'optimal');
   assert.ok(near(r.solution[0], 0.4) && near(r.solution[1], 1.8));
   assert.ok(near(r.objective, 3.4));
-  assert.strictEqual(F.fmtNum(r.solution[0]), '2/5');   // 显示成教材口径的分数
+  assert.strictEqual(F.fmtNum(r.solution[0]), '2/5');   // 显示为分数
   assert.strictEqual(F.fmtNum(r.objective), '17/5');
 });
 

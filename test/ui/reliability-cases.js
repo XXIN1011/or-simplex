@@ -5,6 +5,8 @@ module.exports = async function reliabilityCases(sess, check, url) {
   // 先离开文档，避免仅 hash 变化保留前一套件的输入状态。
   await sess.navigate('about:blank', 0);
   await sess.navigate(url + '#/simplex', 200);
+  // 上一组用例已自动保存输入；本组从用户明确清空的空题目开始。
+  await sess.evl("Array.prototype.forEach.call(document.querySelectorAll('[data-draft-clear]'),function(b){b.click()})");
   const results = await sess.evl(`(function () {
     var results = [];
     function expect(ok, label) { results.push({ok:!!ok,label:label}); }

@@ -48,7 +48,7 @@ test('rangeParts：四种区间语义', () => {
   assert.strictEqual(F.rangeParts(1.5, 5).kind, 'between');
 });
 
-test('rangeText：写成教材里的不等式', () => {
+test('rangeText：写成不等式', () => {
   assert.strictEqual(F.rangeText(-Infinity, Infinity, 'c1'), '可任意取值');
   assert.strictEqual(F.rangeText(1.5, 5, 'c1'), '3/2 ≤ c1 ≤ 5');
   assert.strictEqual(F.rangeText(1.5, Infinity, 'c1'), 'c1 ≥ 3/2');

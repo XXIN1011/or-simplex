@@ -63,10 +63,12 @@ var resultLayout = require('./result-layout.js');
       return;
     }
 
-    var html = '<h2 class="sec">结论</h2>' + verdict(res) + dualCard(res, prob);
-    html += resultLayout.navigation([['standard','查看标准化'],['iterations','查看迭代过程']]);
-    html += sensCard(res);
-    html += '<details class="result-work" open><summary>完整推导（可收起）</summary>';
+    var extra = dualCard(res, prob) + sensCard(res);
+    var chapters = [['standard','查看标准化'],['iterations','查看迭代过程']];
+    if (extra) chapters.push(['analysis','查看扩展分析']);
+    var html = '<h2 class="sec">结论</h2>' + verdict(res);
+    html += resultLayout.navigation(chapters);
+    html += '<details class="result-work" open><summary>计算过程：标准化与单纯形迭代</summary>';
     var legend = '<span class="nb">x = 决策变量</span>　<span class="nb">s = 松弛 / 剩余变量</span>　'
       + '<span class="nb">a = 人工变量</span>　·　<span class="nb">σ 行末列为 −z</span>';
     if (res.swapped) legend += '　·　<span class="nb">min 问题已取负转为 max，z 已还原</span>';
@@ -92,6 +94,8 @@ var resultLayout = require('./result-layout.js');
     });
 
     html += '</section></details>';
+    if (extra) html += '<details class="result-work result-extra"><summary>扩展分析：对偶解与灵敏度区间</summary>'
+      + '<section data-section="analysis">' + extra + '</section></details>';
 
     box.innerHTML = html;
     box.classList.add('show');
@@ -111,6 +115,15 @@ var resultLayout = require('./result-layout.js');
   /* ---------------- 事件绑定与启动 ---------------- */
   /* 输入表（按钮、max/min 切换、首屏渲染）全部交给共用组件 */
   panel.init();
+  require('./draft.js').attachLinear({
+    key: 'simplex', mount: 'simplexPanel', panel: panel,
+    clearExtra: function () {
+      $('result').innerHTML = '';
+      $('result').classList.remove('show', 'stale');
+      $('mod-simplex').classList.remove('has-result');
+      $('banners').innerHTML = '';
+    }
+  });
   $('solveBtn').addEventListener('click', doSolve);
 
 })();

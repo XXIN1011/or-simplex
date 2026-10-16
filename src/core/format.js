@@ -3,7 +3,7 @@
    -------------------------------------------------------------------------
    本模块只做「值 → 字符串」，不产出 HTML、不碰 DOM、不做 IO：
 
-     asFraction   有理数优先显示成分数（教材口径：1/2 而不是 0.5）
+     asFraction   有理数优先显示成分数（如 1/2 而不是 0.5）
      fmtNum       单个数字的统一格式（含容差归零、去除多余的 0）
      fmtPair      带 M 的检验数：**M 项写在前面**，例如 7M - 4
      rangeParts   区间语义（无界 / 单边 / 一个点 / 闭区间）—— 界面与 CLI 共用一份判断
@@ -88,7 +88,7 @@ function rangeParts(lo, hi) {
 }
 
 /**
- * rangeText —— 把区间写成教材里的不等式（纯文本版）。
+ * rangeText —— 把区间写成不等式（纯文本版）。
  * @param {number} lo 下界
  * @param {number} hi 上界
  * @param {string} name 变量名，例如 'c1'、'b2'

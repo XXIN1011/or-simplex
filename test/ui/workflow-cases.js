@@ -13,6 +13,12 @@ module.exports = async function workflowCases(sess, check, url) {
     sample('simplexPanel');click('solveBtn');
     expect(q('#result .zv').textContent==='14','单纯形示例可直接求解 z=14');
     expect(!!(q('#result .verdict').compareDocumentPosition(q('#result [data-section=iterations]'))&4),'单纯形结论位于迭代之前');
+    expect(!!(q('#result [data-section=iterations]').compareDocumentPosition(q('#result [data-section=analysis]'))&4),'单纯形计算过程位于扩展分析之前');
+    var extra=q('#result details.result-extra');
+    expect(!extra.open && q('#result details.result-work').open,'计算过程默认展开，扩展分析默认收起');
+    q('#result [data-jump=analysis]').click();
+    expect(extra.open && document.activeElement===q('#result [data-section=analysis]'),'扩展分析跳转自动展开并定位焦点');
+    extra.open=false;
     var fold=q('#result details.result-work');fold.open=false;
     q('#result [data-jump=iterations]').click();
     expect(fold.open && location.hash==='#/simplex','章节跳转展开推导且不破坏路由');

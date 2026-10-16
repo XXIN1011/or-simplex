@@ -1,7 +1,7 @@
 /* =========================================================================
    灵敏度分析模块界面
    -------------------------------------------------------------------------
-   教材式的流程：
+   分析流程：
      ① 输入基准线性规划 → 求基准最优解
      ② 选择要分析的变化：改目标函数系数 / 改右端项 / 增加约束 / 增加变量
      ③ 输出「前置判断」的推导，再把变化后的表接下去迭代，用的还是单纯形法那套表格
@@ -48,6 +48,7 @@ var resultLayout = require('./result-layout.js');
   var base = null;      // 基准问题的求解结果
   var baseProb = null;  // 基准问题本身
   var last = null;      // 最近一次场景分析的结果
+  var pendingScenario = null; // 恢复题目后，等基准重新求解再还原变化条件。
 
   function clearAnalysis() {
     last = null;
@@ -58,6 +59,7 @@ var resultLayout = require('./result-layout.js');
   function invalidateBase() {
     var hadBase = !!base;
     base = null; baseProb = null;
+    pendingScenario = null;
     clearAnalysis();
     $('sBase').innerHTML = '';
     $('sScenario').innerHTML = '';
@@ -66,7 +68,9 @@ var resultLayout = require('./result-layout.js');
 
   /* ---------------- 基准题求解 ---------------- */
   function solveBase() {
+    var savedScenario = readScenario();
     invalidateBase();
+    pendingScenario = savedScenario;
     var prob = panel.getProblem();
     if (prob.c.length < 1) {
       banner('还没有决策变量，先点「+ 变量」搭一个线性规划。');
@@ -87,6 +91,7 @@ var resultLayout = require('./result-layout.js');
     last = null;
     renderBase();
     renderScenario();
+    if (savedScenario) restoreScenario(savedScenario);
   }
 
   function statusName(s) {
@@ -342,7 +347,7 @@ var resultLayout = require('./result-layout.js');
 
   function renderParam(r) {
     var isC = (r.kind === 'c');
-    var h = '<h2 class="sec">参数线性规划（' + (isC ? '2.6.1 变量系数' : '2.6.2 右边系数') + '）</h2>';
+    var h = '<h2 class="sec">参数线性规划（' + (isC ? '变量系数' : '右边系数') + '）</h2>';
 
     /* ① 参数写法回显，免得看错对象 */
     var parts = [], base0 = isC ? baseProb.c : baseProb.constraints.map(function (k) { return k.rhs; });
@@ -400,14 +405,14 @@ var resultLayout = require('./result-layout.js');
   function renderAnalysis(r) {
     var h = '<h2 class="sec">' + TITLES[r.kind] + '</h2>';
 
-    /* ① 前置判断（教材里的那一步推导） */
+    /* ① 前置判断与推导 */
     h += '<div class="card"><div class="sens-h">' + r.judgement.title + '</div>'
       + '<div class="sens-note">' + r.judgement.head + '</div>';
     if (r.judgement.matrix) {
       h += '<div class="judge">B⁻¹ = ' + esc(r.judgement.matrix) + '</div>';
     }
     h += '<div class="judge">';
-    /* 教材把「系数变化」按非基变量 / 基变量拆成两小节，判据不同，所以分块列 */
+    /* 系数变化按非基变量 / 基变量分别判断，判据不同，所以分块列 */
     (r.judgement.blocks || []).forEach(function (blk) {
       h += '<span class="row blk">' + esc(blk.label) + '</span>';
       blk.lines.forEach(function (l) {
@@ -459,7 +464,7 @@ var resultLayout = require('./result-layout.js');
     }
 
     h += resultLayout.navigation([['sensitivity-work','查看判断与迭代']])
-      + '<details class="result-work" open><summary>完整推导（可收起）</summary><section data-section="sensitivity-work">'
+      + '<details class="result-work" open><summary>计算过程：前置判断与继续迭代</summary><section data-section="sensitivity-work">'
       + reasoning + '</section></details>';
     $('sBase').innerHTML = $('sBase').innerHTML.replace(/<h2 class="sec">分析结果<\/h2>[\s\S]*$/, '');
     var box = document.createElement('div');
@@ -478,6 +483,50 @@ var resultLayout = require('./result-layout.js');
       ? '<div class="banner err">' + esc(msg) + '</div>' : '';
   }
 
+  function readScenario() {
+    if (!base) return pendingScenario;
+    var active = $('sensTabs').querySelector('button.on');
+    return {
+      kind: active.dataset.t, paramKind: paramKind,
+      values: Array.prototype.map.call($('sensForm').querySelectorAll('[data-f]'), function (field) { return field.value; })
+    };
+  }
+
+  function validScenario(p) {
+    var s = p.scenario;
+    if (!s) return true;
+    if (!p.c.length || ['c', 'a', 'b', 'add-con', 'add-var', 'param'].indexOf(s.kind) < 0
+        || ['c', 'b'].indexOf(s.paramKind) < 0 || !Array.isArray(s.values)
+        || !s.values.every(function (v) { return typeof v === 'string'; })) return false;
+    var n = p.c.length, m = p.constraints.length;
+    var count = { c: n, b: m, a: 3, 'add-con': n + 2, 'add-var': m + 1, param: s.paramKind === 'c' ? n : m };
+    if (s.values.length !== count[s.kind]) return false;
+    if (s.kind === 'add-con' && ['<=', '>=', '='].indexOf(s.values[n]) < 0) return false;
+    if (s.kind === 'a') return /^\d+$/.test(s.values[0]) && +s.values[0] < m
+      && /^\d+$/.test(s.values[1]) && +s.values[1] < n;
+    return true;
+  }
+
+  function restoreScenario(s) {
+    Array.prototype.forEach.call($('sensTabs').querySelectorAll('button'), function (button) {
+      button.classList.toggle('on', button.dataset.t === s.kind);
+    });
+    renderForm(s.kind);
+    if (s.kind === 'param') {
+      paramKind = s.paramKind;
+      Array.prototype.forEach.call($('pKind').querySelectorAll('button'), function (button) {
+        button.classList.toggle('on', button.dataset.k === paramKind);
+      });
+      renderParamBody();
+    }
+    Array.prototype.forEach.call($('sensForm').querySelectorAll('[data-f]'), function (field, i) {
+      if (i >= s.values.length) return;
+      field.value = s.values[i];
+      if (field.tagName === 'INPUT') field.setAttribute('aria-invalid', isFinite(parseNumber(field.value, true)) ? 'false' : 'true');
+    });
+    pendingScenario = null;
+  }
+
   /* ---------------- 启动 ---------------- */
   panel.init();
   $('sScenario').addEventListener('input', function (e) {
@@ -488,6 +537,12 @@ var resultLayout = require('./result-layout.js');
   });
   $('sScenario').addEventListener('change', clearAnalysis);
   $('sSolveBtn').addEventListener('click', solveBase);
+  require('./draft.js').attachLinear({
+    key: 'sens', mount: 'sensPanel', panel: panel, watch: ['sScenario', 'sSolveBtn'],
+    validExtra: validScenario,
+    readExtra: function (p) { p.scenario = readScenario(); },
+    restoreExtra: function (p) { pendingScenario = p.scenario || null; }
+  });
 })();
 
 /* 本模块没有对外接口：require 一次即完成灵敏度分析界面初始化（副作用模块）。 */

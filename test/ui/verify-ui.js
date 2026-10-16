@@ -310,7 +310,7 @@ const PROBE = `JSON.stringify({
     '点一下格子直接打字就是干净数字（旧版会变成 "02"）',
     `键入 "2" 后实际值="${typed.val}"`);
 
-  /* ---------- 6.7 结论块与对偶解块之间必须有间距 ---------- */
+  /* ---------- 6.7 结论与章节导航之间必须有间距 ---------- */
   console.log('\n--- 结论区两块之间的间距 ---');
   const gap = JSON.parse(await evl(`(function(){
     window.__T.reset(2, 2); window.__T.setDir('max');
@@ -327,8 +327,8 @@ const PROBE = `JSON.stringify({
       errors: window.__errors.length
     });
   })()`));
-  check(gap.gap >= 8 && gap.next.indexOf('card') >= 0,
-    '结论块与对偶解块之间留有可见间距（不再贴成一整块）',
+  check(gap.gap >= 8 && gap.next.indexOf('result-nav') >= 0,
+    '结论后直接提供章节导航，并留有可见间距',
     `实时间距=${gap.gap}px（margin-bottom=${gap.mb}px，下一块="${gap.next}"）`);
   check(gap.errors === 0, '结论区渲染无 JS 错误');
 
@@ -459,7 +459,7 @@ const PROBE = `JSON.stringify({
     function click(id){ document.getElementById(id).click(); }
     function set(sel, v){ var el = q(sel); if(el){ el.value = v; fire(el,'input'); } }
 
-    /* 教材那道考研题：max 2x1-7x2+x3 ; x1+x2+x3<=6, -x1+2x2<=4 */
+    /* 灵敏度分析验证算例：max 2x1-7x2+x3 ; x1+x2+x3<=6, -x1+2x2<=4 */
     click('sAddVar'); click('sAddVar'); click('sAddVar');
     click('sAddCon'); click('sAddCon');
     set('#sInTbl input[data-k="c"][data-j="0"]','2');
@@ -492,16 +492,16 @@ const PROBE = `JSON.stringify({
   check(sf.tabs === 6, '六个分析场景都能选', `标签数=${sf.tabs}`);
   check(sf.base.indexOf('x1 = 6') >= 0 && sf.base.indexOf('z = 12') >= 0,
     '基准题求出最优解 x1=6、z=12');
-  /* 教材把「改系数」按非基变量(2.5.2) / 基变量(2.5.4)拆成两小节，这里 x2 是非基变量 */
+  /* 系数变化按非基变量 / 基变量分别判断，这里 x2 是非基变量 */
   check(sf.out.indexOf('非基变量的系数') >= 0 && sf.out.indexOf('σ′₂') >= 0
         && sf.out.indexOf('能进基') >= 0,
-    '改目标系数后按教材 2.5.2 给出判断：σ′₂ = c′₂ − z₂ = 1 > 0');
+    '改目标系数后给出非基变量的判断：σ′₂ = c′₂ − z₂ = 1 > 0');
   check(sf.tables >= 1, '变化后的表接着在原最优表上迭代', `迭代表数=${sf.tables}`);
   check(sf.out.indexOf('x1 = 8/3') >= 0 && sf.out.indexOf('z = 46/3') >= 0,
     '结论与新最优解 x1=8/3、x2=10/3、z=46/3 一致');
   check(sf.errors === 0, '灵敏度分析模块无 JS 错误');
 
-  /* ---- 新增的两个场景：技术系数 a_ij（2.5 的列系数）与参数线性规划（2.6） ---- */
+  /* ---- 新增的两个场景：技术系数 a_ij（列系数）与参数线性规划 ---- */
   const nx = JSON.parse(await evl(`(function(){
     function q(s){ return document.querySelector(s); }
     function fire(el, ev){ el.dispatchEvent(new Event(ev, {bubbles:true})); }
@@ -523,7 +523,7 @@ const PROBE = `JSON.stringify({
     r.aOut = ((document.getElementById('sensOut')||{}).textContent||'').replace(/\\\\s+/g,' ');
     r.aTables = document.querySelectorAll('#sensOut table').length;
 
-    /* ② 参数线性规划 2.6.1：给 c1 加 λ 系数 1，即 c1(λ) = 2 + λ */
+    /* ② 参数线性规划（变量系数）：给 c1 加 λ 系数 1，即 c1(λ) = 2 + λ */
     q('#sensTabs button[data-t="param"]').click();
     r.pKindBtns = document.querySelectorAll('#pKind button').length;
     set('[data-f="pd"][data-j="0"]','1');
@@ -531,7 +531,7 @@ const PROBE = `JSON.stringify({
     r.pOut = ((document.getElementById('sensOut')||{}).textContent||'').replace(/\\\\s+/g,' ');
     r.pRows = document.querySelectorAll('#sensOut table.sens tbody tr').length;
 
-    /* ③ 2.6.2 右边系数：切到 b 那一边，确认输入表跟着换 */
+    /* ③ 参数线性规划（右边系数）：切到 b 那一边，确认输入表跟着换 */
     q('#pKind button[data-k="b"]').click();
     r.pInputsB = document.querySelectorAll('[data-f="pe"]').length;
     r.pInputsC = document.querySelectorAll('[data-f="pd"]').length;
@@ -649,7 +649,7 @@ const PROBE = `JSON.stringify({
   check(ip.out.indexOf('✓ 图解法') >= 0 && ip.out.indexOf('✓ 分枝定界法') >= 0
         && ip.out.indexOf('✓ 割平面法') >= 0 && ip.out.indexOf('✗ 隐枚举法') >= 0,
     '适用性一览：图解法/分枝定界/割平面打勾、隐枚举打叉');
-  check(ip.out.indexOf('符合教材里割平面法要求的标准形式') >= 0,
+  check(ip.out.indexOf('符合当前割平面法实现要求的标准形式') >= 0,
     '割平面法给出了「为什么适用」的理由');
   check(ip.out.indexOf('要求所有变量都是 0-1 变量') >= 0,
     '隐枚举法给出了「为什么不能用」的理由');
@@ -717,7 +717,7 @@ const PROBE = `JSON.stringify({
     '进 #/assign 时只显示指派问题模块',
     `others=${asInit.others.join('/')} home=${asInit.home}`);
   check(asInit.inputs === 0 && asInit.dir === 'min' && asInit.btns === 5,
-    '打开时系数矩阵是空的、默认按 min（教材的常见口径）、五个按钮齐全',
+    '打开时系数矩阵是空的、默认按 min、五个按钮齐全',
     `输入框=${asInit.inputs} 方向=${asInit.dir} 按钮=${asInit.btns}`);
   check(asInit.tip.indexOf('还没有系数矩阵') >= 0,
     '空状态给出「+ 行 / + 列 搭矩阵」的提示（不是预填的例题）',
@@ -762,7 +762,7 @@ const PROBE = `JSON.stringify({
     });
   })()`));
   check(asMin.steps.join('|') === '① 行归约|② 列归约|③ 试指派',
-    '步骤编号与教材一致：① 行归约 → ② 列归约 → ③ 试指派（一步到位就不出现 ④⑤）',
+    '步骤顺序正确：① 行归约 → ② 列归约 → ③ 试指派（一步到位就不出现 ④⑤）',
     `步骤=${asMin.steps.join(' → ')}`);
   check(asMin.z.indexOf('z = 28') >= 0 && asMin.assigned,
     'min 4×4：最小总费用 28，并逐行列出派给谁', `结论=${asMin.z}`);
@@ -1008,6 +1008,7 @@ const PROBE = `JSON.stringify({
 
   await require('./reliability-cases.js')(sess, check, url);
   await require('./workflow-cases.js')(sess, check, url);
+  await require('./draft-cases.js')(sess, check, url);
 
   console.log(`\n合计: ${pass} 通过 / ${fail} 失败`);
   q.end(fail === 0, `合计 ${pass} 通过 / ${fail} 失败`);

@@ -169,7 +169,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
     }
     h = conclusionCard(res)
       + resultLayout.navigation([['assignment-steps','查看匈牙利法过程']])
-      + '<details class="result-work" open><summary>完整推导（可收起）</summary>' + h
+      + '<details class="result-work" open><summary>计算过程：矩阵转换与匈牙利法</summary>' + h
       + '<section data-section="assignment-steps">' + roundsCard(res) + '</section></details>';
     $('asOut').innerHTML = h;
     addScrollHints(document);
@@ -211,8 +211,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
   /* ---------------- ② 每一轮迭代 ---------------- */
   function roundsCard(res) {
     var h = '<h2 class="sec">迭代过程（匈牙利法）</h2>';
-    h += '<div class="card"><div class="sens-note">本节对应教材第 6 章 6.7 分配问题（6.7.2 最优匹配），'
-      + '步骤名称按通用口径书写（教材正文未逐条核对）。步骤：'
+    h += '<div class="card"><div class="sens-note">匈牙利法的计算步骤：'
       + '<b>① 行归约</b>每行减去本行最小元素 → <b>② 列归约</b>每列减去本列最小元素 → '
       + '<b>③ 试指派</b>圈出互不同行同列的 0 → <b>④ 覆盖线</b>用最少的直线盖住所有 0 → '
       + '<b>⑤ 矩阵调整</b>未覆盖的最小元素 θ，未覆盖的减 θ、被两条线交叉覆盖的加 θ，回到③。'
@@ -421,6 +420,32 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
     }
     return 'filled';
   };
+  var draft = require('./draft.js');
+  draft.attach({
+    key: 'assign', mount: 'asPanel', valid: draft.validAssignment,
+    read: function () {
+      return { direction: state.dir, rows: state.rows, cols: state.cols, cells: state.cells };
+    },
+    restore: function (p) {
+      state.dir = p.direction;
+      state.rows = p.rows; state.cols = p.cols; state.cells = p.cells;
+      syncDirection();
+      renderInput();
+    },
+    reset: function () {
+      state.dir = 'min'; state.cells = [];
+      syncDirection();
+      setSize(0, 0);
+      banner('');
+    }
+  });
+  function syncDirection() {
+    Array.prototype.forEach.call($('asDirSeg').querySelectorAll('button'), function (button) {
+      var active = button.dataset.dir === state.dir;
+      button.classList.toggle('on', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
 })();
 
 /* 本模块没有对外接口：require 一次即完成指派问题界面初始化（副作用模块）。 */

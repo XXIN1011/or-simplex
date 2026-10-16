@@ -16,13 +16,13 @@ var ipRelaxation = shared.ipRelaxation;
    （割平面）加进去，把那个非整数解割掉，再用对偶单纯形法重新求最优。
    反复做，直到最优解全部取整。
 
-   这条割的来历（教材推导）：设第 r 行的基变量 x_Br 取值为分数，把该行写成
+   这条割的推导：设第 r 行的基变量 x_Br 取值为分数，把该行写成
         x_Br = b̄_r − Σ_{j∉基} ā_rj x_j
    两边取小数部分。因为 x_Br 与非基变量都要求取整，可以证明
         Σ_{j∉基} f(ā_rj)·x_j ≥ f(b̄_r)        （f(·) 表示取小数部分）
    这就是 Gomory 割：它把当前的分数解排除掉，但任何一个整数可行解都仍然满足它。
 
-   适用范围（教材的标准形式）：全部变量取整、约束全部是 ≤、右端项非负、系数全为整数。
+   当前实现支持的标准形式：全部变量取整、约束全部是 ≤、右端项非负、系数全为整数。
    ========================================================================= */
 function ipCuttingPlane(problem, opts) {
   opts = opts || {};
@@ -37,12 +37,12 @@ function ipCuttingPlane(problem, opts) {
     var k = problem.constraints[i];
     if (k.rel !== '<=') {
       return { key: 'cut', name: '割平面法', applicable: false,
-               reason: '第 ' + (i + 1) + ' 条约束是「' + k.rel + '」。割平面法的教材形式'
+               reason: '第 ' + (i + 1) + ' 条约束是「' + k.rel + '」。当前割平面法实现'
                      + '要求全部约束都是 ≤（这样松弛变量本身也是整数，割才成立）。' };
     }
     if (k.rhs < -IP_EPS) {
       return { key: 'cut', name: '割平面法', applicable: false,
-               reason: '第 ' + (i + 1) + ' 条约束的右端项是负的，教材形式要求非负。' };
+               reason: '第 ' + (i + 1) + ' 条约束的右端项是负的，当前割平面法实现要求右端项非负。' };
     }
   }
   var allIntData = problem.c.every(function (v) { return ipIsInt(v); })
@@ -116,7 +116,7 @@ function ipCuttingPlane(problem, opts) {
     var bVal = rows[pick][N];
     var fB = ipFrac(bVal);
     var isNeg = (bVal < 0);
-    /* 右端项为负时按教材的做法把整行取负后再取小数部分，保证割的方向正确。
+    /* 右端项为负时把整行取负后再取小数部分，保证割的方向正确。
        割的写法：Σ f(ā_rj)·x_j ≥ f(b̄_r)，加剩余变量后整行取负 → −Σ f(ā_rj)x_j + s = −f(b̄_r) */
     var cutCoef = [];
     for (var j2 = 0; j2 < N; j2++) {

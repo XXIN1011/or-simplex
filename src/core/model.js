@@ -178,7 +178,7 @@ function createAssignProblem(direction, cost) {
  * @param {object} f 各字段
  * @param {number}    f.round   第几轮（行/列归约算第 1 轮的两步）
  * @param {string}    f.phase   row / col / try / cover / adjust
- * @param {string}    f.label   教材步骤编号 + 名称，如 '③ 试指派'
+ * @param {string}    f.label   计算步骤编号 + 名称，如 '③ 试指派'
  * @param {string}    f.title   这一步做了什么
  * @param {number[][]} f.matrix 该步之后的矩阵（数字，或 null 表示禁止指派）
  * @param {Array<Array<string|null>>} [f.marks]  逐格标记：'circ' 圈定的 0 / 'cross' 被划掉的 0

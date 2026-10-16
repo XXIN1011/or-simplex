@@ -26,7 +26,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
     addVar: 'ipAddVar', delVar: 'ipDelVar', addCon: 'ipAddCon', delCon: 'ipDelCon',
     maxN: 8, maxM: 8,
     example: require('./examples.js').integer,
-    onLoad: function (p) { vtypes = p.vtypes.slice(); renderTypes(); },
+    onLoad: function (p) { vtypes = (p.vtypes || []).slice(); renderTypes(); },
     onResize: renderTypes,
     state: { dir: 'max', n: 0, m: 0, c: [], cons: [] },
     onChange: invalidate
@@ -115,9 +115,12 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
   /* ===================== 启动 ===================== */
   panel.init();
   syncVtypes();
-  panel.state.cons = [];
   $('ipSolveBtn').addEventListener('click', solve);
   renderTypes();
+  require('./draft.js').attachLinear({
+    key: 'ip', mount: 'ipPanel', panel: panel, maxN: 8, watch: ['ipTypes'],
+    readExtra: function (p) { syncVtypes(); p.vtypes = vtypes.slice(); }
+  });
   /* 供回归脚本与截图脚本使用：变量增删后类型选择器是延时渲染的，
      脚本没法等，所以把重绘入口挂出来让它们同步触发（真人手点用不到）。 */
   window.__ipRenderTypes = renderTypes;

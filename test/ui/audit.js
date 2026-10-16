@@ -45,7 +45,7 @@ const SETUP = `(function(){
 })()`;
 
 /* 灵敏度分析模块的布置：填基准题 → 求基准解 → 选「增加一个约束」→ 填参数 → 分析。
-   走的是教材那道考研题，能把判断推导、对偶单纯形迭代表、结论都渲染出来。 */
+   使用灵敏度分析验证算例，能把判断推导、对偶单纯形迭代表、结论都渲染出来。 */
 const SENS_SETUP = `(function(){
   function q(s){ return document.querySelector(s); }
   function fire(el, ev){ el.dispatchEvent(new Event(ev, {bubbles:true})); }

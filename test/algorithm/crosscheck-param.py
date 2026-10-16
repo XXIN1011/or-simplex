@@ -1,4 +1,4 @@
-"""参数线性规划（教材 2.6）对拍：把每个抽样 λ 代进去得到的普通线性规划，
+"""参数线性规划对拍：把每个抽样 λ 代进去得到的普通线性规划，
    交给 scipy HiGHS 从头解，与 JS 给出的「该 λ 处的最优值」比对。
 
 判据：JS 声称「这一段的基在 λ 处仍可行且仍最优」，那么
@@ -76,7 +76,7 @@ for rec in bank:
                     f'JS 声称这里最优，scipy 却判定 {st}'))
     by_kind[kind]['ok' if ok else 'bad'] += 1
 
-names = {'c': '2.6.1 变量系数', 'b': '2.6.2 右边系数'}
+names = {'c': '变量系数', 'b': '右边系数'}
 print('\n按类型:')
 for k, v in by_kind.items():
     print(f'  {names.get(k, k)}  通过 {v["ok"]:5d} / 失败 {v["bad"]}')

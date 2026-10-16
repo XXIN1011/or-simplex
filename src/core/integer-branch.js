@@ -128,7 +128,7 @@ function ipBranchBound(problem, opts) {
       + '（这样任何整数解都必然落在其中一支里，一支不漏）。';
 
     /* 先入栈的是「≥ 右支」，后入栈的是「≤ 左支」——后进先出会先处理左支，
-       和教材里先走 x_j ≤ ⌊v⌋ 那一支的习惯一致。 */
+       使 x_j ≤ ⌊v⌋ 那一支先被处理。 */
     var right = { id: ++id, parent: node.id, depth: node.depth + 1,
                   bounds: node.bounds.concat([{ j: fracJ, rel: '>=', val: hi }]) };
     var left = { id: ++id, parent: node.id, depth: node.depth + 1,
@@ -139,7 +139,7 @@ function ipBranchBound(problem, opts) {
     stack.push(left);
   }
 
-  /* 剩下的栈里还挂着的结点：因为已经找到界而没被展开——教材里也要交代一句 */
+  /* 剩下的栈里还挂着的结点：因为已经找到界而没被展开，需要说明原因 */
   var openLeft = stack.map(function (s) { return s.id; });
   var complete = !truncated;
 

@@ -490,7 +490,7 @@ a.modcard .md{display:block;margin-top:6px;font-size:12.5px;color:var(--fg2);lin
   border-color:transparent;color:#fff;font-weight:700;
   box-shadow:0 8px 16px -10px var(--accent);
 }
-/* 教材式判断那一段推导 */
+/* 前置判断的推导 */
 .judge{
   margin-top:9px;padding:12px 14px;border-radius:var(--r);
   background:var(--soft);border-left:3px solid var(--line2);
@@ -498,7 +498,7 @@ a.modcard .md{display:block;margin-top:6px;font-size:12.5px;color:var(--fg2);lin
   font-variant-numeric:tabular-nums;word-break:break-word;
 }
 .judge .row{display:block}
-/* 教材把「系数变化」按非基变量 / 基变量拆成两小节，块标题单独强调一下 */
+/* 系数变化按非基变量 / 基变量分块展示，块标题单独强调一下 */
 .judge .row.blk{
   margin-top:10px;font-size:12px;font-weight:700;color:var(--fg);
   letter-spacing:.04em;
@@ -603,7 +603,7 @@ table.mtxout th,table.mtxout td{
 }
 table.mtxout th{font-size:12px;font-weight:650;color:var(--fg2);background:var(--soft)}
 table.mtxout th.lbl{text-align:right;font-size:12.5px}
-/* 覆盖线按教材的画法：横线画在该行**正中**、竖线画在该列**正中** —— 就是拿尺子从
+/* 覆盖线穿过元素中心：横线画在该行**正中**、竖线画在该列**正中** —— 就是拿尺子从
    一行（一列）中间划过去的那条线，而不是压在两行的分界上（那样看不出盖的是哪一行）。
    线因此会从数字中间穿过，这是刻意的：它和被划掉的 0 的记号不冲突 ——
    覆盖线是 3px 的琥珀色、贯穿整行整列；「被划掉的 0」是同字色的细删除线、只覆盖那一个数字。
@@ -630,7 +630,7 @@ table.mtxout td.lr.lc{
 /* 行首标签与列表头也一起贯通：线要横穿整行（从「人员 2」标签一直到最后一列）、
    竖穿整列（从「工作 3」表头一直到最下面一行），这才叫「盖住该行 / 该列的正中间」。
    标签文字用一块与表头同底色的「衬底」避让，线在文字周围断开、文字本身不被划掉
-   —— 教材里把线划过去时，字是印在线上的，观感与此一致。 */
+   —— 线穿过文字时保留字形，便于读取矩阵元素。 */
 table.mtxout th.lbl.lr{
   background-image:linear-gradient(var(--line-warn),var(--line-warn));
   background-size:100% 3px;

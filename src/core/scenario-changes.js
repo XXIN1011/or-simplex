@@ -64,8 +64,8 @@ function sensFinish(model, T, judgement, kind, title, extra) {
   return res;
 }
 
-/* ---- ① 目标函数系数变化（教材 2.5.2 非基变量系数 / 2.5.4 基变量系数） ----
-   教材把这一类按「改的是谁的系数」拆成两小节，因为**判据完全不同**：
+/* ---- ① 目标函数系数变化（非基变量 / 基变量） ----
+   按「改的是谁的系数」分成两类，因为**判据完全不同**：
 
      · 改的是**非基变量**的 c_j —— 它只出现在自己那一列的检验数里：
          σ′_j = c′_j − z_j ,  z_j = c_B·(B⁻¹P_j)
@@ -131,8 +131,8 @@ function sensChangeC(baseProblem, scenario) {
   }
 
   var blocks = [];
-  if (nbLines.length) blocks.push({ label: '非基变量的系数（教材 2.5.2）', lines: nbLines });
-  if (bLines.length) blocks.push({ label: '基变量的系数（教材 2.5.4）', lines: bLines });
+  if (nbLines.length) blocks.push({ label: '非基变量的系数', lines: nbLines });
+  if (bLines.length) blocks.push({ label: '基变量的系数', lines: bLines });
 
   var lines = [];
   if (!blocks.length) lines.push('这次没有改动任何目标函数系数，最优解与目标值都不变。');
@@ -175,7 +175,7 @@ function sensChangeB(baseProblem, scenario) {
   var T = sensTableau(model, basisCols);
   if (!T) return sensFail('原最优基在改动后无法构造（新右端项使基矩阵奇异）');
 
-  /* 教材式判断：x′_B = B⁻¹b′ */
+  /* 前置判断：x′_B = B⁻¹b′ */
   var xB = [], neg = false;
   for (var i = 0; i < model.m; i++) {
     var v = T.rows[i][model.N];
@@ -204,7 +204,7 @@ function sensChangeB(baseProblem, scenario) {
 }
 
 /* ---- ② 技术系数 a_ij 变化 ----
-   判据的差别比改 c 还大，教材同样分成两种情形：
+   判据的差别比改 c 还大，同样分成两种情形：
 
      · x_j 是**非基变量** → 基矩阵 B 的列全是基变量的列，P_j 不在其中，
        所以 B、B⁻¹、x_B、z **全都不变**，只有 P_j 那一列变 → 只有 σ_j 会动：
@@ -303,7 +303,7 @@ function sensChangeA(baseProblem, scenario) {
       restart = true;
       lines.push('两个条件**同时**被破坏：表既不可行又不最优。'
         + '原始单纯形法要求右端项非负、对偶单纯形法要求检验数非正，'
-        + '**两种局部迭代法都用不上** —— 教材的做法是重新求解。'
+        + '**两种局部迭代法都用不上** —— 需要重新求解。'
         + '下面从标准初始基（松弛/剩余变量 + 人工变量）重跑一遍大 M 法。');
     } else if (negRow !== -1) {
       lines.push('只有可行性被破坏（检验数仍全 ≤ 0）→ 用**对偶单纯形法**在原表上继续迭代。');
@@ -403,7 +403,7 @@ function sensAddConstraint(baseProblem, scenario) {
      表对象带上 m / N —— 内核的 pivot / ratioTest / selectEnteringDantzig 要用 */
   var T = { rows: rows, obj: sensObjRow(model, rows, basis), basis: basis, m: model.m, N: N };
 
-  /* 教材式判断：当前最优解是否满足新约束 */
+  /* 前置判断：当前最优解是否满足新约束 */
   var lhs = 0;
   for (var j5 = 0; j5 < model.n; j5++) lhs += model.cons[last].coef[j5] * baseRes.solution[j5];
   var sl = newRow[N];                                // 新约束在当前解处的余量（基变量值）

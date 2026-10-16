@@ -123,7 +123,7 @@ function verifySteps(res, tag) {
         rowsSeen.add(r); colsSeen.add(c);
         if (!isZero(s.matrix[r][c])) errs.push(where + ' 圈住的 (' + (r + 1) + ',' + (c + 1) + ') 不是 0 元素');
       });
-      /* 圈数只能不减。注意它**不保证**每轮都严格变多：教材的「覆盖线→调整」是让
+      /* 圈数只能不减。注意它**不保证**每轮都严格变多：「覆盖线→调整」是让
          增广树的规模变大，真正多圈出一个 0 可能在下一轮才发生（实测 1200 道题里
          停顿轮数平均很小）。所以这里判「不减」，另由「轮数有限且状态终止」兜底。 */
       if (prevTrySize >= 0 && s.matching.length < prevTrySize) {
@@ -134,7 +134,7 @@ function verifySteps(res, tag) {
       for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
         const got = s.marks ? s.marks[i][j] : null;
         if (isZero(s.matrix[i][j])) {
-          // 教材的读法：圈住的 0 就是这次指派本身；同一行或同一列上已经被圈过的其它 0 一律划掉
+          // 指派的读法：圈住的 0 就是这次指派本身；同一行或同一列上已经被圈过的其它 0 一律划掉
           const matched = s.matching.some(([r, c]) => r === i && c === j);
           const want = matched ? 'circ' : ((rowsSeen.has(i) || colsSeen.has(j)) ? 'cross' : null);
           if (want !== got) {
@@ -268,7 +268,7 @@ function verifyResult(problem, res, tag) {
   return errs;
 }
 
-/* ---------------- 例题（教材式的小题，手工核对过） ---------------- */
+/* ---------------- 验证算例（已手工核对） ---------------- */
 
 function show(res, title) {
   console.log('\n' + '='.repeat(74));
@@ -300,7 +300,7 @@ function show(res, title) {
   console.log('  迭代轮数 = ' + res.roundCount);
 }
 
-/* ---- 例题 1：最小化 4×4（教材式的费用矩阵） ---- */
+/* ---- 例题 1：最小化 4×4（费用矩阵） ---- */
 const p1 = { direction: 'min', cost: [[2, 15, 13, 4], [10, 4, 14, 15], [9, 14, 16, 13], [7, 8, 11, 9]] };
 const r1 = A.assignSolve(p1);
 show(r1, '例题1  min　4 人 4 事：每行减最小 → 试指派 → 覆盖线 → 调整');

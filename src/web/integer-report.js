@@ -26,6 +26,7 @@ function render(prob, r) {
     h += resultLayout.navigation([['ip-relaxation','查看松弛问题'],['ip-methods','查看各方法过程']]);
   }
   picked = null;        // 每次重新求解都回到「全部输出」
+  if (!r.noOptimum) h += '<details class="result-work" open><summary>计算过程：松弛问题与各方法推导</summary>';
 
   /* ① 松弛问题 */
   h += '<section data-section="ip-relaxation"><h2 class="sec">松弛问题（先不管整数限制）</h2><div class="card">';
@@ -61,7 +62,7 @@ function render(prob, r) {
 
   /* ③ 按适用性输出（或按用户勾选输出）。这一块单独占一个容器：
        勾选框一变就整体重渲染它，比对着一堆兄弟节点做增删稳得多。 */
-  h += '<div id="ipMethods" data-section="ip-methods"></div>';
+  h += '<div id="ipMethods" data-section="ip-methods"></div></details>';
 
   $('ipOut').innerHTML = h;
   renderMethods(prob, r);
@@ -126,7 +127,7 @@ function needPick(r) { return r.methods.some(function (m) { return m.tooBig; });
 function applicableWhy(m, prob, r) {
   if (m.key === 'graph') return '两个决策变量可以在平面上画出可行域，再把整数格点标出来。';
   if (m.key === 'bnb') return '分枝定界法对任何整数规划都适用（只要求松弛问题有最优解）。';
-  if (m.key === 'cut') return '本题是全整数、全 ≤ 约束、数据为整数，符合教材里割平面法要求的标准形式。';
+  if (m.key === 'cut') return '本题是全整数、全 ≤ 约束、数据为整数，符合当前割平面法实现要求的标准形式。';
   if (m.key === 'enum') return '本题所有变量都是 0-1 变量，可以按「非 0 即 1」逐点枚举。';
   return '';
 }
@@ -419,7 +420,7 @@ function viewEnum(prob, r, m) {
   /* 标准化说明 */
   h += '<div class="judge"><span class="row blk">标准化</span>';
   if (prob.direction === 'min') {
-    h += '<span class="row">· 原题求<b>最小</b>。隐枚举法按教材是在「求最大」的标准形上做的，'
+    h += '<span class="row">· 原题求<b>最小</b>。隐枚举法先转为「求最大」的标准形，'
       + '所以先把目标系数<b>整体取负</b>（min 转 max），最后把最优解再还原回原题方向。</span>';
     h += '<span class="row">· 因此过滤条件比较的是<b>标准形</b>的目标值 z′ = −z。'
       + '下表 z 列显示的仍然是<b>你原题的 z</b>，方便直接对着题目看。</span>';
