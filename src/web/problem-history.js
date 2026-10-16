@@ -39,8 +39,10 @@ function createHistory(key, valid, storage, now) {
 
 function describe(p) {
   var direction = p.direction === 'max' ? '最大化' : '最小化';
-  if (p.cells) return { title: direction + ' · ' + p.rows + ' 行 × ' + p.cols + ' 列',
-    preview: p.cells.map(function (row) { return '[' + row.join(', ') + ']'; }).join(' ') };
+  if (p.cells) return { title: (p.supply ? '运输 · ' : '') + direction + ' · ' + p.rows + ' 行 × ' + p.cols + ' 列',
+    preview: p.cells.map(function (row) { return '[' + row.join(', ') + ']'; }).join(' ')
+      + (p.supply ? '；供应 [' + p.supply.join(', ') + ']；需求 [' + p.demand.join(', ') + ']；处理费 ['
+        + p.surplusCost.join(', ') + ']；罚金 [' + p.shortageCost.join(', ') + ']' : '') };
   var title = direction + ' · ' + p.c.length + ' 个变量 · ' + p.constraints.length + ' 条约束';
   var preview = 'c = [' + p.c.join(', ') + ']；b = ['
     + p.constraints.map(function (k) { return k.rhs; }).join(', ') + ']';

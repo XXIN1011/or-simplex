@@ -435,11 +435,11 @@ const PROBE = `JSON.stringify({
     cards: document.querySelectorAll('#mod-home a.modcard').length,
     boxCount: document.querySelectorAll('.mod').length
   })`));
-  check(routeBefore.simp === true && routeBefore.home === false && routeBefore.cards === 4,
-    '进 #/simplex 时只显示单纯形法模块，首页有 4 个模块入口',
+  check(routeBefore.simp === true && routeBefore.home === false && routeBefore.cards === 5,
+    '进 #/simplex 时只显示单纯形法模块，首页有 5 个模块入口',
     `home=${routeBefore.home} simplex=${routeBefore.simp} 卡片=${routeBefore.cards}`);
-  check(routeBefore.boxCount === 6,
-    '全站共 6 个页面容器（首页 / 单纯形法 / 灵敏度分析 / 整数规划 / 指派问题 / 设置）',
+  check(routeBefore.boxCount === 7,
+    '全站共 7 个页面容器（首页 / 单纯形法 / 灵敏度分析 / 整数规划 / 指派问题 / 运输问题 / 设置）',
     `容器数=${routeBefore.boxCount}`);
 
   await evl(`location.hash = '#/sens'; 'ok'`);
@@ -1011,6 +1011,7 @@ const PROBE = `JSON.stringify({
   await require('./draft-cases.js')(sess, check, url);
   await require('./fraction-study-cases.js')(sess, check, url);
   await require('./history-cases.js')(sess, check, url);
+  await require('./transport-cases.js')(sess, check, url);
 
   console.log(`\n合计: ${pass} 通过 / ${fail} 失败`);
   q.end(fail === 0, `合计 ${pass} 通过 / ${fail} 失败`);

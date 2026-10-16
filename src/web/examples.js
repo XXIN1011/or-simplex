@@ -14,4 +14,8 @@ function integer() {
 function assignment() {
   return {direction:'min',cost:[[2,15,13,4],[10,4,14,15],[9,14,16,13],[7,8,11,9]]};
 }
-module.exports = { linear: linear, integer: integer, assignment: assignment };
+function transport() {
+  return { direction: 'min', cost: [[6,16,5,2],[9,2,5,8],[15,13,11,6]],
+    supply: [20,30,25], demand: [10,25,20,20] };
+}
+module.exports = { linear: linear, integer: integer, assignment: assignment, transport: transport };

@@ -25,7 +25,7 @@ module.exports = async function historyCases(sess, check, url) {
   await reload();
   await checks(`
     ['simplexPanel','sensPanel','ipPanel','asPanel'].forEach(clear);
-    expect(document.querySelectorAll('.problem-history').length===4,'四模块输入区分别提供历史记录');
+    expect(document.querySelectorAll('.problem-history').length===5,'五模块输入区分别提供历史记录');
     expect(Array.prototype.every.call(document.querySelectorAll('.history-count'),function(e){return e.textContent==='0'}),
       '没有历史时显示零条记录');
     sample('simplexPanel');set('#inTbl [data-k=c][data-j="0"]','1e');click('solveBtn');

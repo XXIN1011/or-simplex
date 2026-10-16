@@ -23,6 +23,7 @@ var sensitivity = require('./core/sensitivity.js');
 var scenario = require('./core/scenario.js');
 var integer = require('./core/integer.js');
 var assignment = require('./core/assignment.js');
+var transport = require('./core/transport.js');
 
 module.exports = {
   /* ---- 主入口 ---- */
@@ -39,6 +40,8 @@ module.exports = {
   solveInteger: integer.ipSolve,
   /** 指派问题（匈牙利法）：最小化 / 最大化、虚拟行列、禁止指派，含逐步迭代 */
   solveAssignment: assignment.assignSolve,
+  /** 运输问题：最小元素法 → 位势法（MODI）与闭回路调整 */
+  solveTransport: transport.transportSolve,
   /** 指派问题的符号说明表（界面与 CLI 共用同一份文案） */
   assignmentSymbols: assignment.assignSymbols,
 
@@ -52,5 +55,6 @@ module.exports = {
   sensitivity: sensitivity,
   scenario: scenario,
   integer: integer,
-  assignment: assignment
+  assignment: assignment,
+  transport: transport
 };

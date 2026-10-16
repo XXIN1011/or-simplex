@@ -72,6 +72,13 @@
       </span>
     </a>
 
+    <a class="modcard m-transport" href="#/transport">
+      <span class="mb">
+        <span class="mt">运输问题<span class="go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></span>
+        <span class="md">填写运输表，用最小元素法与位势法逐步求最优运输方案。</span>
+      </span>
+    </a>
+
     <div class="foottip">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <rect x="6" y="2.5" width="12" height="19" rx="2.5"/>
@@ -184,6 +191,22 @@
          渲染进来（文案只有一份），放在求解结果之前，随时可查 -->
     <div id="asSym"></div>
     <section id="asOut"></section>
+  </div>
+
+  <!-- ===================== 运输问题 ===================== -->
+  <div class="mod" id="mod-transport">
+    <header>
+      <a class="back" href="#/">← 返回首页</a>
+      <h1>运输问题</h1>
+      <p>最小元素法 · 位势法 MODI · 闭回路调整</p>
+    </header>
+    <section class="card">
+      <div id="tpPanel"></div>
+      <div class="actions"><button type="button" class="btn primary" id="tpSolveBtn">求　解</button></div>
+      <p class="sens-note">最小元素法只生成初始可行方案，再用位势法检验并沿闭回路调整。空白按 0；供需量须非负。暂不支持禁运路线、线路容量和中转运输。</p>
+    </section>
+    <div id="tpBanners" role="status" aria-live="polite"></div>
+    <section id="tpOut" aria-label="运输问题结果"></section>
   </div>
 
   <!-- ===================== 设置 ===================== -->

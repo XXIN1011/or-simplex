@@ -1,7 +1,7 @@
 {
   "name": "or-simplex",
   "version": "2.0.0",
-  "description": "运筹学计算器：线性规划单纯形法（大M法逐步迭代 / 对偶解 / 灵敏度分析 / 场景与参数分析）与整数规划（分枝定界 / 割平面 / 隐枚举 / 图解）的完整计算过程",
+  "description": "运筹学计算器：线性规划、灵敏度分析、整数规划、指派问题与运输问题（最小元素法 + MODI）的完整计算过程",
   "keywords": ["operations-research", "linear-programming", "simplex", "duality", "sensitivity-analysis", "integer-programming", "运筹学", "单纯形法"],
   "license": "MIT",
   "private": false,

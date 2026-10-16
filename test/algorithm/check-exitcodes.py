@@ -1,4 +1,4 @@
-"""用真实小题库、错误预期和空题库验证六个对拍脚本的进程退出码。"""
+"""用真实小题库、错误预期和空题库验证七个对拍脚本的进程退出码。"""
 import copy
 import json
 import os
@@ -15,6 +15,7 @@ CASES = [
     ('crosscheck-scenario.py', 'scenario-bank.json', 'cases'),
     ('crosscheck-param.py', 'param-bank.json', 'jsZ'),
     ('crosscheck-assign.py', 'assignment-bank.json', 'js_objective'),
+    ('crosscheck-transport.py', 'transport-bank.json', 'objective'),
 ]
 
 with tempfile.TemporaryDirectory(prefix='or-exitcodes-') as tmp:

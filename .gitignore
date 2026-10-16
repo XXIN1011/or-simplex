@@ -10,6 +10,7 @@ sens-bank.json
 scenario-bank.json
 param-bank.json
 assignment-bank.json
+transport-bank.json
 __pycache__/
 
 # 本地截图

@@ -22,6 +22,12 @@ function validAssignment(p) {
     && size(p.rows, 8) && size(p.cols, 8) && Array.isArray(p.cells) && p.cells.length === p.rows
     && p.cells.every(function (row) { return Array.isArray(row) && row.length === p.cols && row.every(scalar); });
 }
+function validTransport(p) {
+  return validAssignment(p) && Array.isArray(p.supply) && p.supply.length === p.rows && p.supply.every(scalar)
+    && Array.isArray(p.demand) && p.demand.length === p.cols && p.demand.every(scalar)
+    && Array.isArray(p.surplusCost) && p.surplusCost.length === p.rows && p.surplusCost.every(scalar)
+    && Array.isArray(p.shortageCost) && p.shortageCost.length === p.cols && p.shortageCost.every(scalar);
+}
 
 function attach(cfg) {
   var mount = document.getElementById(cfg.mount);
@@ -105,4 +111,4 @@ function attachLinear(cfg) {
 }
 
 module.exports = { createStore: createStore, validLinear: validLinear, validAssignment: validAssignment,
-  attach: attach, attachLinear: attachLinear };
+  validTransport: validTransport, attach: attach, attachLinear: attachLinear };

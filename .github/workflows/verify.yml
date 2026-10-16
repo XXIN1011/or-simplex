@@ -49,6 +49,8 @@ jobs:
       - name: 无障碍 / 图解越界审查
         run: |
           node test/ui/audit.js --quiet
+          node test/ui/audit.js 'index.html#/transport' --quiet
+          node test/ui/audit.js 'index.html#/transport' dark --quiet
           node test/ui/graph-bounds.js --quiet
 
       - name: 失败时上传 UI 回归明细
@@ -84,8 +86,9 @@ jobs:
           node test/algorithm/scenario-test.js
           node test/algorithm/param-test.js
           node test/algorithm/assignment-test.js
+          node test/algorithm/transport-test.js
 
-      - name: scipy 独立复算（六个对拍脚本）
+      - name: scipy 独立复算（七个对拍脚本）
         run: |
           python test/algorithm/crosscheck.py
           python test/algorithm/crosscheck-dual.py
@@ -93,6 +96,7 @@ jobs:
           python test/algorithm/crosscheck-scenario.py
           python test/algorithm/crosscheck-param.py
           python test/algorithm/crosscheck-assign.py
+          python test/algorithm/crosscheck-transport.py
 
       - name: 验证失败与空题库均返回非零退出码
         run: python test/algorithm/check-exitcodes.py

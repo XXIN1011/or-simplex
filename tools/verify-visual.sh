@@ -38,6 +38,8 @@ ip-light|#/ip|light|fill-ip.js|0,1400
 ip-dark|#/ip|dark|fill-ip.js|0,1400
 assign-light|#/assign|light|fill-assign.js|0,1400
 assign-dark|#/assign|dark|fill-assign.js|0,1400
+transport-light|#/transport|light|fill-transport.js|0,1400
+transport-dark|#/transport|dark|fill-transport.js|0,1400
 settings-light|#/settings|light||0
 settings-dark|#/settings|dark||0
 "

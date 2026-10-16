@@ -1,0 +1,100 @@
+/* 只渲染运输算法快照；数值、守恒与最优性结论来自 core。 */
+'use strict';
+var esc = require('./dom.js').esc;
+var fmtNum = require('../core/format.js').fmtNum;
+var study = require('./study-view.js');
+var layout = require('./result-layout.js');
+/* 共享 formatter 会将极小数归零；运输量不能因此在视觉上消失。 */
+function num(v) { return v !== 0 && Math.abs(v) < 1e-7 ? esc(String(v)) : fmtNum(v); }
+function rowName(m, i) { return i < m.m ? '产地' + (i + 1) : '虚拟产地（缺货）'; }
+function colName(m, j) { return j < m.n ? '销地' + (j + 1) : '虚拟销地（剩余）'; }
+function cellName(c) { return '(' + (c.i + 1) + ', ' + (c.j + 1) + ')'; }
+function table(m, values, basis, loop, caption, costs) {
+  var h = '<div class="scroll"><table class="tb transport-table"><caption>' + esc(caption) + '</caption><thead><tr><th scope="col">产地 / 销地</th>', i, j;
+  for (j = 0; j < m.cols; j++) h += '<th scope="col"' + (j >= m.n ? ' class="tp-virtual"' : '') + '>' + colName(m, j) + '</th>';
+  h += '<th scope="col">供应量</th></tr></thead><tbody>';
+  for (i = 0; i < m.rows; i++) {
+    h += '<tr' + (i >= m.m ? ' class="tp-virtual"' : '') + '><th scope="row">' + rowName(m, i) + '</th>';
+    for (j = 0; j < m.cols; j++) {
+      var mark = '', at = -1;
+      (loop || []).forEach(function (c, k) { if (c.i === i && c.j === j) { mark = c.sign > 0 ? '+' : '−'; at = k; } });
+      h += '<td class="' + (j >= m.n || i >= m.m ? 'tp-virtual ' : '') + (mark ? 'tp-cycle' : '') + '">'
+        + (mark ? '<b class="tp-sign">' + mark + ' <small>回路' + (at + 1) + '</small></b>' : '')
+        + '<span class="mono">' + (costs ? '' : 'x = ') + num(values[i][j]) + '</span>'
+        + (basis && basis[i][j] ? '<span class="tp-basis">' + (values[i][j] === 0 ? '零值基' : '基') + '</span>' : '')
+        + (!costs ? '<small class="tp-cost">原' + (m.direction === 'max' ? '收益' : '费用') + ' ' + num(m.cost[i][j]) + '</small>' : '') + '</td>';
+    }
+    h += '<td class="mono">' + num(m.supply[i]) + '</td></tr>';
+  }
+  h += '</tbody><tfoot><tr><th scope="row">需求量</th>';
+  for (j = 0; j < m.cols; j++) h += '<td class="mono">' + num(m.demand[j]) + '</td>';
+  return h + '<td class="mono">' + num(m.total) + '</td></tr></tfoot></table></div>';
+}
+function balanceNote(m) {
+  var h = '总供应 ' + num(m.originalSupplyTotal) + '，总需求 ' + num(m.originalDemandTotal) + '。';
+  if (m.balanceAdjustment) h += '供需差属于浮点求和误差；已将需求校正 ' + num(m.balanceAdjustment) + '（原输入保留）。';
+  if (!m.virtual) return h + '供需平衡。';
+  h += m.virtual.type === 'surplus' ? '补虚拟销地，需求 ' : '补虚拟产地，供应 ';
+  h += num(m.virtual.amount) + '。虚拟运输量表示' + (m.virtual.type === 'surplus' ? '各产地剩余供应' : '各销地缺货') + '，不代表实际运输。';
+  return h + '默认零费用表示不计剩余处理损失或缺货损失；不会产生真实收益。可在输入区配置逐产地处理费或逐销地罚金。最大收益时这些费用从总收益中扣除，虚拟格原收益为费用的负数。';
+}
+function vector(a) { return a.map(num).join('，'); }
+function stepContent(m, s, index) {
+  var title, h = '', values = s.allocation, loop = null;
+  if (s.type === 'allocation') {
+    title = '最小元素分配 ' + cellName(s.cell);
+    h += '<p>在剩余供需均为正的格中，选择最小工作费用 ' + num(s.cost) + '，格 ' + cellName(s.cell)
+      + '；并列候选 ' + s.ties.map(cellName).join('、') + '，取行列下标最小者。</p>'
+      + '<p>分配量 min(剩余供应, 剩余需求) = <b>' + num(s.quantity) + '</b>。剩余供应 [' + vector(s.remainingSupply)
+      + ']；剩余需求 [' + vector(s.remainingDemand) + ']。</p>';
+  } else if (s.type === 'initial') {
+    title = '初始可行方案（尚未检验最优）';
+    h += '<p>最小元素分配结束。按行列下标补入不形成回路的零值基变量：'
+      + (s.zeroBasics.length ? s.zeroBasics.map(cellName).join('、') : '无需补基')
+      + '。基格构成 m+n−1 条边的树；零值基仍是基变量，实际运量为 0。</p>';
+  } else if (s.type === 'potentials') {
+    title = s.entering ? 'MODI 位势与检验：选择入基格' : 'MODI 最优性检验';
+    h += '<p>令 u₁ = 0，对每个基格解 uᵢ + vⱼ = c′ᵢⱼ。行位势 u = [' + vector(s.u) + ']；列位势 v = [' + vector(s.v) + ']。</p>'
+      + '<p>检验数 Δᵢⱼ = c′ᵢⱼ − uᵢ − vⱼ；负检验数表示工作目标可下降。逐格按费用与位势的大小估计浮点舍入容差，参考上界 ' + num(m.costTolerance) + '。</p>'
+      + table(m, s.reduced, null, null, '检验数 Δ（基格应为 0；数值在本格容差内视为 0）', true)
+      + '<p>' + (s.entering ? '按 Bland 规则取行列下标最小的负检验数非基格 ' + cellName(s.entering) + ' 入基。' : '所有非基检验数 ≥ −容差，当前方案在数值容差内最优。') + '</p>';
+  } else {
+    title = '闭回路调整 · 第 ' + s.iteration + ' 轮';
+    values = s.beforeAllocation; loop = s.cycle;
+    h += '<p>入基 ' + cellName(s.entering) + '，沿基树的唯一闭回路依次标 + / −：'
+      + s.cycle.map(function (c) { return cellName(c) + (c.sign > 0 ? '+' : '−'); }).join(' → ') + ' → 起点。</p>'
+      + '<p>θ = 所有负号格的最小运量 = <b>' + num(s.theta) + '</b>。正号格加 θ，负号格减 θ；同量离基候选取下标最小者 '
+      + cellName(s.leaving) + ' 离基。' + (s.theta === 0 ? '本轮为退化换基，运量与目标值不变，基身份改变。' : '') + '</p>'
+      + '<p>工作目标变化 θΔ = ' + num(s.workingDelta) + '；原目标 ' + num(s.objectiveBefore) + ' → ' + num(s.objectiveAfter)
+      + '（变化 ' + num(s.delta) + '）。</p>';
+  }
+  h += table(m, values, s.type === 'pivot' ? null : s.basis, loop, s.type === 'pivot' ? '调整前运量与回路正负标记' : title, false);
+  if (s.type === 'pivot') h += table(m, s.allocation, s.basis, null, '调整后运输方案与新基', false);
+  h += '<p class="sens-note">当前原目标值 ' + num(s.objective) + '。本步' + (s.type === 'allocation' ? '部分分配与无环基' : '非负、供需守恒与基结构')
+    + '校验：' + (s.invariant.valid ? '通过' : esc(s.invariant.errors.join('、'))) + '。</p>';
+  return { title: title, html: '<article class="card"><h3>' + (index + 1) + '. ' + esc(title) + '</h3>' + h + '</article>' };
+}
+function render(res) {
+  var m = res.model, optimal = res.status === 'optimal';
+  var h = '<div class="card"><div class="verdict ' + (optimal ? 'opt' : 'no') + '"><div class="vtitle">'
+    + (optimal ? m.direction === 'max' ? '最优净收益' : '最小总费用' : res.feasible ? '当前可行方案（未确认最优）' : '数值校验未通过（未确认最优）') + '</div>'
+    + '<div class="sol">z = <span class="zv">' + num(res.objective) + '</span></div></div>';
+  if (!optimal) h += '<p>' + esc(res.message) + '</p>';
+  h += '<p>真实线路' + (m.direction === 'max' ? '总收益' : '总费用') + ' ' + num(res.realObjective) + '；剩余处理费 / 缺货罚金 ' + num(res.penalty) + '。</p>';
+  if (m.direction === 'max') h += '<p>转换 c′ = −原收益（虚拟格为正罚金）。最小工作目标 ' + num(res.workingObjective) + '，还原 z = −工作目标 = ' + num(res.objective) + '。</p>';
+  if (res.surplus) h += '<p class="tp-balance">剩余供应：' + res.surplus.map(function (v, i) { return '产地' + (i + 1) + '：' + num(v); }).join('；') + '。</p>';
+  if (res.shortage) h += '<p class="tp-balance">缺货量：' + res.shortage.map(function (v, j) { return '销地' + (j + 1) + '：' + num(v); }).join('；') + '。</p>';
+  h += table(m, res.allocation, res.basis, null, optimal ? '最终最优运输方案' : '当前运输方案', false)
+    + '<p class="sens-note">x 是运输量；“基”标记独立记录基变量身份。零值基格也参与位势与回路计算。虚拟行列以文字标识，费用在格内可见。</p>';
+  if (optimal) h += '<p>' + (res.multipleOptimal ? '存在多重最优：已找到可正量调整的零检验数回路（θ = ' + num(res.alternative.theta) + '），下方可查看另一方案。' : '未发现不同的最优运输方案；零检验数仅允许零步长换基时不算多重最优。') + '</p>';
+  if (res.alternative) h += '<details><summary>查看另一个最优方案</summary>' + table(m, res.alternative.allocation, null, res.alternative.cycle, '另一最优运输方案（原目标 ' + num(res.alternative.objective) + '）', false) + '</details>';
+  h += '</div>' + layout.navigation([['transport-derivation', '查看完整推导 / 单步学习']]);
+  h += '<details class="result-work" open><summary>计算过程：初始可行方案 → MODI 最优方案</summary><section data-section="transport-derivation">'
+    + '<div class="card"><h2 class="sec">模型平衡与转换</h2><p>' + balanceNote(m) + '</p>'
+    + table(m, m.cost, null, null, '平衡后原费用 / 收益矩阵（含虚拟行列）', true)
+    + (m.direction === 'max' ? table(m, m.working, null, null, '进入最小化算法的工作费用 c′ = −原收益', true) : '')
+    + '<p>固定规则：最小元素并列取行列下标最小者；MODI 负检验数取下标最小者入基；最小负号运量并列取下标最小者离基。Bland 规则防止退化循环；仍检测重复基及迭代上限，异常停止不报告最优。</p></div>'
+    + study.group(res.steps.map(function (s, i) { return stepContent(m, s, i); }), '运输问题逐步推导') + '</section></details>';
+  return h;
+}
+module.exports = { render: render, table: table, balanceNote: balanceNote, num: num };

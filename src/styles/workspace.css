@@ -71,3 +71,24 @@
   #mod-simplex.has-result>#result{grid-column:2;grid-row:2/5;min-width:0}
 }
 @media(max-width:360px){.guide-intro{align-items:flex-start;flex-direction:column}.guide-fields .btn{width:100%}}
+/* 运输表保持中间费用、右侧供应、底部需求的阅读方向；宽表独立滚动。 */
+#mod-transport{max-width:1000px;margin:0 auto}
+.transport-table caption,.transport-input caption{text-align:left;color:var(--fg2);font-size:13px;padding:12px 0;white-space:normal}
+.transport-table td,.transport-table th{min-width:98px}
+.transport-table td{vertical-align:middle}
+.transport-table .tp-cost{display:block;color:var(--fg2);font-size:12px;margin-top:4px}
+.tp-basis{display:inline-block;margin-left:6px;font-size:12px;color:var(--accent-text)}
+.tp-virtual{background:var(--soft)}
+.tp-cycle{outline:2px solid var(--accent);outline-offset:-2px;background:var(--accent-soft)}
+.tp-sign{display:block;color:var(--accent-text);font-size:18px}
+.tp-sign small{font-size:12px;font-weight:500}
+.tp-balance{font-size:14px;font-weight:650;line-height:1.7;margin:14px 0}
+.transport-input .tp-margin{background:var(--soft)}
+.tp-fee-options>summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:650}
+.tp-fee-options>summary::before{content:'＋';margin-right:8px;color:var(--accent)}
+.tp-fee-options[open]>summary::before{content:'−'}
+.tp-fee-fields{display:flex;flex-wrap:wrap;gap:12px;padding:8px 0}
+.tp-fee-fields label{display:flex;align-items:center;gap:8px;font-size:13px}
+.transport-table tfoot,.transport-input tfoot{font-weight:650}
+#tpOut h3{margin:0 0 12px;font-size:18px;line-height:1.5}
+#tpOut p{overflow-wrap:anywhere}
