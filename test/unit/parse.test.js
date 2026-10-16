@@ -17,6 +17,36 @@ const U = require('../../src/core/util.js');
 const P = (direction, c, constraints) => ({ direction, c, constraints });
 const C = (coef, rel, rhs) => ({ coef, rel, rhs });
 
+test('非法结构返回输入错误，不抛异常或当成空题', () => {
+  for (const p of [null, undefined, [], {}, {c: 1, constraints: []}, {c: [], constraints: {}},
+    P('max', [1], [null]), P('max', [1], [{}]), P('max', [1], [C(null, '<=', 1)])]) {
+    assert.equal(parse.parseProblem(p).ok, false);
+  }
+});
+
+test('逐个校验所有系数、右端项及关系符，阻止 NaN/无穷/隐式零', () => {
+  const solve = require('../../src/core/simplex.js').simplexSolve;
+  for (const value of ['oops', Infinity, -Infinity, NaN, null, true, '', '1/2', '1e999']) {
+    for (const p of [P('max', [value], []), P('max', [1], [C([value], '<=', 1)]),
+      P('max', [1], [C([1], '<=', value)])]) {
+      const r = solve(p);
+      assert.equal(r.ok, false, String(value));
+      assert.equal(r.status, undefined);
+    }
+  }
+  assert.equal(parse.validate(P('max', [1], [C([1], '<', 1)])).ok, false);
+  assert.equal(parse.validate(P('max', new Array(1), [])).ok, false);
+  assert.equal(parse.validate(P('max', [1], [C(new Array(1), '<=', 1)])).ok, false);
+});
+
+test('规范化与校验使用同一数字解析规则', () => {
+  const r = parse.parseProblem(P('max', ['1e3'], [C(['−2'], '<=', '4')]));
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.form.c0, [1000]);
+  assert.equal(r.form.rows[0][0], -2);
+  assert.deepEqual(r.form.userRhs, [4]);
+});
+
 test('validate：0 变量 / 0 约束是合法输入（要有确定结论，不是报错）', () => {
   assert.strictEqual(parse.validate(P('max', [], [])).ok, true);
   assert.strictEqual(parse.validate(P('max', [1, 2], [])).ok, true);

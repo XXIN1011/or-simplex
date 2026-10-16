@@ -30,14 +30,17 @@
   逐题核对时若看到 presolve_artifacts 非空，请先按上面这段手算复核，再判断谁对。
 """
 import json
+import sys
 import numpy as np
 from scipy.optimize import linprog
 
 # 题库由同目录的 node 脚本生成；按【脚本自身位置】定位，这样从任何工作目录
 # 运行都能找到（原来用裸文件名，靠 CWD，换目录就会 FileNotFoundError）
 import os
-_HERE = os.path.dirname(os.path.abspath(__file__))
+_HERE = os.environ.get('OR_TEST_BANK_DIR') or os.path.dirname(os.path.abspath(__file__))
 bank = json.load(open(os.path.join(_HERE, 'scenario-bank.json'), encoding='utf-8'))
+if not bank:
+    sys.exit('题库为空，不能判定通过')
 total = sum(len(r['cases']) for r in bank)
 print(f'载入 {len(bank)} 道基准题 · {total} 个场景算例')
 
@@ -149,3 +152,5 @@ else:
     print('\n✓ 全部算例与 scipy 从头重解的结果一致')
 
 print('\n结论:', 'PASS' if not fails else 'FAIL')
+
+sys.exit(1 if fails else 0)

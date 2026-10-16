@@ -83,7 +83,7 @@ const PROBE = `JSON.stringify({
   check(init.tips === 2, '空状态给出两处提示', `提示块=${init.tips}`);
   check(init.dirOn === 'max', '默认方向为 max');
   check(init.resultVisible === false, '打开时不显示结果');
-  check(init.hasDemoBtn === false && init.solveBtn === true, '例题已移除、求解按钮在位');
+  check(init.hasDemoBtn === false && init.solveBtn === true, '初始为空题目、求解按钮在位');
   check(init.hasHelp === true, '符号说明折叠块存在');
   check(init.errors.length === 0, '加载无 JS 错误');
 
@@ -1005,6 +1005,9 @@ const PROBE = `JSON.stringify({
   check(t6.mode === 'system' && t6.theme === 'light' && t6.meta === '#f5f7fa' && t6.errors === 0,
     '切回「跟随系统」后恢复随系统，全程无 JS 错误',
     `data-theme=${t6.theme} 染色=${t6.meta} 错误=${t6.errors}`);
+
+  await require('./reliability-cases.js')(sess, check, url);
+  await require('./workflow-cases.js')(sess, check, url);
 
   console.log(`\n合计: ${pass} 通过 / ${fail} 失败`);
   q.end(fail === 0, `合计 ${pass} 通过 / ${fail} 失败`);

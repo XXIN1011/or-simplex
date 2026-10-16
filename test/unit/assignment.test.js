@@ -16,6 +16,14 @@ const A = require('../../src/core/assignment.js');
 const model = require('../../src/core/model.js');
 const format = require('../../src/core/format.js');
 
+test('指派数字完整解析：科学计数法和数学负号合法，非法格式不能隐式转换', () => {
+  assert.strictEqual(A.assignSolve({cost:[['1e3']]}).objective, 1000);
+  assert.strictEqual(A.assignSolve({cost:[['−2']]}).objective, -2);
+  for (const value of ['abc','1/2','1,5','0x10','1e999',Infinity,NaN]) {
+    assert.strictEqual(A.assignSolve({cost:[[value]]}).ok, false);
+  }
+});
+
 /* 独立的暴力口径（全排列），只用来复核小规模的最优值 —— 与匈牙利法零共用代码 */
 function bruteForce(cost, direction) {
   const m = cost.length, n = m ? cost[0].length : 0;

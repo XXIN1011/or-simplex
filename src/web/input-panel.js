@@ -9,13 +9,19 @@
 
 var dom = require('./dom.js');
 var esc = dom.esc;
+var parseNumber = require('../core/number-input.js').parseNumber;
+var inputGuide = require('./input-guide.js');
 
 /* 表格横向溢出时给一句提示：手机上看不见滚动条，不说一声用户不知道右边还有内容。
    只在真的溢出（scrollWidth > clientWidth）时才插入，且不重复插入。 */
 function addScrollHints(root) {
   Array.prototype.forEach.call(root.querySelectorAll('.scroll'), function (box) {
-    if (box.scrollWidth <= box.clientWidth + 1) return;
     var next = box.nextElementSibling;
+    if (!box.clientWidth) return; // 隐藏模块暂时无法测量，等切页后再判断。
+    if (box.scrollWidth <= box.clientWidth + 1) {
+      if (next && next.className === 'scroll-hint') next.parentNode.removeChild(next);
+      return;
+    }
     if (next && next.className === 'scroll-hint') return;
     var hint = document.createElement('div');
     hint.className = 'scroll-hint';
@@ -58,10 +64,11 @@ function buildChrome(cfg) {
   var on = (order.indexOf(state.dir) >= 0) ? state.dir : order[0];
   var L = cfg.labels || DEFAULT_LABELS;
 
-  var html = '<div class="seg" id="' + cfg.dirSeg + '">';
+  var html = inputGuide.markup(cfg.matrix, cfg.maxN || 6, cfg.maxM || 8)
+    + '<div class="seg" id="' + cfg.dirSeg + '" role="group" aria-label="优化方向">';
   for (var i = 0; i < order.length; i++) {
     html += '<button type="button" data-dir="' + order[i] + '"'
-      + (order[i] === on ? ' class="on"' : '') + '>' + order[i] + '</button>';
+      + (order[i] === on ? ' class="on"' : '') + ' aria-pressed="' + (order[i] === on) + '">' + order[i] + '</button>';
   }
   html += '</div>'
     + '<div class="scroll"><table class="' + (cfg.tblClass || 'inp') + '" id="' + cfg.tbl + '"></table></div>'
@@ -82,6 +89,7 @@ function createInputPanel(cfg) {
   var MAXN = cfg.maxN || 6, MAXM = cfg.maxM || 8;
   var state = cfg.state;
   var onChange = cfg.onChange || function () {};
+  var guide = null;
 
   function el(k) { return document.getElementById(cfg[k]); }
 
@@ -89,6 +97,7 @@ function createInputPanel(cfg) {
      这样新增变量/约束后点进去就是空白，可以直接打字，不必先删掉那个 0；
      什么都不填时读取逻辑仍按 0 处理，结果与以前完全一致。 */
   function fmtIn(v) {
+    if (typeof v === 'string') return v;
     if (v === undefined || v === null || isNaN(v)) return '';
     if (Math.abs(v) < 1e-9) return '';
     return (Math.abs(v - Math.round(v)) < 1e-9) ? String(Math.round(v)) : String(v);
@@ -153,20 +162,28 @@ function createInputPanel(cfg) {
     html += '</tbody>';
     el('tbl').innerHTML = html;
     bind();
+    Array.prototype.forEach.call(el('tbl').querySelectorAll('input.num'), validateInput);
     el('delVar').disabled = (state.n < 1);
     el('delCon').disabled = (state.m < 1);
     el('addVar').disabled = (state.n >= MAXN);
     el('addCon').disabled = (state.m >= MAXM);
     addScrollHints(document);
+    if (guide) guide.sync(state.n, state.m);
+  }
+
+  function validateInput(inp) {
+    var invalid = !isFinite(parseNumber(inp.value, true));
+    inp.setAttribute('aria-invalid', invalid ? 'true' : 'false');
+    inp.title = invalid ? '请输入完整数字（支持小数和科学计数法）' : '';
   }
 
   function bind() {
     var t = el('tbl');
     Array.prototype.forEach.call(t.querySelectorAll('input.num'), function (inp) {
       inp.addEventListener('input', function () {
-        /* 空白的格子（用户什么都没填）按 0 处理；只敲了 "-" / "." 这种中间状态也先当 0，等输完再说 */
-        var v = parseFloat(inp.value.replace(/[^0-9.\-]/g, ''));
-        if (isNaN(v)) v = 0;
+        /* 保留原文及输入中的中间状态，求解时再完整解析，不能偷偷改题。 */
+        var v = inp.value;
+        validateInput(inp);
         var k = inp.dataset.k;
         if (k === 'c') state.c[+inp.dataset.j] = v;
         else if (k === 'a') state.cons[+inp.dataset.i].coef[+inp.dataset.j] = v;
@@ -186,6 +203,7 @@ function createInputPanel(cfg) {
         state.cons.splice(+b.dataset.i, 1);
         state.m--;
         render();
+        onChange();
       });
     });
   }
@@ -202,6 +220,8 @@ function createInputPanel(cfg) {
     }
     state.n = n;
     render();
+    onChange();
+    if (cfg.onResize) cfg.onResize();
   }
   function setM(m) {
     m = Math.max(0, Math.min(MAXM, m));
@@ -214,26 +234,47 @@ function createInputPanel(cfg) {
     state.cons.length = m;
     state.m = m;
     render();
+    onChange();
   }
   function setDir(d) {
+    if (state.dir === d) return;
     state.dir = d;
     Array.prototype.forEach.call(el('dirSeg').querySelectorAll('button'), function (x) {
       x.classList.toggle('on', x.dataset.dir === d);
+      x.setAttribute('aria-pressed', x.dataset.dir === d ? 'true' : 'false');
     });
+    onChange();
+  }
+
+  function loadProblem(problem) {
+    state.n = Math.min(MAXN, problem.c.length);
+    state.m = Math.min(MAXM, problem.constraints.length);
+    state.c = problem.c.slice(0, state.n);
+    state.cons = problem.constraints.slice(0, state.m).map(function (k) {
+      return { coef: k.coef.slice(0, state.n), rel: k.rel, rhs: k.rhs };
+    });
+    setDir(problem.direction);
+    render();
+    onChange();
+    if (cfg.onLoad) cfg.onLoad(problem);
   }
 
   /* 按当前输入拼出求解器要的问题对象 */
   function getProblem() {
     return {
       direction: state.dir,
-      c: state.c.slice(0, state.n),
+      c: state.c.slice(0, state.n).map(function (v) { return parseNumber(v, true); }),
       constraints: state.cons.slice(0, state.m).map(function (k) {
-        return { coef: k.coef.slice(0, state.n), rel: k.rel, rhs: k.rhs };
+        return { coef: k.coef.slice(0, state.n).map(function (v) { return parseNumber(v, true); }), rel: k.rel, rhs: parseNumber(k.rhs, true) };
       })
     };
   }
 
   function init() {
+    if (cfg.mount) guide = inputGuide.attach(document.getElementById(cfg.mount), {
+      resize: function (n, m) { setN(n); setM(m); },
+      sample: function () { if (cfg.example) loadProblem(cfg.example()); }
+    });
     Array.prototype.forEach.call(el('dirSeg').querySelectorAll('button'), function (b) {
       b.addEventListener('click', function () { setDir(b.dataset.dir); });
     });

@@ -28,6 +28,8 @@ var explain = tableRender.explain;
 
 var dom = require('./dom.js');
 var $ = dom.$, esc = dom.esc, subs = dom.subs;
+var parseNumber = require('../core/number-input.js').parseNumber;
+var resultLayout = require('./result-layout.js');
 
 (function () {
   'use strict';
@@ -38,16 +40,33 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
     tbl: 'sInTbl', dirSeg: 'sDirSeg',
     addVar: 'sAddVar', delVar: 'sDelVar', addCon: 'sAddCon', delCon: 'sDelCon',
     maxN: 6, maxM: 8,
-    state: { dir: 'max', n: 0, m: 0, c: [], cons: [] }
+    example: require('./examples.js').linear,
+    state: { dir: 'max', n: 0, m: 0, c: [], cons: [] },
+    onChange: invalidateBase
   });
 
   var base = null;      // 基准问题的求解结果
   var baseProb = null;  // 基准问题本身
   var last = null;      // 最近一次场景分析的结果
 
+  function clearAnalysis() {
+    last = null;
+    var out = $('sensOut');
+    if (out) out.parentNode.removeChild(out);
+  }
+
+  function invalidateBase() {
+    var hadBase = !!base;
+    base = null; baseProb = null;
+    clearAnalysis();
+    $('sBase').innerHTML = '';
+    $('sScenario').innerHTML = '';
+    banner(hadBase ? '基准题已修改，请重新求基准最优解。' : '');
+  }
 
   /* ---------------- 基准题求解 ---------------- */
   function solveBase() {
+    invalidateBase();
     var prob = panel.getProblem();
     if (prob.c.length < 1) {
       banner('还没有决策变量，先点「+ 变量」搭一个线性规划。');
@@ -129,6 +148,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
   };
 
   function renderForm(t) {
+    clearAnalysis();
     var n = baseProb.c.length, m = baseProb.constraints.length, h = '';
     var small = ' class="num sm" type="text" inputmode="decimal" placeholder="0"';
 
@@ -219,6 +239,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
   /* 参数线性规划的 λ 系数输入（跟着上面的小标签切换） */
   var paramKind = 'c';
   function renderParamBody() {
+    clearAnalysis();
     var n = baseProb.c.length, m = baseProb.constraints.length, h = '', k;
     var small = ' class="num sm" type="text" inputmode="decimal" placeholder="0"';
     if (paramKind === 'c') {
@@ -244,8 +265,10 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
   function num(sel) {
     var el = document.querySelector(sel);
     if (!el) return 0;
-    var v = parseFloat(String(el.value).replace(/[^0-9.\-]/g, ''));
-    return isNaN(v) ? 0 : v;
+    var v = parseNumber(el.value, true);
+    el.setAttribute('aria-invalid', isFinite(v) ? 'false' : 'true');
+    if (!isFinite(v)) throw new Error('请输入完整数字（支持小数和科学计数法）');
+    return v;
   }
   function collect(t) {
     var n = baseProb.c.length, m = baseProb.constraints.length, i;
@@ -288,7 +311,10 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
   }
 
   function runScenario(t) {
-    var sc = collect(t);
+    if (!base || !baseProb) { banner('请先重新求基准最优解。'); return; }
+    clearAnalysis();
+    var sc;
+    try { sc = collect(t); } catch (e) { banner(e.message); return; }
     var r = sc.param ? sensParam(baseProb, sc) : sensAnalyze(baseProb, sc);
     if (!r.ok) { banner(r.message); return; }
     banner('');
@@ -413,6 +439,8 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
     });
 
     /* ③ 结论 */
+    var reasoning = h;
+    h = '';
     h += '<h2 class="sec">结论</h2>';
     if (r.status === 'optimal') {
       var sols = r.result.solution.map(function (v, j) {
@@ -430,10 +458,14 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
         + '，因此没有最优解。</div></div>';
     }
 
+    h += resultLayout.navigation([['sensitivity-work','查看判断与迭代']])
+      + '<details class="result-work" open><summary>完整推导（可收起）</summary><section data-section="sensitivity-work">'
+      + reasoning + '</section></details>';
     $('sBase').innerHTML = $('sBase').innerHTML.replace(/<h2 class="sec">分析结果<\/h2>[\s\S]*$/, '');
     var box = document.createElement('div');
     box.id = 'sensOut';
     box.innerHTML = h;
+    resultLayout.wire(box);
     var old = $('sensOut');
     if (old) old.parentNode.removeChild(old);
     $('sScenario').parentNode.insertBefore(box, $('sScenario').nextSibling);
@@ -448,6 +480,13 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
 
   /* ---------------- 启动 ---------------- */
   panel.init();
+  $('sScenario').addEventListener('input', function (e) {
+    clearAnalysis();
+    if (e.target.tagName === 'INPUT') {
+      e.target.setAttribute('aria-invalid', isFinite(parseNumber(e.target.value, true)) ? 'false' : 'true');
+    }
+  });
+  $('sScenario').addEventListener('change', clearAnalysis);
   $('sSolveBtn').addEventListener('click', solveBase);
 })();
 

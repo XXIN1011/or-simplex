@@ -104,13 +104,14 @@ function main() {
     if (argv.includes('--json')) { console.log(JSON.stringify(ip, null, 2)); return; }
     if (!ip.ok) { console.error('输入有误：' + ip.message); process.exit(1); }
 
+    if (ip.noOptimum) {
+      console.log(ip.message);
+      process.exit(1);
+    }
+
     console.log('松弛问题（先去掉整数要求）：z = ' + format.fmtNum(ip.relax.objective)
       + '，x = (' + ip.relax.solution.map(format.fmtNum).join(', ') + ')'
       + (ip.relaxIntegral ? '　—— 恰好全整数，松弛解就是整数最优解' : '　—— 含非整数分量，需下面四种方法之一'));
-    if (ip.noOptimum) {
-      console.log('松弛问题本身没有最优解，整数规划同样无解。');
-      process.exit(1);
-    }
     console.log('整数变量下标：' + (ip.intIdx.length ? ip.intIdx.join('、') : '无'));
 
     console.log('四种方法的适用性：');

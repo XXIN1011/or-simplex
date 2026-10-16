@@ -7,10 +7,7 @@
 #    · 注册一致性 / 无 DP 残留
 #    · 单元测试 + 8 套算法回归
 #    · 无头 Chrome 的 UI 回归（runner 自带 google-chrome，lib/chrome.js 自动找得到）
-#  另有一个「对拍」job 用 scipy 复算（独立第二实现）——它依赖 numpy/scipy 版本
-#  行为，HiGHS 的 presolve 在不同版本上对无界/不可行的判定偶有差异（见 HANDOFF
-#  6.6 的记录），所以标成参考性（continue-on-error），红了先看日志再判断，
-#  不要直接当成引擎有 bug。本地改动算法层时仍然必跑对拍。
+#  scipy 对拍与无障碍检查均为必过门禁；已知求解器分歧由脚本复核并单独记录。
 # =============================================================================
 name: verify
 
@@ -46,11 +43,10 @@ jobs:
       - name: 单元测试 + 算法回归
         run: node test/run-all.js
 
-      - name: UI 回归（无头 Chrome，133 条断言）
+      - name: UI 回归（无头 Chrome）
         run: node test/ui/verify-ui.js --quiet
 
-      - name: 无障碍 / 图解越界审查（runner 字体与本地不同，仅作参考）
-        continue-on-error: true
+      - name: 无障碍 / 图解越界审查
         run: |
           node test/ui/audit.js --quiet
           node test/ui/graph-bounds.js --quiet
@@ -65,7 +61,6 @@ jobs:
 
   crosscheck:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -78,7 +73,7 @@ jobs:
           python-version: '3.12'
 
       - name: 装 numpy / scipy
-        run: python -m pip install --quiet numpy scipy
+        run: python -m pip install --quiet numpy==2.5.4 scipy==1.18.1
 
       # 顺序不能乱：对拍脚本读的题库 JSON 被 gitignore，必须先由 node 侧生成
       - name: 生成题库
@@ -98,3 +93,6 @@ jobs:
           python test/algorithm/crosscheck-scenario.py
           python test/algorithm/crosscheck-param.py
           python test/algorithm/crosscheck-assign.py
+
+      - name: 验证失败与空题库均返回非零退出码
+        run: python test/algorithm/check-exitcodes.py

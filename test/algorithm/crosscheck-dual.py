@@ -8,6 +8,7 @@
     只要满足上面三条即为合法的影子价格。
 """
 import json
+import sys
 import numpy as np
 from scipy.optimize import linprog
 
@@ -21,8 +22,10 @@ import os
 #   —— 原点可行、射线 (t,0,3t) 对任意 t>0 可行且 z = -12t，数学上确定无界；
 #   而 method='highs' 报 infeasible，presolve=False / highs-ds / interior-point 都报 unbounded。
 #   所以本脚本一旦出现「状态不一致」，先关掉 presolve 复核，再判断是谁错。
-_HERE = os.path.dirname(os.path.abspath(__file__))
+_HERE = os.environ.get('OR_TEST_BANK_DIR') or os.path.dirname(os.path.abspath(__file__))
 bank = json.load(open(os.path.join(_HERE, 'dual-bank.json'), encoding='utf-8'))
+if not bank:
+    sys.exit('题库为空，不能判定通过')
 print(f'对偶题库: {len(bank)} 题\n')
 
 
@@ -167,3 +170,5 @@ print('  逐项一致 %d / 不一致 %d（该行右端项恰好落在折点上 %
       % (p_ok, p_bad, p_break, p_skip))
 for d in p_detail:
     print('   不一致 题id=%s 第%d个约束  JS=%s  左单侧=%s  右单侧=%s' % d)
+
+sys.exit(1 if s_bad or c_bad or p_bad else 0)

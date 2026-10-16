@@ -15,6 +15,7 @@
 <title>运筹学计算器</title>
 <meta name="apple-mobile-web-app-title" content="运筹学计算器">
 <style>
+
 /* =========================================================================
    设计令牌（design tokens）
    -------------------------------------------------------------------------
@@ -115,6 +116,7 @@ sub,sup{font-size:max(12px,.83em)}
 /* 键盘聚焦时才画焦点环：鼠标点击不画，手指点更不画 */
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
 input:focus-visible,select:focus-visible{outline:none}
+input[aria-invalid="true"]{border-color:var(--err)!important;box-shadow:0 0 0 1px var(--err)}
 
 /* 底部有固定的模块导航条，正文要给它让出位置，否则最后一屏会被压住 */
 .wrap{max-width:820px;margin:0 auto;padding:18px 14px calc(108px + env(safe-area-inset-bottom))}
@@ -1079,6 +1081,47 @@ html[data-theme="dark"] button.btn.primary:active{background-color:rgba(122,162,
   html{scroll-behavior:auto}
   *{transition:none !important;animation:none !important}
 }
+
+/* 输入与结果工作区：品牌/导航保留玻璃，长篇数字内容使用稳定底色。 */
+:root{--content-surface:rgba(255,255,255,.96)}
+html[data-theme="dark"]{--content-surface:rgba(21,26,35,.97)}
+.input-guide{margin:0 0 16px;padding:0 0 14px;border-bottom:1px solid var(--line2)}
+.guide-intro{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.guide-intro b{font-size:14px}
+.guide-intro p{margin:3px 0 0;color:var(--fg2);font-size:12.5px}
+.guide-intro .btn{flex-shrink:0}
+.guide-size{margin-top:8px}
+.guide-size summary,.result-work>summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:650;color:var(--fg)}
+.guide-size summary::before,.result-work>summary::before{content:'＋';display:inline-block;margin-right:8px;color:var(--accent)}
+.guide-size[open]>summary::before,.result-work[open]>summary::before{content:'−'}
+.guide-fields{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;padding:4px 0}
+.guide-fields label{display:flex;flex:1;min-width:90px;flex-direction:column;gap:5px;font-size:12px;color:var(--fg2)}
+.guide-fields select{min-height:44px;width:100%;padding:8px 12px;font:inherit;font-size:15px;color:var(--fg);background:var(--input);border:1px solid var(--line2);border-radius:var(--r-sm)}
+.guide-note{font-size:12px;line-height:1.65;color:var(--fg2);margin:8px 0 0}
+.input-guide.has-model>.guide-note,.input-guide.has-model .guide-intro p{display:none}
+.result-nav{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 18px}
+.result-nav .btn{min-height:44px}
+.result-work{margin:14px 0}
+.result-work>summary{padding:8px 14px;border:1px solid var(--line2);border-radius:var(--r);background:var(--content-surface);margin-bottom:16px}
+[data-section]{scroll-margin-top:18px}
+#result .card,#ipOut .card,#sensOut .card,#asOut .card{
+  background:var(--content-surface);backdrop-filter:none;-webkit-backdrop-filter:none;
+  box-shadow:var(--shadow-1);border-color:var(--line);border-radius:var(--r);
+}
+.result-nav .btn{backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:var(--shadow-1)}
+@media(min-width:1000px){.wrap{max-width:1000px}.hero{padding:26px 30px}.modcard .md{font-size:14px}}
+@media(min-width:1100px){
+  .wrap{max-width:1240px}
+  #mod-home,#mod-ip,#mod-sens,#mod-assign,#mod-settings{max-width:1000px;margin:0 auto}
+  #mod-simplex.on.has-result{display:grid;grid-template-columns:minmax(340px,420px) minmax(0,1fr);grid-template-rows:auto auto auto 1fr;column-gap:24px;align-items:start}
+  #mod-simplex.has-result>header{grid-column:1/-1;grid-row:1}
+  #mod-simplex.has-result>.card{grid-column:1;grid-row:2}
+  #mod-simplex.has-result>.help{grid-column:1;grid-row:3}
+  #mod-simplex.has-result>#banners{grid-column:1;grid-row:4}
+  #mod-simplex.has-result>#result{grid-column:2;grid-row:2/5;min-width:0}
+}
+@media(max-width:360px){.guide-intro{align-items:flex-start;flex-direction:column}.guide-fields .btn{width:100%}}
+
 </style>
 </head>
 <body>
@@ -1118,7 +1161,7 @@ html[data-theme="dark"] button.btn.primary:active{background-color:rgba(122,162,
       </span>
       <span class="mb">
         <span class="mt">单纯形法<span class="go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></span>
-        <span class="md">输入线性规划，逐步展示每一张单纯形表、对偶解，以及保持最优基不变时各系数允许的变化范围。</span>
+        <span class="md">输入线性规划，查看最优解、单纯形表和灵敏度区间。</span>
       </span>
     </a>
 
@@ -1133,7 +1176,7 @@ html[data-theme="dark"] button.btn.primary:active{background-color:rgba(122,162,
       </span>
       <span class="mb">
         <span class="mt">灵敏度分析<span class="go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></span>
-        <span class="md">在已求得的最优解上，分析「改目标函数系数 / 改右端项 / 增加约束 / 增加变量」的影响，并按教材做法在原最优表上继续迭代。</span>
+        <span class="md">改变系数、约束或变量，比较最优解如何变化。</span>
       </span>
     </a>
 
@@ -1155,7 +1198,7 @@ html[data-theme="dark"] button.btn.primary:active{background-color:rgba(122,162,
       </span>
       <span class="mb">
         <span class="mt">整数规划<span class="go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></span>
-        <span class="md">输入任意整数规划（每个变量可选连续 / 整数 / <span class="nowrap">0-1</span>），自动判定分枝定界法、割平面法、隐枚举法、图解法各有哪几种能用，能用的把完整计算过程全部输出。</span>
+        <span class="md">指定整数或 0-1 变量，对比分枝定界等求解过程。</span>），自动判定分枝定界法、割平面法、隐枚举法、图解法各有哪几种能用，能用的把完整计算过程全部输出。</span>
       </span>
     </a>
 
@@ -1171,7 +1214,7 @@ html[data-theme="dark"] button.btn.primary:active{background-color:rgba(122,162,
       </span>
       <span class="mb">
         <span class="mt">指派问题<span class="go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></span>
-        <span class="md">输入费用或收益矩阵（谁做哪件事的代价），逐步迭代：行/列归约、试指派、覆盖线、矩阵调整，每一步都画在矩阵上。最大化、人数与工作数不等、个别格禁止指派都能算（教材 6.7 分配问题）。</span>
+        <span class="md">填写费用矩阵，用匈牙利法求最优人员与工作匹配。</span>
       </span>
     </a>
 
@@ -1180,7 +1223,7 @@ html[data-theme="dark"] button.btn.primary:active{background-color:rgba(122,162,
         <rect x="6" y="2.5" width="12" height="19" rx="2.5"/>
         <path d="M10.5 18.5h3"/>
       </svg>
-      <span>手机上打开后，用浏览器菜单「添加到桌面」，即可全屏、离线使用。</span>
+      <span>可将网页添加到桌面快捷打开；离线使用请先保存完整 HTML 文件。</span>
     </div>
     <a class="repolink" href="https://github.com/XXIN1011/or-simplex" target="_blank" rel="noopener">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1215,7 +1258,7 @@ html[data-theme="dark"] button.btn.primary:active{background-color:rgba(122,162,
       <li><b>a1, a2 …</b><span class="d">人工变量。约束里出现 ≥ 或 = 时凑不出初始单位基，于是人为添一个变量顶上。最优解中它必须退到 0，否则说明原问题无可行解。</span></li>
       <li><b>M</b><span class="d">形式上「无穷大」的正数。人工变量在目标函数里带 −M 的代价，逼它退到 0。表格按教材写法显示为 <span class="mono">3M − 4</span> 这类形式。</span></li>
       <li><b>σ</b><span class="d">检验数，σⱼ = cⱼ − zⱼ。max 问题里 σⱼ &gt; 0 表示增加 xⱼ 还能让目标函数变好；全部 σⱼ ≤ 0 就达到最优了。</span></li>
-      <li><b>基变量</b><span class="d">当前取非零值的那组变量，就是表格左边「基」那一列；其余非基变量一律取 0。</span></li>
+      <li><b>基变量</b><span class="d">当前基对应的变量，就是表格左边「基」那一列；退化时基变量也可以取 0，其余非基变量取 0。</span></li>
       <li><b>z</b><span class="d">目标函数的值。</span></li>
     </ul>
   </details>
@@ -1431,6 +1474,7 @@ var fmtNum = _fmt.fmtNum;
 
 /* 「禁止指派」的入参记号。界面填 ×、JSON 里写 null 都认。 */
 var FORBIDDEN_TOKENS = ['x', 'X', '×', '-', '—', '–', '∞', 'M', 'inf', 'INF', 'Inf'];
+var parseNumber = require('./number-input.js').parseNumber;
 
 /**
  * asCell —— 把一格输入规范化成「数字」或「null（禁止指派）」。
@@ -1444,7 +1488,7 @@ function asCell(raw) {
     var s = raw.trim();
     if (s === '') return 0;                            // 与项目其它模块一致：空格按 0 计
     if (FORBIDDEN_TOKENS.indexOf(s) >= 0) return null;
-    var t = Number(s);
+    var t = parseNumber(s, true);
     return isFinite(t) ? t : undefined;
   }
   return undefined;
@@ -2728,146 +2772,16 @@ module.exports = {
 };
 });
 
-__define__("src/core/integer.js", function (module, exports, require) {
-/* =========================================================================
-   整数规划（教材第 3 章）
-   -------------------------------------------------------------------------
-   和单纯形法一样，这里做的是「输入任意一道整数规划题 → 输出规范化的完整计算过程」，
-   不是把例题的参数写死在程序里。
-
-   问题对象 problem = {
-     direction: 'max' | 'min',
-     c:         [ … ],
-     constraints: [ { coef: [ … ], rel: '<=|>=|=', rhs } ],
-     vtypes:    [ 'cont' | 'int' | 'bin' ]     每个变量：连续 / 整数 / 0-1
-   }
-
-   四种方法各有各的适用范围，本文件负责三件事：
-     ① 各自算出结果（连同**每一步**的中间过程，供界面按教材写法展示）
-     ② 判定自己在当前这道题上到底能不能用（不能用就不输出，理由一并给出）
-     ③ 规模过大时给出提示，让界面改为「按用户选择的解法输出」
-
-   本文件只留整数规划**独有**的东西：变量整性 / 0-1 判定、四种方法本身、
-   适用性判定与理由、规模守卫、界面要的过程数据。
-   线性规划的求解与枢轴变换一律复用共享内核 src/core/simplex.js
-   （simplexSolve / pivot），容差判定与数字格式化用 src/core/util.js、format.js。
-   ========================================================================= */
+__define__("src/core/integer-branch.js", function (module, exports, require) {
 'use strict';
-
-/* 依赖：求解内核 + 公共工具 + 格式化（显式 require，浏览器端由打包器提供 require）。
-   本文件不再自带求解内核的任何一份拷贝：松弛问题、分枝结点问题都走 simplexSolve，
-   割平面的对偶单纯形迭代里枢轴变换也走共享内核的 pivot。 */
-var _core = require('./simplex.js');
-var _util = require('./util.js');
-var _fmt = require('./format.js');
-/* 求解内核 simplex.js：求解入口 + 枢轴变换 */
-var simplexSolve = _core.simplexSolve;
-var pivot = _core.pivot;
-/* 公共工具 util.js / format.js：容差判定 + 数字格式化 */
-var nearZero = _util.nearZero, pIsZero = _util.pIsZero;
-var fmtNum = _fmt.fmtNum;
-
-var IP_EPS = 1e-6;
-
-/* ---------------- 小工具 ---------------- */
-
-/* 是不是整数（带容差：单纯形法算久了会有 2.9999999 这种尾巴） */
-function ipIsInt(v) { return Math.abs(v - Math.round(v)) < IP_EPS; }
-function ipRound(v) { return ipIsInt(v) ? Math.round(v) : v; }
-
-/* 小数部分。注意先「吸附」到整数 —— 否则 2.9999999 会算出 0.9999999 这种假小数，
-   由它推出来的割平面就是一整条错的行。 */
-function ipFrac(v) {
-  var r = Math.round(v);
-  if (Math.abs(v - r) < 1e-7) return 0;
-  var f = v - Math.floor(v);
-  if (f > 1 - 1e-7) return 0;
-  return f;
-}
-
-/* 找出所有要求取整的变量下标 */
-function ipIntVars(problem) {
-  var out = [];
-  if (!problem.vtypes) return out;
-  for (var j = 0; j < problem.vtypes.length; j++) {
-    if (problem.vtypes[j] === 'int' || problem.vtypes[j] === 'bin') out.push(j);
-  }
-  return out;
-}
-function ipIsPureInteger(problem) {
-  if (!problem.vtypes || !problem.vtypes.length) return false;
-  for (var j = 0; j < problem.vtypes.length; j++) if (problem.vtypes[j] === 'cont') return false;
-  return true;
-}
-function ipAllBinary(problem) {
-  if (!problem.vtypes || !problem.vtypes.length) return false;
-  for (var j = 0; j < problem.vtypes.length; j++) if (problem.vtypes[j] !== 'bin') return false;
-  return true;
-}
-
-/* 追加若干「单变量界」约束（系数只有第 j 位是 1）。0-1 的 x ≤ 1 与分枝定界的
-   每步上下界是同一件事，只写这一份，不再两处各拼一遍系数行。 */
-function ipAppendBinds(p, bounds) {
-  bounds.forEach(function (b) {
-    var coef = [];
-    for (var j = 0; j < p.c.length; j++) coef.push(j === b.j ? 1 : 0);
-    p.constraints.push({ coef: coef, rel: b.rel, rhs: b.val });
-  });
-  return p;
-}
-
-/* 0-1 变量本身自带 0 ≤ x ≤ 1 的界，而单纯形法只知道 x ≥ 0。
-   不把上界显式加进去，松弛问题就会给出 x_j = 2 这种「是整数但不是 0-1」的解，
-   分枝定界还会把它当成合法整数解收下 —— 结果比真正的最优解还大。 */
-function ipWithVarBounds(problem) {
-  var p = {
-    direction: problem.direction,
-    c: problem.c.slice(),
-    constraints: problem.constraints.map(function (k) {
-      return { coef: k.coef.slice(), rel: k.rel, rhs: k.rhs };
-    })
-  };
-  var binBounds = [];
-  for (var j = 0; j < problem.c.length; j++) {
-    if (problem.vtypes && problem.vtypes[j] === 'bin') binBounds.push({ j: j, rel: '<=', val: 1 });
-  }
-  return ipAppendBinds(p, binBounds);
-}
-/* 有没有 0-1 变量（用来决定要不要在输出里说明「已补上 x ≤ 1」） */
-function ipHasBinary(problem) {
-  if (!problem.vtypes) return false;
-  for (var j = 0; j < problem.vtypes.length; j++) if (problem.vtypes[j] === 'bin') return true;
-  return false;
-}
-
-/* 复制问题并追加若干上下界约束（分枝定界每走一步都要做这件事） */
-function ipWithBounds(problem, bounds) {
-  return ipAppendBinds(ipWithVarBounds(problem), bounds);   // 先补上 0-1 的 x ≤ 1
-}
-
-/* 解向量与目标值一律直接取共享内核的 SolveResult：
-   solution 已经是「决策变量」口径，objective 对 max / min 都已还原过，
-   这里不再各包一层同名函数。 */
-
-/* =========================================================================
-   1. 松弛问题：把整数限制去掉，得到普通线性规划
-   ========================================================================= */
-function ipRelaxation(problem) {
-  return simplexSolve(ipWithVarBounds(problem));
-}
-
-/* 松弛问题的最优解是否已经满足所有整数要求 */
-function ipRelaxIsIntegral(problem, res) {
-  var idx = ipIntVars(problem);
-  for (var i = 0; i < idx.length; i++) {
-    var j = idx[i], v = res.solution[j];
-    if (!ipIsInt(v)) return false;
-    /* 0-1 变量不仅要是整数，还必须落在 {0,1} 里 */
-    if (problem.vtypes[j] === 'bin' && v !== 0 && v !== 1) return false;
-  }
-  return true;
-}
-
+var simplexSolve = require('./simplex.js').simplexSolve;
+var fmtNum = require('./format.js').fmtNum;
+var shared = require('./integer-common.js');
+var ipIsInt = shared.ipIsInt;
+var ipFrac = shared.ipFrac;
+var ipIntVars = shared.ipIntVars;
+var ipWithBounds = shared.ipWithBounds;
+var ipRelaxation = shared.ipRelaxation;
 /* =========================================================================
    2. 分支定界法
    -------------------------------------------------------------------------
@@ -3013,6 +2927,158 @@ function ipBranchBound(problem, opts) {
   };
 }
 
+
+module.exports = {
+  ipBranchBound: ipBranchBound
+};
+});
+
+__define__("src/core/integer-common.js", function (module, exports, require) {
+/* 整数规划共用的类型、界、松弛与容差工具。 */
+'use strict';
+
+/* 依赖：求解内核 + 公共工具 + 格式化（显式 require，浏览器端由打包器提供 require）。
+   本文件不再自带求解内核的任何一份拷贝：松弛问题、分枝结点问题都走 simplexSolve，
+   割平面的对偶单纯形迭代里枢轴变换也走共享内核的 pivot。 */
+var _core = require('./simplex.js');
+var _util = require('./util.js');
+/* 求解内核 simplex.js：求解入口 + 枢轴变换 */
+var simplexSolve = _core.simplexSolve;
+var pivot = _core.pivot;
+/* 公共工具 util.js / format.js：容差判定 + 数字格式化 */
+var nearZero = _util.nearZero, pIsZero = _util.pIsZero;
+
+var IP_EPS = 1e-6;
+
+/* ---------------- 小工具 ---------------- */
+
+/* 是不是整数（带容差：单纯形法算久了会有 2.9999999 这种尾巴） */
+function ipIsInt(v) { return Math.abs(v - Math.round(v)) < IP_EPS; }
+function ipRound(v) { return ipIsInt(v) ? Math.round(v) : v; }
+
+/* 小数部分。注意先「吸附」到整数 —— 否则 2.9999999 会算出 0.9999999 这种假小数，
+   由它推出来的割平面就是一整条错的行。 */
+function ipFrac(v) {
+  var r = Math.round(v);
+  if (Math.abs(v - r) < 1e-7) return 0;
+  var f = v - Math.floor(v);
+  if (f > 1 - 1e-7) return 0;
+  return f;
+}
+
+/* 找出所有要求取整的变量下标 */
+function ipIntVars(problem) {
+  var out = [];
+  if (!problem.vtypes) return out;
+  for (var j = 0; j < problem.vtypes.length; j++) {
+    if (problem.vtypes[j] === 'int' || problem.vtypes[j] === 'bin') out.push(j);
+  }
+  return out;
+}
+function ipIsPureInteger(problem) {
+  if (!problem.vtypes || !problem.vtypes.length) return false;
+  for (var j = 0; j < problem.vtypes.length; j++) if (problem.vtypes[j] === 'cont') return false;
+  return true;
+}
+function ipAllBinary(problem) {
+  if (!problem.vtypes || !problem.vtypes.length) return false;
+  for (var j = 0; j < problem.vtypes.length; j++) if (problem.vtypes[j] !== 'bin') return false;
+  return true;
+}
+
+/* 追加若干「单变量界」约束（系数只有第 j 位是 1）。0-1 的 x ≤ 1 与分枝定界的
+   每步上下界是同一件事，只写这一份，不再两处各拼一遍系数行。 */
+function ipAppendBinds(p, bounds) {
+  bounds.forEach(function (b) {
+    var coef = [];
+    for (var j = 0; j < p.c.length; j++) coef.push(j === b.j ? 1 : 0);
+    p.constraints.push({ coef: coef, rel: b.rel, rhs: b.val });
+  });
+  return p;
+}
+
+/* 0-1 变量本身自带 0 ≤ x ≤ 1 的界，而单纯形法只知道 x ≥ 0。
+   不把上界显式加进去，松弛问题就会给出 x_j = 2 这种「是整数但不是 0-1」的解，
+   分枝定界还会把它当成合法整数解收下 —— 结果比真正的最优解还大。 */
+function ipWithVarBounds(problem) {
+  var p = {
+    direction: problem.direction,
+    c: problem.c.slice(),
+    constraints: problem.constraints.map(function (k) {
+      return { coef: k.coef.slice(), rel: k.rel, rhs: k.rhs };
+    })
+  };
+  var binBounds = [];
+  for (var j = 0; j < problem.c.length; j++) {
+    if (problem.vtypes && problem.vtypes[j] === 'bin') binBounds.push({ j: j, rel: '<=', val: 1 });
+  }
+  return ipAppendBinds(p, binBounds);
+}
+/* 有没有 0-1 变量（用来决定要不要在输出里说明「已补上 x ≤ 1」） */
+function ipHasBinary(problem) {
+  if (!problem.vtypes) return false;
+  for (var j = 0; j < problem.vtypes.length; j++) if (problem.vtypes[j] === 'bin') return true;
+  return false;
+}
+
+/* 复制问题并追加若干上下界约束（分枝定界每走一步都要做这件事） */
+function ipWithBounds(problem, bounds) {
+  return ipAppendBinds(ipWithVarBounds(problem), bounds);   // 先补上 0-1 的 x ≤ 1
+}
+
+/* 解向量与目标值一律直接取共享内核的 SolveResult：
+   solution 已经是「决策变量」口径，objective 对 max / min 都已还原过，
+   这里不再各包一层同名函数。 */
+
+/* =========================================================================
+   1. 松弛问题：把整数限制去掉，得到普通线性规划
+   ========================================================================= */
+function ipRelaxation(problem) {
+  return simplexSolve(ipWithVarBounds(problem));
+}
+
+/* 松弛问题的最优解是否已经满足所有整数要求 */
+function ipRelaxIsIntegral(problem, res) {
+  var idx = ipIntVars(problem);
+  for (var i = 0; i < idx.length; i++) {
+    var j = idx[i], v = res.solution[j];
+    if (!ipIsInt(v)) return false;
+    /* 0-1 变量不仅要是整数，还必须落在 {0,1} 里 */
+    if (problem.vtypes[j] === 'bin' && v !== 0 && v !== 1) return false;
+  }
+  return true;
+}
+
+
+module.exports = {
+  IP_EPS: IP_EPS,
+  ipIsInt: ipIsInt,
+  ipRound: ipRound,
+  ipFrac: ipFrac,
+  ipIntVars: ipIntVars,
+  ipIsPureInteger: ipIsPureInteger,
+  ipAllBinary: ipAllBinary,
+  ipAppendBinds: ipAppendBinds,
+  ipWithVarBounds: ipWithVarBounds,
+  ipHasBinary: ipHasBinary,
+  ipWithBounds: ipWithBounds,
+  ipRelaxation: ipRelaxation,
+  ipRelaxIsIntegral: ipRelaxIsIntegral
+};
+});
+
+__define__("src/core/integer-cut.js", function (module, exports, require) {
+'use strict';
+var pivot = require('./simplex.js').pivot;
+var pIsZero = require('./util.js').pIsZero;
+var fmtNum = require('./format.js').fmtNum;
+var shared = require('./integer-common.js');
+var IP_EPS = shared.IP_EPS;
+var ipIsInt = shared.ipIsInt;
+var ipRound = shared.ipRound;
+var ipFrac = shared.ipFrac;
+var ipIsPureInteger = shared.ipIsPureInteger;
+var ipRelaxation = shared.ipRelaxation;
 /* =========================================================================
    3. 割平面法（Gomory 割）
    -------------------------------------------------------------------------
@@ -3235,6 +3301,17 @@ function ipCuttingPlane(problem, opts) {
    高斯消元，现已删除 —— 割平面的对偶单纯形直接调共享内核的 pivot(table, r, e)。
    下面进入隐枚举法。 */
 
+
+module.exports = {
+  ipCuttingPlane: ipCuttingPlane
+};
+});
+
+__define__("src/core/integer-enum.js", function (module, exports, require) {
+'use strict';
+var nearZero = require('./util.js').nearZero;
+var shared = require('./integer-common.js');
+var ipAllBinary = shared.ipAllBinary;
 /* =========================================================================
    4. 隐枚举法（0-1 规划）
    -------------------------------------------------------------------------
@@ -3356,6 +3433,31 @@ function ipImplicitEnum(problem, opts) {
   };
 }
 
+
+module.exports = {
+  ipImplicitEnum: ipImplicitEnum
+};
+});
+
+__define__("src/core/integer.js", function (module, exports, require) {
+/* 整数规划公开入口；各方法的实现按职责拆分，导出接口保持兼容。 */
+'use strict';
+var validate = require('./parse.js').validate;
+var parseNumber = require('./number-input.js').parseNumber;
+var shared = require('./integer-common.js');
+var ipIsInt = shared.ipIsInt;
+var ipFrac = shared.ipFrac;
+var ipIntVars = shared.ipIntVars;
+var ipIsPureInteger = shared.ipIsPureInteger;
+var ipAllBinary = shared.ipAllBinary;
+var ipWithVarBounds = shared.ipWithVarBounds;
+var ipHasBinary = shared.ipHasBinary;
+var ipWithBounds = shared.ipWithBounds;
+var ipRelaxation = shared.ipRelaxation;
+var ipRelaxIsIntegral = shared.ipRelaxIsIntegral;
+var ipBranchBound = require('./integer-branch.js').ipBranchBound;
+var ipCuttingPlane = require('./integer-cut.js').ipCuttingPlane;
+var ipImplicitEnum = require('./integer-enum.js').ipImplicitEnum;
 /* =========================================================================
    5. 总入口：把四种方法的适用性和结果一次性算出来
    -------------------------------------------------------------------------
@@ -3365,6 +3467,16 @@ function ipImplicitEnum(problem, opts) {
    ========================================================================= */
 function ipSolve(problem, opts) {
   opts = opts || {};
+  var validation = validate(problem);
+  if (!validation.ok) return validation;
+  /* 各整数算法要读原题做运算，必须复用校验后的数值，不能只规范化松弛表。 */
+  problem = {
+    direction: validation.direction, c: validation.c0,
+    constraints: problem.constraints.map(function (k) {
+      return { coef: k.coef.map(function (v) { return parseNumber(v); }), rel: k.rel, rhs: parseNumber(k.rhs) };
+    }),
+    vtypes: problem.vtypes
+  };
   var n = problem.c.length;
   var intIdx = ipIntVars(problem);
 
@@ -3382,19 +3494,24 @@ function ipSolve(problem, opts) {
     graph.reason = '没有整数变量，这是普通线性规划，图解法请到单纯形法模块看。';
   }
 
-  /* 松弛问题都不行的话，四种方法都无从谈起 */
+  /* 只有松弛不可行才能推出整数不可行。无界/未收敛时，本实现无法判定整数结论。 */
   if (relax.status !== 'optimal') {
-    var st = relax.status === 'infeasible' ? '无可行解' : '无界';
+    var status = relax.status === 'infeasible' ? 'infeasible' : 'undetermined';
+    var message = relax.status === 'infeasible'
+      ? '松弛问题无可行解，原整数规划也无可行解。'
+      : relax.status === 'unbounded'
+        ? '松弛问题无界，但尚未确定整数可行性，不能据此判定原整数规划无界。本实现需要松弛最优解才能继续，整数问题结论未确定。'
+        : '松弛问题达到迭代上限，尚未得到最优解；整数问题结论未确定。';
     return {
-      ok: true, relax: relax, relaxIntegral: false, noOptimum: true,
+      ok: true, status: status, message: message,
+      relax: relax, relaxIntegral: false, noOptimum: true,
       methods: [
         { key: 'graph', name: '图解法', applicable: false,
-          reason: '松弛问题' + st + '，没有最优解可谈。' },
+          reason: message },
         { key: 'bnb', name: '分枝定界法', applicable: false,
-          reason: '松弛问题' + st + '。整数规划的可行域是松弛问题可行域的一部分，'
-                + '松弛问题' + st + '时整数规划也' + st + '。' },
-        { key: 'cut', name: '割平面法', applicable: false, reason: '松弛问题' + st + '。' },
-        { key: 'enum', name: '隐枚举法', applicable: false, reason: '松弛问题' + st + '。' }
+          reason: message },
+        { key: 'cut', name: '割平面法', applicable: false, reason: message },
+        { key: 'enum', name: '隐枚举法', applicable: false, reason: message }
       ]
     };
   }
@@ -3688,6 +3805,24 @@ module.exports = {
 };
 });
 
+__define__("src/core/number-input.js", function (module, exports, require) {
+'use strict';
+
+/* 完整解析十进制/科学计数法；只规范化数学负号，不删除未知字符。
+   UI 的空格按 0，库入口的空值则应当报错。非法值用 NaN 交给校验层拦截。 */
+function parseNumber(value, blankAsZero) {
+  if (typeof value === 'number') return isFinite(value) ? value : NaN;
+  if (typeof value !== 'string') return NaN;
+  var s = value.trim().replace(/\u2212/g, '-');
+  if (!s) return blankAsZero ? 0 : NaN;
+  if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(s)) return NaN;
+  var n = Number(s);
+  return isFinite(n) ? n : NaN;
+}
+
+module.exports = { parseNumber: parseNumber };
+});
+
 __define__("src/core/parse.js", function (module, exports, require) {
 /* =========================================================================
    输入解析模块 —— 校验用户输入，并转换成标准型
@@ -3718,6 +3853,7 @@ var pSub = require('./util.js').pSub;
 var pMul = require('./util.js').pMul;
 var model = require('./model.js');
 var errors = require('./errors.js');
+var parseNumber = require('./number-input.js').parseNumber;
 
 /**
  * validate —— 校验输入能否求解。
@@ -3728,9 +3864,15 @@ var errors = require('./errors.js');
  *          message 用全角分号连接各条原因，顺序即校验顺序（界面直接显示这段文字）
  */
 function validate(problem) {
+  if (!problem || typeof problem !== 'object' || Array.isArray(problem)) {
+    return errors.invalidInput(['题目必须是对象']);
+  }
+  if (!Array.isArray(problem.c) || !Array.isArray(problem.constraints)) {
+    return errors.invalidInput(['目标函数系数和约束条件必须是数组']);
+  }
   var direction = problem.direction === 'min' ? 'min' : 'max';
   var swapped = direction === 'min';            // min z  ->  max w = -z
-  var c0 = problem.c.map(Number);
+  var c0 = problem.c.map(function (v) { return parseNumber(v); });
   var n = c0.length;
   var m = problem.constraints.length;
 
@@ -3741,8 +3883,16 @@ function validate(problem) {
   var invalid = [];
   for (var q = 0; q < m; q++) {
     var kk = problem.constraints[q];
+    if (!kk || typeof kk !== 'object' || !Array.isArray(kk.coef)) {
+      invalid.push('第 ' + (q + 1) + ' 个约束必须包含系数数组');
+      continue;
+    }
     if (kk.coef.length !== n) invalid.push('第 ' + (q + 1) + ' 个约束的系数个数与变量数不一致');
-    if (!isFinite(Number(kk.rhs))) invalid.push('第 ' + (q + 1) + ' 个约束的右端项不是有效数字');
+    if (!isFinite(parseNumber(kk.rhs))) invalid.push('第 ' + (q + 1) + ' 个约束的右端项不是有效数字');
+    for (var j = 0; j < kk.coef.length; j++) {
+      if (!isFinite(parseNumber(kk.coef[j]))) invalid.push('第 ' + (q + 1) + ' 个约束的第 ' + (j + 1) + ' 个系数不是有效数字');
+    }
+    if (['<=', '>=', '='].indexOf(kk.rel) < 0) invalid.push('第 ' + (q + 1) + ' 个约束的关系符无效');
   }
   for (var q2 = 0; q2 < n; q2++) {
     if (!isFinite(c0[q2])) invalid.push('目标函数第 ' + (q2 + 1) + ' 个系数不是有效数字');
@@ -3767,7 +3917,7 @@ function toStandardForm(problem) {
      顺便记下哪些约束被取负过：内部 b = flipSign · 用户 b。后面算影子价格和
      b 的允许区间都要乘回去，否则「-x1 ≤ -2」这类约束的方向会反。 */
   var cons = problem.constraints.map(function (k) {
-    return model.createConstraint(k.coef.map(Number), k.rel, Number(k.rhs));
+    return model.createConstraint(k.coef.map(function (v2) { return parseNumber(v2); }), k.rel, parseNumber(k.rhs));
   });
   var flipSign = [];
   for (var i = 0; i < m; i++) {
@@ -3841,7 +3991,7 @@ function toStandardForm(problem) {
       vars: vars, basis: basis, cObj: cObj, rows: rows, A0: A0, obj: obj,
       flipSign: flipSign,
       consRhs: cons.map(function (k) { return k.rhs; }),
-      userRhs: problem.constraints.map(function (k) { return Number(k.rhs); })
+      userRhs: problem.constraints.map(function (k) { return parseNumber(k.rhs); })
     })
   };
 }
@@ -3862,27 +4012,8 @@ module.exports = {
 };
 });
 
-__define__("src/core/scenario.js", function (module, exports, require) {
-/* =========================================================================
-   场景式灵敏度分析（教材做法）
-   -------------------------------------------------------------------------
-   教材的灵敏度分析不是"把题改掉从头再解一遍"，而是在**原来的最优表**上做局部修改
-   再继续迭代。按徐玖平《运筹学（第四版）》第 2 章的小节，常考的是这几类：
-
-     ① 目标函数系数变化 c（2.5.2 非基变量系数 / 2.5.4 基变量系数）
-          · 非基变量：只重算它自己那一列的 σ′_j = c′_j − z_j
-          · 基变量  ：进了 c_B，σ 的**整行**都要重算
-     ② 技术系数变化 a_ij（列系数）
-          · x_j 非基：B 不含 P_j → 只重算这一列
-          · x_j 是基：B 的第 k 列就是 P_j → **整张表重算**
-     ③ 右端项变化 b       → 只有右端列变，用 x′_B = B⁻¹b′ 判断
-     ④ 增加一个约束       → 新行并入原表，看当前最优解是否满足它
-     ⑤ 增加一个变量       → 新增一列，用 σ′新 = c′新 − c_B·P新 判断
-
-   判断通过 → 最优基不变，直接给出新解与新目标值；
-   判断不通过 → 继续迭代：检验数越界走**原始单纯形法**，右端项越界走**对偶单纯形法**，
-   两者同时越界时两种局部迭代法都不适用（教材的做法是重新求解，见 sensChangeA）。
-   ========================================================================= */
+__define__("src/core/scenario-changes.js", function (module, exports, require) {
+/* 条件变更：在原最优表上判断并继续迭代。 */
 'use strict';
 
 /* 依赖：求解内核 + 输入解析 + 数据模型 + 公共工具 + 格式化。
@@ -3898,293 +4029,33 @@ var _core = require('./simplex.js');
 var _util = require('./util.js');
 var _fmt = require('./format.js');
 var _parse = require('./parse.js');
-var _model = require('./model.js');
 
 var simplexSolve = _core.simplexSolve;
 var selectEnteringDantzig = _core.selectEnteringDantzig;   // 入基规则（σ_j > 0 中最大者）
 var ratioTest = _core.ratioTest;                           // 最小比值规则
 var pivot = _core.pivot;                                   // 枢轴变换（就地改 rows / obj / basis）
 var toStandardForm = _parse.toStandardForm;                 // 校验 + 规范化 + 建初始表
-var createSnapshot = _model.createSnapshot;                 // 迭代快照（字段与顺序同内核）
-var createConstraint = _model.createConstraint;
-var createLPProblem = _model.createLPProblem;
 
 var EPS = _util.EPS, pAdd = _util.pAdd, pSub = _util.pSub, pMul = _util.pMul,
     pIsPos = _util.pIsPos, matInverse = _util.matInverse, matVec = _util.matVec,
     clampSign = _util.clampSign;
 var fmtNum = _fmt.fmtNum, fmtPair = _fmt.fmtPair, fmtAff = _fmt.fmtAff;
 
-/* =========================================================================
-   1. 建模：把问题化成标准化形式，并给出本模块要用的几个视图。
-      ---------------------------------------------------------------------
-      标准化本身（取负规范化、变量顺序、初始表、检验数行）**一律交给
-      parse.js 的 toStandardForm** —— 与求解内核同一份实现，两边的表不可能分叉
-      （由 test/algorithm/scenario-test.js 的「建表一致性自检」兜底）。
-      这里只把标准型投影成几个视图：cons（系数与关系符都取规范化之后的值）、
-      sCol / aCol（松弛/剩余变量、人工变量的列号）、basis0（标准初始基）、
-      b0（内部右端项）、cObj / A0、colOf（变量名 → 列号）。
-      关系符不靠「再翻一次符号」推，而是从标准型的结构直接读：
-      ≤ 补一个松弛变量；≥ 补松弛变量**并且**补人工变量；= 只补人工变量。
-   ========================================================================= */
-function sensBuildModel(problem) {
-  var parsed = toStandardForm(problem);
-  if (!parsed.ok) return null;            // 输入不合法：调用方转成 { ok:false, message }
-  var form = parsed.form;
-  var n = form.n, m = form.m, N = form.N;
-
-  var colOf = {};
-  for (var v = 0; v < N; v++) colOf[form.vars[v].name] = v;
-
-  var sCol = [], aCol = [], cons = [];
-  for (var i = 0; i < m; i++) {
-    var si = colOf['s' + (i + 1)], ai = colOf['a' + (i + 1)];
-    if (si !== undefined) sCol[i] = si;
-    if (ai !== undefined) aCol[i] = ai;
-    cons.push(createConstraint(form.A0[i].slice(0, n),
-      si === undefined ? '=' : (ai === undefined ? '<=' : '>='),
-      form.consRhs[i]));
-  }
-
-  return {
-    n: n, m: m, N: N, swapSign: form.swapped ? -1 : 1, direction: form.direction,
-    cons: cons, flipSign: form.flipSign, vars: form.vars, colOf: colOf,
-    sCol: sCol, aCol: aCol, basis0: form.basis.slice(), cObj: form.cObj,
-    A0: form.A0, b0: form.consRhs.slice()
-  };
-}
-
-/* =========================================================================
-   2. 用指定的一组基变量构造规范表（等价于对 A0 做 B⁻¹ 变换）。
-      B⁻¹ 交给 util.js 的 matInverse，B⁻¹·[A0 | b] 交给 util.js 的 matVec ——
-      求逆与矩阵乘向量都复用共享实现。返回的对象带 rows / obj / basis / m / N，
-      与 simplex.js 的 pivot / ratioTest / selectEnteringDantzig 所需字段同构，
-      迭代那一段就是直接在这些表上跑内核函数的；Binv 另留给界面显示。
-   ========================================================================= */
-function sensTableau(model, basisCols) {
-  var m = model.m, N = model.N;
-  var B = [];
-  for (var i = 0; i < m; i++) {
-    B.push(basisCols.map(function (c) { return model.A0[i][c]; }));
-  }
-  var Binv = matInverse(B);
-  if (!Binv) return null;                 // 基矩阵奇异 → 调用方按「这组基不能用了」处理
-
-  var rows = [];
-  for (var i2 = 0; i2 < m; i2++) rows.push(new Array(N + 1).fill(0));
-  /* 一列一列地做变换：前 N 列来自 A0，末位是右端项，单独搬 b0 */
-  for (var j = 0; j < N; j++) {
-    var col = matVec(Binv, model.A0.map(function (row) { return row[j]; }));
-    for (var i3 = 0; i3 < m; i3++) rows[i3][j] = snapTiny(col[i3]);
-  }
-  var rhs = matVec(Binv, model.b0);
-  for (var i4 = 0; i4 < m; i4++) rows[i4][N] = snapTiny(rhs[i4]);
-
-  return {
-    rows: rows, obj: sensObjRow(model, rows, basisCols), basis: basisCols.slice(), Binv: Binv,
-    /* 内核的 pivot / ratioTest / selectEnteringDantzig 只认标准型的表部分，即 m 与 N */
-    m: m, N: N
-  };
-}
-
-/* 建表时的 1e-12 归零（沿用旧实现；显示层另由 fmtNum 做 1e-9 容差） */
-function snapTiny(v) { return Math.abs(v) < 1e-12 ? 0 : v; }
-
-/* 由 rows 与基算出检验数行，末位存 −z。
-   pair 算术（pSub / pMul）走 util.js；内核里没有「按任意一组基建 σ 行」的入口，
-   parse.js 只建初始基那一份，所以这里按定义算：σⱼ = cⱼ − c_B·(B⁻¹Pⱼ)。 */
-function sensObjRow(model, rows, basisCols) {
-  var N = model.N, m = model.m;
-  var obj = [];
-  for (var j = 0; j < N; j++) obj.push({ a: model.cObj[j].a, b: model.cObj[j].b });
-  obj.push({ a: 0, b: 0 });                       // 末位存 −z
-  for (var i = 0; i < m; i++) {
-    var cB = model.cObj[basisCols[i]];
-    for (var j2 = 0; j2 <= N; j2++) obj[j2] = pSub(obj[j2], pMul(cB, rows[i][j2]));
-  }
-  return obj;
-}
-
-/* =========================================================================
-   3. 继续迭代：检验数有正 → 原始单纯形一步；右端项有负 → 对偶单纯形一步
-      三件数值活全部直接用内核实现：selectEnteringDantzig(T) 选入基、
-      ratioTest(T, e) 做最小比值、pivot(T, r, e) 做枢轴变换。本函数不是第二个
-      求解器，而是「内核四件套 + 对偶分支 + 教材文案」的组装，只剩两件内核没有的
-      东西：本模块独有的判定顺序与说明文字（快照的 note 直接渲染到界面），以及
-      右端项越界时的**对偶单纯形一步**（内核的 solveStandardForm 只走原始单纯形）。
-   ========================================================================= */
-function sensIterate(model, T, maxIter) {
-  var m = model.m, N = model.N, vars = model.vars;
-  var rows = T.rows, obj = T.obj, basis = T.basis;
-  var steps = [], status = 'optimal', iter = 0;
-  var limit = maxIter || 200;
-
-  /* 快照：数值与字段顺序都走 model.js 的 createSnapshot（与内核逐字一致）。
-     dual 的默认值放在 extra 的第一位、迭代数默认取当前 iter —— 这样生成出来的
-     快照字段与顺序和旧实现完全一致。 */
-  function snap(extra) {
-    var ex = { iter: iter, dual: extra.dual === true };
-    for (var x in extra) ex[x] = extra[x];
-    return createSnapshot(T, ex);
-  }
-  /* 基里还残留取正值的人工变量 → 原问题的约束并没有被真正满足 */
-  function positiveArtificial() {
-    for (var i = 0; i < m; i++) {
-      if (vars[basis[i]].kind === 'a' && rows[i][N] > 1e-7) return i;
-    }
-    return -1;
-  }
-
-  while (true) {
-    /* 入基候选：σ_j > 0 中最大者（Dantzig）—— 与内核同一个实现 */
-    var e = selectEnteringDantzig(T);
-
-    if (e === -1) {
-      /* 检验数全 ≤ 0。此时若还有人工变量取正值，说明原问题无可行解 */
-      var ap = positiveArtificial();
-      if (ap >= 0) {
-        steps.push(snap({
-          note: '所有检验数 σⱼ ≤ 0，但人工变量 ' + vars[basis[ap]].name +
-                ' 仍取正值（= ' + fmtNum(rows[ap][N]) + '），说明新条件下的约束无法同时满足 → **无可行解**。'
-        }));
-        status = 'infeasible';
-        break;
-      }
-      /* 再看右端项是否全非负 */
-      var negRow = -1, mostNeg = -1e-9;
-      for (var i2 = 0; i2 < m; i2++) {
-        if (rows[i2][N] < mostNeg) { mostNeg = rows[i2][N]; negRow = i2; }
-      }
-      if (negRow === -1) {
-        steps.push(snap({
-          note: '检验数全部 σⱼ ≤ 0 且右端项全非负，已经得到新问题的最优解。'
-        }));
-        break;
-      }
-      /* ---- 对偶单纯形一步 ----
-         比值取 |σⱼ ÷ a_rj|（只在该行的负系数上取）。σⱼ 可能带 M 项（基里残留人工
-         变量时），而 M 是形式上的无穷大：必须先比 M 的系数、再比常数项。否则会
-         挑中一个人工变量入基 —— 那既不是教材做法，中间解也不再是原问题的可行解。 */
-      var dualRatios = dualRatioList(T, negRow);
-      var ent = dualEnter(dualRatios);
-      if (ent === -1) {
-        steps.push(snap({
-          note: '右端项为负的第 ' + (negRow + 1) + ' 行里没有负系数，对偶比值无法计算，' +
-                '说明新条件下约束互相矛盾 → **无可行解**。'
-        }));
-        status = 'infeasible';
-        break;
-      }
-      steps.push(snap({
-        iter: iter, dual: true,
-        entering: ent, leaving: negRow, pivot: rows[negRow][ent],
-        ratios: dualRatios, dualRow: negRow, dualCol: ent,
-        note: '<span class="row">对偶单纯形法：右端项第 ' + (negRow + 1) + ' 行 = '
-          + fmtNum(rows[negRow][N]) + ' < 0，先让它出基。</span>'
-          + '<span class="row">比值 θ′ⱼ = |σⱼ ÷ a<sub>' + (negRow + 1) + 'j</sub>|，'
-          + '只在该行的负系数上取（否则 θ 无法保持右端项非负）：</span>'
-          + dualRatios.filter(function (r) { return r.ok; }).map(function (r) {
-              return '<span class="row">　' + vars[r.col].name + '：|' + fmtPair(obj[r.col])
-                + ' ÷ ' + fmtNum(rows[negRow][r.col]) + '| = <b>'
-                + fmtDualRatio(r.ratioM, r.ratio) + '</b></span>';
-            }).join('')
-          + '<span class="row">最小者对应 ' + vars[ent].name + ' 入基，'
-          + vars[basis[negRow]].name + ' 出基。'
-          + (Math.abs(rows[negRow][ent]) < 1e-9 ? '（退化：这一步不改变解）' : '') + '</span>'
-      }));
-      pivot(T, negRow, ent);
-      iter++;
-      if (iter > limit) { status = 'iteration-limit'; break; }
-      continue;
-    }
-
-    /* ---- 原始单纯形一步 ---- */
-    var rt = ratioTest(T, e);
-    var ratios = rt.ratios, r = rt.r, minRatio = rt.minRatio;
-    if (r === -1) {
-      var ap2 = positiveArtificial();
-      if (ap2 >= 0) {
-        steps.push(snap({
-          iter: iter, entering: e, ratios: ratios,
-          note: '入基变量 ' + vars[e].name + ' 所在列没有正系数，但人工变量 ' +
-                vars[basis[ap2]].name + ' 仍取正值 → **无可行解**。'
-        }));
-        status = 'infeasible';
-      } else {
-        steps.push(snap({
-          iter: iter, entering: e, ratios: ratios,
-          note: '入基变量 ' + vars[e].name + ' 所在列没有正系数，它可以无限增大而始终满足约束 → **无界解**。'
-        }));
-        status = 'unbounded';
-      }
-      break;
-    }
-    steps.push(snap({
-      iter: iter, entering: e, leaving: r, pivot: rows[r][e], ratios: ratios,
-      degenerate: minRatio < 1e-7
-    }));
-    pivot(T, r, e);
-    iter++;
-    if (iter > limit) { status = 'iteration-limit'; break; }
-  }
-
-  return { steps: steps, status: status, rows: rows, obj: obj, basis: basis };
-}
-
-/* 对偶比值表 θ′ⱼ = |σⱼ ÷ a_rj|：只在该行（第 r 行）的负系数上取 —— 否则 θ 无法
-   保持右端项非负。σ 可能带 M 项，而 M 是形式上的无穷大：先比 M 的系数、再比常数项，
-   否则会挑中一个人工变量入基。 */
-function dualRatioList(T, r) {
-  var N = T.N, list = [];
-  for (var j = 0; j < N; j++) {
-    if (T.rows[r][j] < -EPS) {
-      var den = T.rows[r][j];
-      list.push({ col: j, ratio: Math.abs(T.obj[j].a / den),
-                  ratioM: Math.abs(T.obj[j].b / den), ok: true });
-    } else {
-      list.push({ col: j, ratio: null, ratioM: null, ok: false });
-    }
-  }
-  return list;
-}
-
-/* 从比值表里挑最小的那一列入基（M 项优先）；没有可用的列返回 −1 */
-function dualEnter(list) {
-  var best = null, col = -1;
-  for (var i = 0; i < list.length; i++) {
-    if (!list[i].ok) continue;
-    var a = list[i].ratio, b = list[i].ratioM;
-    if (best === null || b < best.b - 1e-12 ||
-        (Math.abs(b - best.b) <= 1e-12 && a < best.a - 1e-12)) {
-      best = { a: a, b: b }; col = list[i].col;
-    }
-  }
-  return col;
-}
-
-/* =========================================================================
-   4. 从表里读出解与目标值（沿用内核的约定：obj[N] 存 −z）。
-      没有换成内核的 readOut：它返回整个 SolveResult，而且会按「基里残留取正值的
-      人工变量」把 status 改判成无可行解、把目标值置空 —— 本模块只有取正才算
-      不可行（取 0 时解照读），界面上显示的字符串也不一样，所以按本模块要的
-      四个字段（解 / 目标值 / 基名 / 松弛变量）自己读一遍。
-   ========================================================================= */
-function sensReadOut(model, T) {
-  var solution = new Array(model.n).fill(0);
-  for (var i = 0; i < model.m; i++) {
-    if (T.basis[i] < model.n) solution[T.basis[i]] = T.rows[i][model.N];
-  }
-  for (var j = 0; j < model.n; j++) if (Math.abs(solution[j]) < 1e-9) solution[j] = 0;
-  var zInt = -T.obj[model.N].a;
-  var zUser = model.swapSign < 0 ? -zInt : zInt;
-  var names = T.basis.map(function (c) { return model.vars[c].name; });
-  var slack = [];
-  for (var i2 = 0; i2 < model.m; i2++) if (model.sCol[i2] !== undefined) {
-    slack.push({ i: i2, col: model.sCol[i2], basic: T.basis.indexOf(model.sCol[i2]) !== -1,
-                 value: T.basis.indexOf(model.sCol[i2]) !== -1 ? T.rows[T.basis.indexOf(model.sCol[i2])][model.N] : null });
-  }
-  return { solution: solution, objective: zUser, basisNames: names, slack: slack };
-}
-
+var shared = require('./scenario-tableau.js');
+var sensBuildModel = shared.sensBuildModel;
+var sensTableau = shared.sensTableau;
+var sensObjRow = shared.sensObjRow;
+var sensIterate = shared.sensIterate;
+var sensReadOut = shared.sensReadOut;
+var sensClone = shared.sensClone;
+var sensBasisNames = shared.sensBasisNames;
+var sensMapBasis = shared.sensMapBasis;
+var sensZj = shared.sensZj;
+var nm = shared.nm;
+var sub = shared.sub;
+var vecStr = shared.vecStr;
+var matrixStr = shared.matrixStr;
+var sensFail = shared.sensFail;
 /* =========================================================================
    5. 四类场景
    ========================================================================= */
@@ -4609,6 +4480,54 @@ function sensAddVar(baseProblem, scenario) {
   return sensFinish(model, T, judgement, 'add-var', '增加一个变量', { newProblem: newProb });
 }
 
+
+module.exports = {
+  sensChangeC: sensChangeC,
+  sensChangeB: sensChangeB,
+  sensChangeA: sensChangeA,
+  sensAddConstraint: sensAddConstraint,
+  sensAddVar: sensAddVar
+};
+});
+
+__define__("src/core/scenario-param.js", function (module, exports, require) {
+/* 参数线性规划：最优基区间与端点行走。 */
+'use strict';
+
+/* 依赖：求解内核 + 输入解析 + 数据模型 + 公共工具 + 格式化。
+   原则是「别的模块已经有的东西一律不再写第二遍」：
+     · 建模与初始表      → parse.js 的 toStandardForm
+     · 入基 / 比值 / 枢轴 → simplex.js 的 selectEnteringDantzig / ratioTest / pivot
+     · 完整求解、对偶解   → simplex.js 的 simplexSolve
+     · 数值判定与矩阵运算 → util.js；数字与 λ 表达式的显示 → format.js
+   本模块只留自己独有的部分：五类场景变换、参数线性规划的分段行走与 λ 区间求解，
+   以及把它们组织成界面要用的报告结构。
+   依赖一律显式 require（浏览器端由 src/build.js 的迷你打包器提供 require）。 */
+var _core = require('./simplex.js');
+var _util = require('./util.js');
+var _fmt = require('./format.js');
+var _parse = require('./parse.js');
+
+var simplexSolve = _core.simplexSolve;
+var selectEnteringDantzig = _core.selectEnteringDantzig;   // 入基规则（σ_j > 0 中最大者）
+var ratioTest = _core.ratioTest;                           // 最小比值规则
+var pivot = _core.pivot;                                   // 枢轴变换（就地改 rows / obj / basis）
+var toStandardForm = _parse.toStandardForm;                 // 校验 + 规范化 + 建初始表
+
+var EPS = _util.EPS, pAdd = _util.pAdd, pSub = _util.pSub, pMul = _util.pMul,
+    pIsPos = _util.pIsPos, matInverse = _util.matInverse, matVec = _util.matVec,
+    clampSign = _util.clampSign;
+var fmtNum = _fmt.fmtNum, fmtPair = _fmt.fmtPair, fmtAff = _fmt.fmtAff;
+
+var shared = require('./scenario-tableau.js');
+var sensBuildModel = shared.sensBuildModel;
+var sensTableau = shared.sensTableau;
+var snapTiny = shared.snapTiny;
+var dualRatioList = shared.dualRatioList;
+var dualEnter = shared.dualEnter;
+var sensBasisNames = shared.sensBasisNames;
+var sensMapBasis = shared.sensMapBasis;
+var sensFail = shared.sensFail;
 /* =========================================================================
    6. 参数线性规划（教材 2.6）
    -------------------------------------------------------------------------
@@ -4908,6 +4827,335 @@ function sensParam(baseProblem, scenario) {
 /* =========================================================================
    7. 工具
    ========================================================================= */
+
+module.exports = {
+  sensParam: sensParam
+};
+});
+
+__define__("src/core/scenario-tableau.js", function (module, exports, require) {
+/* =========================================================================
+   场景式灵敏度分析（教材做法）
+   -------------------------------------------------------------------------
+   教材的灵敏度分析不是"把题改掉从头再解一遍"，而是在**原来的最优表**上做局部修改
+   再继续迭代。按徐玖平《运筹学（第四版）》第 2 章的小节，常考的是这几类：
+
+     ① 目标函数系数变化 c（2.5.2 非基变量系数 / 2.5.4 基变量系数）
+          · 非基变量：只重算它自己那一列的 σ′_j = c′_j − z_j
+          · 基变量  ：进了 c_B，σ 的**整行**都要重算
+     ② 技术系数变化 a_ij（列系数）
+          · x_j 非基：B 不含 P_j → 只重算这一列
+          · x_j 是基：B 的第 k 列就是 P_j → **整张表重算**
+     ③ 右端项变化 b       → 只有右端列变，用 x′_B = B⁻¹b′ 判断
+     ④ 增加一个约束       → 新行并入原表，看当前最优解是否满足它
+     ⑤ 增加一个变量       → 新增一列，用 σ′新 = c′新 − c_B·P新 判断
+
+   判断通过 → 最优基不变，直接给出新解与新目标值；
+   判断不通过 → 继续迭代：检验数越界走**原始单纯形法**，右端项越界走**对偶单纯形法**，
+   两者同时越界时两种局部迭代法都不适用（教材的做法是重新求解，见 sensChangeA）。
+   ========================================================================= */
+'use strict';
+
+/* 依赖：求解内核 + 输入解析 + 数据模型 + 公共工具 + 格式化。
+   原则是「别的模块已经有的东西一律不再写第二遍」：
+     · 建模与初始表      → parse.js 的 toStandardForm
+     · 入基 / 比值 / 枢轴 → simplex.js 的 selectEnteringDantzig / ratioTest / pivot
+     · 完整求解、对偶解   → simplex.js 的 simplexSolve
+     · 数值判定与矩阵运算 → util.js；数字与 λ 表达式的显示 → format.js
+   本模块只留自己独有的部分：五类场景变换、参数线性规划的分段行走与 λ 区间求解，
+   以及把它们组织成界面要用的报告结构。
+   依赖一律显式 require（浏览器端由 src/build.js 的迷你打包器提供 require）。 */
+var _core = require('./simplex.js');
+var _util = require('./util.js');
+var _fmt = require('./format.js');
+var _parse = require('./parse.js');
+var _model = require('./model.js');
+
+var simplexSolve = _core.simplexSolve;
+var selectEnteringDantzig = _core.selectEnteringDantzig;   // 入基规则（σ_j > 0 中最大者）
+var ratioTest = _core.ratioTest;                           // 最小比值规则
+var pivot = _core.pivot;                                   // 枢轴变换（就地改 rows / obj / basis）
+var toStandardForm = _parse.toStandardForm;                 // 校验 + 规范化 + 建初始表
+var createSnapshot = _model.createSnapshot;                 // 迭代快照（字段与顺序同内核）
+var createConstraint = _model.createConstraint;
+var createLPProblem = _model.createLPProblem;
+
+var EPS = _util.EPS, pAdd = _util.pAdd, pSub = _util.pSub, pMul = _util.pMul,
+    pIsPos = _util.pIsPos, matInverse = _util.matInverse, matVec = _util.matVec,
+    clampSign = _util.clampSign;
+var fmtNum = _fmt.fmtNum, fmtPair = _fmt.fmtPair, fmtAff = _fmt.fmtAff;
+
+/* =========================================================================
+   1. 建模：把问题化成标准化形式，并给出本模块要用的几个视图。
+      ---------------------------------------------------------------------
+      标准化本身（取负规范化、变量顺序、初始表、检验数行）**一律交给
+      parse.js 的 toStandardForm** —— 与求解内核同一份实现，两边的表不可能分叉
+      （由 test/algorithm/scenario-test.js 的「建表一致性自检」兜底）。
+      这里只把标准型投影成几个视图：cons（系数与关系符都取规范化之后的值）、
+      sCol / aCol（松弛/剩余变量、人工变量的列号）、basis0（标准初始基）、
+      b0（内部右端项）、cObj / A0、colOf（变量名 → 列号）。
+      关系符不靠「再翻一次符号」推，而是从标准型的结构直接读：
+      ≤ 补一个松弛变量；≥ 补松弛变量**并且**补人工变量；= 只补人工变量。
+   ========================================================================= */
+function sensBuildModel(problem) {
+  var parsed = toStandardForm(problem);
+  if (!parsed.ok) return null;            // 输入不合法：调用方转成 { ok:false, message }
+  var form = parsed.form;
+  var n = form.n, m = form.m, N = form.N;
+
+  var colOf = {};
+  for (var v = 0; v < N; v++) colOf[form.vars[v].name] = v;
+
+  var sCol = [], aCol = [], cons = [];
+  for (var i = 0; i < m; i++) {
+    var si = colOf['s' + (i + 1)], ai = colOf['a' + (i + 1)];
+    if (si !== undefined) sCol[i] = si;
+    if (ai !== undefined) aCol[i] = ai;
+    cons.push(createConstraint(form.A0[i].slice(0, n),
+      si === undefined ? '=' : (ai === undefined ? '<=' : '>='),
+      form.consRhs[i]));
+  }
+
+  return {
+    n: n, m: m, N: N, swapSign: form.swapped ? -1 : 1, direction: form.direction,
+    cons: cons, flipSign: form.flipSign, vars: form.vars, colOf: colOf,
+    sCol: sCol, aCol: aCol, basis0: form.basis.slice(), cObj: form.cObj,
+    A0: form.A0, b0: form.consRhs.slice()
+  };
+}
+
+/* =========================================================================
+   2. 用指定的一组基变量构造规范表（等价于对 A0 做 B⁻¹ 变换）。
+      B⁻¹ 交给 util.js 的 matInverse，B⁻¹·[A0 | b] 交给 util.js 的 matVec ——
+      求逆与矩阵乘向量都复用共享实现。返回的对象带 rows / obj / basis / m / N，
+      与 simplex.js 的 pivot / ratioTest / selectEnteringDantzig 所需字段同构，
+      迭代那一段就是直接在这些表上跑内核函数的；Binv 另留给界面显示。
+   ========================================================================= */
+function sensTableau(model, basisCols) {
+  var m = model.m, N = model.N;
+  var B = [];
+  for (var i = 0; i < m; i++) {
+    B.push(basisCols.map(function (c) { return model.A0[i][c]; }));
+  }
+  var Binv = matInverse(B);
+  if (!Binv) return null;                 // 基矩阵奇异 → 调用方按「这组基不能用了」处理
+
+  var rows = [];
+  for (var i2 = 0; i2 < m; i2++) rows.push(new Array(N + 1).fill(0));
+  /* 一列一列地做变换：前 N 列来自 A0，末位是右端项，单独搬 b0 */
+  for (var j = 0; j < N; j++) {
+    var col = matVec(Binv, model.A0.map(function (row) { return row[j]; }));
+    for (var i3 = 0; i3 < m; i3++) rows[i3][j] = snapTiny(col[i3]);
+  }
+  var rhs = matVec(Binv, model.b0);
+  for (var i4 = 0; i4 < m; i4++) rows[i4][N] = snapTiny(rhs[i4]);
+
+  return {
+    rows: rows, obj: sensObjRow(model, rows, basisCols), basis: basisCols.slice(), Binv: Binv,
+    /* 内核的 pivot / ratioTest / selectEnteringDantzig 只认标准型的表部分，即 m 与 N */
+    m: m, N: N
+  };
+}
+
+/* 建表时的 1e-12 归零（沿用旧实现；显示层另由 fmtNum 做 1e-9 容差） */
+function snapTiny(v) { return Math.abs(v) < 1e-12 ? 0 : v; }
+
+/* 由 rows 与基算出检验数行，末位存 −z。
+   pair 算术（pSub / pMul）走 util.js；内核里没有「按任意一组基建 σ 行」的入口，
+   parse.js 只建初始基那一份，所以这里按定义算：σⱼ = cⱼ − c_B·(B⁻¹Pⱼ)。 */
+function sensObjRow(model, rows, basisCols) {
+  var N = model.N, m = model.m;
+  var obj = [];
+  for (var j = 0; j < N; j++) obj.push({ a: model.cObj[j].a, b: model.cObj[j].b });
+  obj.push({ a: 0, b: 0 });                       // 末位存 −z
+  for (var i = 0; i < m; i++) {
+    var cB = model.cObj[basisCols[i]];
+    for (var j2 = 0; j2 <= N; j2++) obj[j2] = pSub(obj[j2], pMul(cB, rows[i][j2]));
+  }
+  return obj;
+}
+
+/* =========================================================================
+   3. 继续迭代：检验数有正 → 原始单纯形一步；右端项有负 → 对偶单纯形一步
+      三件数值活全部直接用内核实现：selectEnteringDantzig(T) 选入基、
+      ratioTest(T, e) 做最小比值、pivot(T, r, e) 做枢轴变换。本函数不是第二个
+      求解器，而是「内核四件套 + 对偶分支 + 教材文案」的组装，只剩两件内核没有的
+      东西：本模块独有的判定顺序与说明文字（快照的 note 直接渲染到界面），以及
+      右端项越界时的**对偶单纯形一步**（内核的 solveStandardForm 只走原始单纯形）。
+   ========================================================================= */
+function sensIterate(model, T, maxIter) {
+  var m = model.m, N = model.N, vars = model.vars;
+  var rows = T.rows, obj = T.obj, basis = T.basis;
+  var steps = [], status = 'optimal', iter = 0;
+  var limit = maxIter || 200;
+
+  /* 快照：数值与字段顺序都走 model.js 的 createSnapshot（与内核逐字一致）。
+     dual 的默认值放在 extra 的第一位、迭代数默认取当前 iter —— 这样生成出来的
+     快照字段与顺序和旧实现完全一致。 */
+  function snap(extra) {
+    var ex = { iter: iter, dual: extra.dual === true };
+    for (var x in extra) ex[x] = extra[x];
+    return createSnapshot(T, ex);
+  }
+  /* 基里还残留取正值的人工变量 → 原问题的约束并没有被真正满足 */
+  function positiveArtificial() {
+    for (var i = 0; i < m; i++) {
+      if (vars[basis[i]].kind === 'a' && rows[i][N] > 1e-7) return i;
+    }
+    return -1;
+  }
+
+  while (true) {
+    /* 入基候选：σ_j > 0 中最大者（Dantzig）—— 与内核同一个实现 */
+    var e = selectEnteringDantzig(T);
+
+    if (e === -1) {
+      /* 检验数全 ≤ 0。此时若还有人工变量取正值，说明原问题无可行解 */
+      var ap = positiveArtificial();
+      if (ap >= 0) {
+        steps.push(snap({
+          note: '所有检验数 σⱼ ≤ 0，但人工变量 ' + vars[basis[ap]].name +
+                ' 仍取正值（= ' + fmtNum(rows[ap][N]) + '），说明新条件下的约束无法同时满足 → **无可行解**。'
+        }));
+        status = 'infeasible';
+        break;
+      }
+      /* 再看右端项是否全非负 */
+      var negRow = -1, mostNeg = -1e-9;
+      for (var i2 = 0; i2 < m; i2++) {
+        if (rows[i2][N] < mostNeg) { mostNeg = rows[i2][N]; negRow = i2; }
+      }
+      if (negRow === -1) {
+        steps.push(snap({
+          note: '检验数全部 σⱼ ≤ 0 且右端项全非负，已经得到新问题的最优解。'
+        }));
+        break;
+      }
+      /* ---- 对偶单纯形一步 ----
+         比值取 |σⱼ ÷ a_rj|（只在该行的负系数上取）。σⱼ 可能带 M 项（基里残留人工
+         变量时），而 M 是形式上的无穷大：必须先比 M 的系数、再比常数项。否则会
+         挑中一个人工变量入基 —— 那既不是教材做法，中间解也不再是原问题的可行解。 */
+      var dualRatios = dualRatioList(T, negRow);
+      var ent = dualEnter(dualRatios);
+      if (ent === -1) {
+        steps.push(snap({
+          note: '右端项为负的第 ' + (negRow + 1) + ' 行里没有负系数，对偶比值无法计算，' +
+                '说明新条件下约束互相矛盾 → **无可行解**。'
+        }));
+        status = 'infeasible';
+        break;
+      }
+      steps.push(snap({
+        iter: iter, dual: true,
+        entering: ent, leaving: negRow, pivot: rows[negRow][ent],
+        ratios: dualRatios, dualRow: negRow, dualCol: ent,
+        note: '<span class="row">对偶单纯形法：右端项第 ' + (negRow + 1) + ' 行 = '
+          + fmtNum(rows[negRow][N]) + ' < 0，先让它出基。</span>'
+          + '<span class="row">比值 θ′ⱼ = |σⱼ ÷ a<sub>' + (negRow + 1) + 'j</sub>|，'
+          + '只在该行的负系数上取（否则 θ 无法保持右端项非负）：</span>'
+          + dualRatios.filter(function (r) { return r.ok; }).map(function (r) {
+              return '<span class="row">　' + vars[r.col].name + '：|' + fmtPair(obj[r.col])
+                + ' ÷ ' + fmtNum(rows[negRow][r.col]) + '| = <b>'
+                + fmtDualRatio(r.ratioM, r.ratio) + '</b></span>';
+            }).join('')
+          + '<span class="row">最小者对应 ' + vars[ent].name + ' 入基，'
+          + vars[basis[negRow]].name + ' 出基。'
+          + (Math.abs(rows[negRow][ent]) < 1e-9 ? '（退化：这一步不改变解）' : '') + '</span>'
+      }));
+      pivot(T, negRow, ent);
+      iter++;
+      if (iter > limit) { status = 'iteration-limit'; break; }
+      continue;
+    }
+
+    /* ---- 原始单纯形一步 ---- */
+    var rt = ratioTest(T, e);
+    var ratios = rt.ratios, r = rt.r, minRatio = rt.minRatio;
+    if (r === -1) {
+      var ap2 = positiveArtificial();
+      if (ap2 >= 0) {
+        steps.push(snap({
+          iter: iter, entering: e, ratios: ratios,
+          note: '入基变量 ' + vars[e].name + ' 所在列没有正系数，但人工变量 ' +
+                vars[basis[ap2]].name + ' 仍取正值 → **无可行解**。'
+        }));
+        status = 'infeasible';
+      } else {
+        steps.push(snap({
+          iter: iter, entering: e, ratios: ratios,
+          note: '入基变量 ' + vars[e].name + ' 所在列没有正系数，它可以无限增大而始终满足约束 → **无界解**。'
+        }));
+        status = 'unbounded';
+      }
+      break;
+    }
+    steps.push(snap({
+      iter: iter, entering: e, leaving: r, pivot: rows[r][e], ratios: ratios,
+      degenerate: minRatio < 1e-7
+    }));
+    pivot(T, r, e);
+    iter++;
+    if (iter > limit) { status = 'iteration-limit'; break; }
+  }
+
+  return { steps: steps, status: status, rows: rows, obj: obj, basis: basis };
+}
+
+/* 对偶比值表 θ′ⱼ = |σⱼ ÷ a_rj|：只在该行（第 r 行）的负系数上取 —— 否则 θ 无法
+   保持右端项非负。σ 可能带 M 项，而 M 是形式上的无穷大：先比 M 的系数、再比常数项，
+   否则会挑中一个人工变量入基。 */
+function dualRatioList(T, r) {
+  var N = T.N, list = [];
+  for (var j = 0; j < N; j++) {
+    if (T.rows[r][j] < -EPS) {
+      var den = T.rows[r][j];
+      list.push({ col: j, ratio: Math.abs(T.obj[j].a / den),
+                  ratioM: Math.abs(T.obj[j].b / den), ok: true });
+    } else {
+      list.push({ col: j, ratio: null, ratioM: null, ok: false });
+    }
+  }
+  return list;
+}
+
+/* 从比值表里挑最小的那一列入基（M 项优先）；没有可用的列返回 −1 */
+function dualEnter(list) {
+  var best = null, col = -1;
+  for (var i = 0; i < list.length; i++) {
+    if (!list[i].ok) continue;
+    var a = list[i].ratio, b = list[i].ratioM;
+    if (best === null || b < best.b - 1e-12 ||
+        (Math.abs(b - best.b) <= 1e-12 && a < best.a - 1e-12)) {
+      best = { a: a, b: b }; col = list[i].col;
+    }
+  }
+  return col;
+}
+
+/* =========================================================================
+   4. 从表里读出解与目标值（沿用内核的约定：obj[N] 存 −z）。
+      没有换成内核的 readOut：它返回整个 SolveResult，而且会按「基里残留取正值的
+      人工变量」把 status 改判成无可行解、把目标值置空 —— 本模块只有取正才算
+      不可行（取 0 时解照读），界面上显示的字符串也不一样，所以按本模块要的
+      四个字段（解 / 目标值 / 基名 / 松弛变量）自己读一遍。
+   ========================================================================= */
+function sensReadOut(model, T) {
+  var solution = new Array(model.n).fill(0);
+  for (var i = 0; i < model.m; i++) {
+    if (T.basis[i] < model.n) solution[T.basis[i]] = T.rows[i][model.N];
+  }
+  for (var j = 0; j < model.n; j++) if (Math.abs(solution[j]) < 1e-9) solution[j] = 0;
+  var zInt = -T.obj[model.N].a;
+  var zUser = model.swapSign < 0 ? -zInt : zInt;
+  var names = T.basis.map(function (c) { return model.vars[c].name; });
+  var slack = [];
+  for (var i2 = 0; i2 < model.m; i2++) if (model.sCol[i2] !== undefined) {
+    slack.push({ i: i2, col: model.sCol[i2], basic: T.basis.indexOf(model.sCol[i2]) !== -1,
+                 value: T.basis.indexOf(model.sCol[i2]) !== -1 ? T.rows[T.basis.indexOf(model.sCol[i2])][model.N] : null });
+  }
+  return { solution: solution, objective: zUser, basisNames: names, slack: slack };
+}
+
 function sensClone(p) {
   /* 结构的定义只留在 model.js 一处 */
   return createLPProblem(p.direction, p.c.map(Number), p.constraints.map(function (k) {
@@ -4962,6 +5210,47 @@ function matrixStr(M) {
 function sensFail(msg) { return { ok: false, message: msg }; }
 
 /* 统一入口 */
+
+module.exports = {
+  sensBuildModel: sensBuildModel,
+  sensTableau: sensTableau,
+  snapTiny: snapTiny,
+  sensObjRow: sensObjRow,
+  sensIterate: sensIterate,
+  dualRatioList: dualRatioList,
+  dualEnter: dualEnter,
+  sensReadOut: sensReadOut,
+  sensClone: sensClone,
+  sensBasisNames: sensBasisNames,
+  sensMapBasis: sensMapBasis,
+  sensZj: sensZj,
+  sensZjOf: sensZjOf,
+  nm: nm,
+  sub: sub,
+  vecStr: vecStr,
+  fmtDualRatio: fmtDualRatio,
+  matrixStr: matrixStr,
+  sensFail: sensFail
+};
+});
+
+__define__("src/core/scenario.js", function (module, exports, require) {
+/* 场景/参数分析的稳定公开入口；底层表运算、条件变更、参数行走分别维护。 */
+'use strict';
+var fmtAff = require('./format.js').fmtAff;
+var simplexSolve = require('./simplex.js').simplexSolve;
+var shared = require('./scenario-tableau.js');
+var sensBuildModel = shared.sensBuildModel;
+var sensTableau = shared.sensTableau;
+var sensIterate = shared.sensIterate;
+var sensReadOut = shared.sensReadOut;
+var sensBasisNames = shared.sensBasisNames;
+var sensChangeC = require('./scenario-changes.js').sensChangeC;
+var sensChangeB = require('./scenario-changes.js').sensChangeB;
+var sensChangeA = require('./scenario-changes.js').sensChangeA;
+var sensAddConstraint = require('./scenario-changes.js').sensAddConstraint;
+var sensAddVar = require('./scenario-changes.js').sensAddVar;
+var sensParam = require('./scenario-param.js').sensParam;
 function sensAnalyze(baseProblem, scenario) {
   var base = simplexSolve(baseProblem);
   if (base.status !== 'optimal' || base.sensitivity === null) {
@@ -5667,6 +5956,8 @@ var fmtNum = format.fmtNum;
 
 var assignment = require('../core/assignment.js');
 var assignSolve = assignment.assignSolve;
+var parseNumber = require('../core/number-input.js').parseNumber;
+var resultLayout = require('./result-layout.js');
 var assignSymbols = assignment.assignSymbols;
 
 var inputPanel = require('./input-panel.js');
@@ -5696,8 +5987,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
     var s = String(raw === undefined || raw === null ? '' : raw).trim();
     if (s === '') return 0;                                  // 与项目其它模块一致：空格按 0 计
     if (FORBIDDEN.indexOf(s) >= 0) return null;
-    var v = parseFloat(s.replace(/[^0-9.\-+eE]/g, ''));
-    return isFinite(v) ? v : 0;
+    return parseNumber(s, true);
   }
 
   /* ===================== 输入表 ===================== */
@@ -5727,11 +6017,13 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
     h += '</tbody>';
     $('asInTbl').innerHTML = h;
     bindInput();
+    Array.prototype.forEach.call($('asInTbl').querySelectorAll('input.num'), validateCell);
     $('asDelRow').disabled = (m < 1);
     $('asAddRow').disabled = (m >= MAX_ROW);
     $('asDelCol').disabled = (n < 1);
     $('asAddCol').disabled = (n >= MAX_COL);
     addScrollHints(document);
+    if (guide) guide.sync(m, n);
   }
 
   function bindInput() {
@@ -5740,9 +6032,15 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
         var i = +inp.dataset.i, j = +inp.dataset.j;
         if (!state.cells[i]) state.cells[i] = [];
         state.cells[i][j] = inp.value;
+        validateCell(inp);
         $('asOut').innerHTML = '';          // 一改输入就把上一次的结果收掉，免得对不上
       });
     });
+  }
+
+  function validateCell(inp) {
+    var v = parseCell(inp.value);
+    inp.setAttribute('aria-invalid', v === null || isFinite(v) ? 'false' : 'true');
   }
 
   function rowName(i, m) { return i < m ? '人员' + (i + 1) : '虚拟人员' + (i - m + 1); }
@@ -5758,6 +6056,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
       cells.push(row);
     }
     state.rows = rows; state.cols = cols; state.cells = cells;
+    $('asOut').innerHTML = '';
     renderInput();
   }
 
@@ -5805,10 +6104,13 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
       addScrollHints(document);
       return;
     }
-    h += roundsCard(res);
-    h += conclusionCard(res);
+    h = conclusionCard(res)
+      + resultLayout.navigation([['assignment-steps','查看匈牙利法过程']])
+      + '<details class="result-work" open><summary>完整推导（可收起）</summary>' + h
+      + '<section data-section="assignment-steps">' + roundsCard(res) + '</section></details>';
     $('asOut').innerHTML = h;
     addScrollHints(document);
+    resultLayout.wire($('asOut'));
   }
 
   /* ---------------- ① 转换（只在真做了转换时才出现） ---------------- */
@@ -6009,10 +6311,22 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
   inputPanel.buildChrome({
     mount: 'asPanel',
     tbl: 'asInTbl', dirSeg: 'asDirSeg', tblClass: 'inp mtx',
+    matrix: true, maxN: MAX_ROW, maxM: MAX_COL,
     dirOrder: ['min', 'max'],
     addVar: 'asAddRow', delVar: 'asDelRow', addCon: 'asAddCol', delCon: 'asDelCol',
     labels: { addVar: '+ 行', delVar: '− 行', addCon: '+ 列', delCon: '− 列' },
     state: state
+  });
+
+  var guide = require('./input-guide.js').attach($('asPanel'), {
+    resize: setSize,
+    sample: function () {
+      var p = require('./examples.js').assignment();
+      $('asDirSeg').querySelector('[data-dir="' + p.direction + '"]').click();
+      setSize(p.cost.length, p.cost[0].length);
+      state.cells = p.cost.map(function (row) { return row.map(String); });
+      renderInput();
+    }
   });
 
   Array.prototype.forEach.call($('asDirSeg').querySelectorAll('button'), function (b) {
@@ -6020,6 +6334,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
       state.dir = b.dataset.dir;
       Array.prototype.forEach.call($('asDirSeg').querySelectorAll('button'), function (x) {
         x.classList.toggle('on', x === b);
+        x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
       });
       $('asOut').innerHTML = '';
     });
@@ -6121,6 +6436,26 @@ function subs(k) {
 }
 
 module.exports = { $: $, esc: esc, subs: subs };
+});
+
+__define__("src/web/examples.js", function (module, exports, require) {
+'use strict';
+
+/* 每次返回一份新数据，编辑示例不会污染其他模块或下一次载入。 */
+function linear() {
+  return {direction:'max', c:[2,3], constraints:[
+    {coef:[1,2],rel:'<=',rhs:8}, {coef:[4,0],rel:'<=',rhs:16}, {coef:[0,4],rel:'<=',rhs:12}
+  ]};
+}
+function integer() {
+  return {direction:'max', c:[3,2], constraints:[
+    {coef:[2,3],rel:'<=',rhs:14}, {coef:[2,1],rel:'<=',rhs:9}
+  ],vtypes:['int','int']};
+}
+function assignment() {
+  return {direction:'min',cost:[[2,15,13,4],[10,4,14,15],[9,14,16,13],[7,8,11,9]]};
+}
+module.exports = { linear: linear, integer: integer, assignment: assignment };
 });
 
 __define__("src/web/graph.js", function (module, exports, require) {
@@ -6429,6 +6764,46 @@ module.exports = {
 };
 });
 
+__define__("src/web/input-guide.js", function (module, exports, require) {
+'use strict';
+
+/* 四个模块共用同一条首次输入路径；选择规模仍允许 0，保持空题目的数学语义。 */
+function markup(matrix, maxN, maxM) {
+  function options(max) {
+    var out = '';
+    for (var i = 0; i <= max; i++) out += '<option value="' + i + '">' + i + '</option>';
+    return out;
+  }
+  return '<div class="input-guide">'
+    + '<div class="guide-intro"><div><b>从一道题开始</b><p>载入示例，或按题目设置' + (matrix ? '行列数' : '变量和约束数') + '。</p></div>'
+    + '<button type="button" class="btn" data-guide="sample" title="载入示例会替换当前输入">载入示例</button></div>'
+    + '<details class="guide-size"><summary>自定义题目规模</summary><div class="guide-fields">'
+    + '<label>' + (matrix ? '人员（行）' : '变量数') + '<select data-guide="n">' + options(maxN) + '</select></label>'
+    + '<label>' + (matrix ? '工作（列）' : '约束数') + '<select data-guide="m">' + options(maxM) + '</select></label>'
+    + '<button type="button" class="btn" data-guide="apply">设置规模</button></div>'
+    + '<p class="guide-note">缩小规模会移除末尾数据；载入示例会替换当前输入。</p></details>'
+    + '<p class="guide-note">' + (matrix ? '行是人员，列是工作；填 × 表示禁止指派。' : '先选 max / min，再填写目标系数和各条约束。')
+    + ' 空白按 0；支持小数和 1e3，分数请先换成小数。</p></div>';
+}
+
+function attach(mount, cfg) {
+  var root = mount.querySelector('.input-guide');
+  var n = root.querySelector('[data-guide="n"]');
+  var m = root.querySelector('[data-guide="m"]');
+  root.querySelector('[data-guide="apply"]').addEventListener('click', function () {
+    cfg.resize(+n.value, +m.value);
+  });
+  root.querySelector('[data-guide="sample"]').addEventListener('click', cfg.sample);
+  return { sync: function (a, b) {
+    n.value = String(a); m.value = String(b);
+    root.classList.toggle('has-model', a > 0 || b > 0);
+    root.querySelector('.guide-intro b').textContent = a > 0 || b > 0 ? '题目输入' : '从一道题开始';
+  } };
+}
+
+module.exports = { markup: markup, attach: attach };
+});
+
 __define__("src/web/input-panel.js", function (module, exports, require) {
 /* =========================================================================
    可复用的「线性规划输入表」组件
@@ -6441,13 +6816,19 @@ __define__("src/web/input-panel.js", function (module, exports, require) {
 
 var dom = require('./dom.js');
 var esc = dom.esc;
+var parseNumber = require('../core/number-input.js').parseNumber;
+var inputGuide = require('./input-guide.js');
 
 /* 表格横向溢出时给一句提示：手机上看不见滚动条，不说一声用户不知道右边还有内容。
    只在真的溢出（scrollWidth > clientWidth）时才插入，且不重复插入。 */
 function addScrollHints(root) {
   Array.prototype.forEach.call(root.querySelectorAll('.scroll'), function (box) {
-    if (box.scrollWidth <= box.clientWidth + 1) return;
     var next = box.nextElementSibling;
+    if (!box.clientWidth) return; // 隐藏模块暂时无法测量，等切页后再判断。
+    if (box.scrollWidth <= box.clientWidth + 1) {
+      if (next && next.className === 'scroll-hint') next.parentNode.removeChild(next);
+      return;
+    }
     if (next && next.className === 'scroll-hint') return;
     var hint = document.createElement('div');
     hint.className = 'scroll-hint';
@@ -6490,10 +6871,11 @@ function buildChrome(cfg) {
   var on = (order.indexOf(state.dir) >= 0) ? state.dir : order[0];
   var L = cfg.labels || DEFAULT_LABELS;
 
-  var html = '<div class="seg" id="' + cfg.dirSeg + '">';
+  var html = inputGuide.markup(cfg.matrix, cfg.maxN || 6, cfg.maxM || 8)
+    + '<div class="seg" id="' + cfg.dirSeg + '" role="group" aria-label="优化方向">';
   for (var i = 0; i < order.length; i++) {
     html += '<button type="button" data-dir="' + order[i] + '"'
-      + (order[i] === on ? ' class="on"' : '') + '>' + order[i] + '</button>';
+      + (order[i] === on ? ' class="on"' : '') + ' aria-pressed="' + (order[i] === on) + '">' + order[i] + '</button>';
   }
   html += '</div>'
     + '<div class="scroll"><table class="' + (cfg.tblClass || 'inp') + '" id="' + cfg.tbl + '"></table></div>'
@@ -6514,6 +6896,7 @@ function createInputPanel(cfg) {
   var MAXN = cfg.maxN || 6, MAXM = cfg.maxM || 8;
   var state = cfg.state;
   var onChange = cfg.onChange || function () {};
+  var guide = null;
 
   function el(k) { return document.getElementById(cfg[k]); }
 
@@ -6521,6 +6904,7 @@ function createInputPanel(cfg) {
      这样新增变量/约束后点进去就是空白，可以直接打字，不必先删掉那个 0；
      什么都不填时读取逻辑仍按 0 处理，结果与以前完全一致。 */
   function fmtIn(v) {
+    if (typeof v === 'string') return v;
     if (v === undefined || v === null || isNaN(v)) return '';
     if (Math.abs(v) < 1e-9) return '';
     return (Math.abs(v - Math.round(v)) < 1e-9) ? String(Math.round(v)) : String(v);
@@ -6585,20 +6969,28 @@ function createInputPanel(cfg) {
     html += '</tbody>';
     el('tbl').innerHTML = html;
     bind();
+    Array.prototype.forEach.call(el('tbl').querySelectorAll('input.num'), validateInput);
     el('delVar').disabled = (state.n < 1);
     el('delCon').disabled = (state.m < 1);
     el('addVar').disabled = (state.n >= MAXN);
     el('addCon').disabled = (state.m >= MAXM);
     addScrollHints(document);
+    if (guide) guide.sync(state.n, state.m);
+  }
+
+  function validateInput(inp) {
+    var invalid = !isFinite(parseNumber(inp.value, true));
+    inp.setAttribute('aria-invalid', invalid ? 'true' : 'false');
+    inp.title = invalid ? '请输入完整数字（支持小数和科学计数法）' : '';
   }
 
   function bind() {
     var t = el('tbl');
     Array.prototype.forEach.call(t.querySelectorAll('input.num'), function (inp) {
       inp.addEventListener('input', function () {
-        /* 空白的格子（用户什么都没填）按 0 处理；只敲了 "-" / "." 这种中间状态也先当 0，等输完再说 */
-        var v = parseFloat(inp.value.replace(/[^0-9.\-]/g, ''));
-        if (isNaN(v)) v = 0;
+        /* 保留原文及输入中的中间状态，求解时再完整解析，不能偷偷改题。 */
+        var v = inp.value;
+        validateInput(inp);
         var k = inp.dataset.k;
         if (k === 'c') state.c[+inp.dataset.j] = v;
         else if (k === 'a') state.cons[+inp.dataset.i].coef[+inp.dataset.j] = v;
@@ -6618,6 +7010,7 @@ function createInputPanel(cfg) {
         state.cons.splice(+b.dataset.i, 1);
         state.m--;
         render();
+        onChange();
       });
     });
   }
@@ -6634,6 +7027,8 @@ function createInputPanel(cfg) {
     }
     state.n = n;
     render();
+    onChange();
+    if (cfg.onResize) cfg.onResize();
   }
   function setM(m) {
     m = Math.max(0, Math.min(MAXM, m));
@@ -6646,26 +7041,47 @@ function createInputPanel(cfg) {
     state.cons.length = m;
     state.m = m;
     render();
+    onChange();
   }
   function setDir(d) {
+    if (state.dir === d) return;
     state.dir = d;
     Array.prototype.forEach.call(el('dirSeg').querySelectorAll('button'), function (x) {
       x.classList.toggle('on', x.dataset.dir === d);
+      x.setAttribute('aria-pressed', x.dataset.dir === d ? 'true' : 'false');
     });
+    onChange();
+  }
+
+  function loadProblem(problem) {
+    state.n = Math.min(MAXN, problem.c.length);
+    state.m = Math.min(MAXM, problem.constraints.length);
+    state.c = problem.c.slice(0, state.n);
+    state.cons = problem.constraints.slice(0, state.m).map(function (k) {
+      return { coef: k.coef.slice(0, state.n), rel: k.rel, rhs: k.rhs };
+    });
+    setDir(problem.direction);
+    render();
+    onChange();
+    if (cfg.onLoad) cfg.onLoad(problem);
   }
 
   /* 按当前输入拼出求解器要的问题对象 */
   function getProblem() {
     return {
       direction: state.dir,
-      c: state.c.slice(0, state.n),
+      c: state.c.slice(0, state.n).map(function (v) { return parseNumber(v, true); }),
       constraints: state.cons.slice(0, state.m).map(function (k) {
-        return { coef: k.coef.slice(0, state.n), rel: k.rel, rhs: k.rhs };
+        return { coef: k.coef.slice(0, state.n).map(function (v) { return parseNumber(v, true); }), rel: k.rel, rhs: parseNumber(k.rhs, true) };
       })
     };
   }
 
   function init() {
+    if (cfg.mount) guide = inputGuide.attach(document.getElementById(cfg.mount), {
+      resize: function (n, m) { setN(n); setM(m); },
+      sample: function () { if (cfg.example) loadProblem(cfg.example()); }
+    });
     Array.prototype.forEach.call(el('dirSeg').querySelectorAll('button'), function (b) {
       b.addEventListener('click', function () { setDir(b.dataset.dir); });
     });
@@ -6692,6 +7108,492 @@ module.exports = {
 };
 });
 
+__define__("src/web/integer-report.js", function (module, exports, require) {
+/* 整数规划报告与方法卡片；不管理题目输入。 */
+'use strict';
+var fmtNum = require('../core/format.js').fmtNum;
+var integer = require('../core/integer.js');
+var ipWithVarBounds = integer.ipWithVarBounds, ipIsInt = integer.ipIsInt, ipFrac = integer.ipFrac;
+var addScrollHints = require('./input-panel.js').addScrollHints;
+var renderGraph = require('./graph.js').renderGraph;
+var tables = require('./table-render.js');
+var renderTable = tables.renderTable, explain = tables.explain;
+var dom = require('./dom.js');
+var $ = dom.$, esc = dom.esc, subs = dom.subs;
+var resultLayout = require('./result-layout.js');
+var TYPE_NAMES = { cont: '连续', int: '整数', bin: '0-1' };
+var MAX_ENUM_POINTS = 4096, MAX_SHOW_ROWS = 300;
+function num(v) { return fmtNum(v); }
+/* ===================== 输出 ===================== */
+function render(prob, r) {
+  var h = '';
+  if (!r.noOptimum) {
+    var bnb = r.methods.filter(function (m) { return m.key === 'bnb'; })[0];
+    var best = ipSolutionOf(r);
+    h += '<h2 class="sec">求解摘要</h2>';
+    if (best && bnb && bnb.complete) h += resultVerdict(prob, best, ipObjective(prob, best), '分枝定界法');
+    else h += '<div class="card"><b>' + (best ? '目前找到的最好整数解' : '尚未找到整数解')
+      + '</b><p class="sens-note">' + (bnb && bnb.complete ? '搜索完成：没有可行整数解。' : '计算未完成，不能保证全局最优，请查看各方法的说明。') + '</p></div>';
+    h += resultLayout.navigation([['ip-relaxation','查看松弛问题'],['ip-methods','查看各方法过程']]);
+  }
+  picked = null;        // 每次重新求解都回到「全部输出」
+
+  /* ① 松弛问题 */
+  h += '<section data-section="ip-relaxation"><h2 class="sec">松弛问题（先不管整数限制）</h2><div class="card">';
+  h += '<div class="sens-note">整数规划的可行域是松弛问题可行域里<b>那些取整的点</b>。'
+    + '所以第一步总是先把整数限制去掉，解这个普通线性规划 —— 它给出的是'
+    + '「界限」（max 问题是最优值的上界），也是后面几种方法的出发点。</div>';
+  if (r.noOptimum) {
+    var st = r.relax.status === 'infeasible' ? '无可行解'
+      : r.relax.status === 'unbounded' ? '无界' : '未收敛';
+    h += '<div class="verdict no"><div class="vtitle">松弛问题' + st + '</div>'
+      + '<div class="vsum">' + esc(r.message) + '</div></div>';
+    h += '</div></section>' + methodListOnly(r);
+    $('ipOut').innerHTML = h;
+    addScrollHints(document);
+    return;
+  }
+  h += '<div class="verdict opt"><div class="vtitle">松弛问题最优解</div>'
+    + '<div class="sol">' + r.relax.solution.map(function (v, j) {
+        return 'x' + subs(j + 1) + ' = <span class="v">' + num(v) + '</span>';
+      }).join('　　') + '</div>'
+    + '<div class="sol">z = <span class="zv">' + num(r.relax.objective) + '</span></div>'
+    + '<div class="vsum">' + (r.relaxIntegral
+        ? '<b>这个解本身就已经满足所有整数要求</b>，所以它就是整数规划的最优解，'
+          + '不必再分枝或割平面。'
+        : '解里有非整数分量，不能直接当整数规划的解（直接四舍五入往往既不可行、也不是最优），'
+          + '需要用下面的方法求解。') + '</div></div>';
+  h += '<details class="help"><summary>展开松弛问题的单纯形法迭代过程</summary>'
+    + '<div class="iter-body">' + relaxIterations(r.relax) + '</div></details>';
+  h += '</div></section>';
+
+  /* ② 各方法的适用性一览 */
+  h += renderApplicability(prob, r);
+
+  /* ③ 按适用性输出（或按用户勾选输出）。这一块单独占一个容器：
+       勾选框一变就整体重渲染它，比对着一堆兄弟节点做增删稳得多。 */
+  h += '<div id="ipMethods" data-section="ip-methods"></div>';
+
+  $('ipOut').innerHTML = h;
+  renderMethods(prob, r);
+  wireMethodPick(prob, r);
+  addScrollHints(document);
+  resultLayout.wire($('ipOut'));
+}
+
+function relaxIterations(res) {
+  var shown = res.steps.filter(function (s) { return s.entering !== null; });
+  var lastStep = res.steps[res.steps.length - 1];
+  var all = shown.concat([lastStep].filter(function (s) { return shown.indexOf(s) < 0; }));
+  return all.map(function (step, k) {
+    return '<div class="iter-head"><span class="name">第 ' + (k + 1) + ' 张表</span></div>'
+      + renderTable(res, step) + explain(res, step);
+  }).join('');
+}
+
+function methodListOnly(r) {
+  var h = '<h2 class="sec">四种方法</h2><div class="card">';
+  r.methods.forEach(function (m) {
+    h += '<div class="judge"><span class="row blk">' + esc(m.name) + '</span>'
+      + '<span class="row">' + esc(m.reason || '不适用') + '</span></div>';
+  });
+  return h + '</div>';
+}
+
+/* 适用性一览：能用的打勾，不能用的写清理由 */
+function renderApplicability(prob, r) {
+  var h = '<h2 class="sec">四种方法在这道题上能不能用</h2><div class="card">';
+  h += '<div class="sens-note">不是每种方法对每道题都适用 —— 下面逐个判定，'
+    + '<b>不适用的不输出结果</b>（只说清为什么），适用的会把完整过程全部输出。</div>';
+  r.methods.forEach(function (m) {
+    var ok = m.applicable && !m.tooBig;
+    h += '<div class="judge"><span class="row blk">'
+      + (ok ? '✓ ' : '✗ ') + esc(m.name) + '</span>';
+    if (ok) {
+      h += '<span class="row">' + esc(applicableWhy(m, prob, r)) + '</span>';
+    } else {
+      h += '<span class="row">' + esc(m.reason || '不适用') + '</span>';
+    }
+    h += '</div>';
+  });
+  if (needPick(r)) {
+    h += '<div class="sens-warn">本题的规模较大：'
+      + applicable(r).filter(function (m) { return m.tooBig; })
+          .map(function (m) { return m.name + '（' + m.reason + '）'; }).join('；')
+      + '。为了避免卡顿，下面<b>不默认全部输出</b>，请勾选要看的解法。</div>';
+    h += '<div id="ipPick" class="pickbox">'
+      + applicable(r).filter(function (m) { return !m.tooBig; }).map(function (m) {
+          return '<label class="pick"><input type="checkbox" value="' + m.key + '" checked> '
+            + esc(m.name) + '</label>';
+        }).join('')
+      + '</div>';
+  }
+  return h + '</div>';
+}
+
+function applicable(r) { return r.methods.filter(function (m) { return m.applicable; }); }
+function needPick(r) { return r.methods.some(function (m) { return m.tooBig; }); }
+
+function applicableWhy(m, prob, r) {
+  if (m.key === 'graph') return '两个决策变量可以在平面上画出可行域，再把整数格点标出来。';
+  if (m.key === 'bnb') return '分枝定界法对任何整数规划都适用（只要求松弛问题有最优解）。';
+  if (m.key === 'cut') return '本题是全整数、全 ≤ 约束、数据为整数，符合教材里割平面法要求的标准形式。';
+  if (m.key === 'enum') return '本题所有变量都是 0-1 变量，可以按「非 0 即 1」逐点枚举。';
+  return '';
+}
+
+/* ===================== 各方法的详细输出 ===================== */
+/* ---- 算法输出的收纳卡 ----
+   picked = null 表示「全部输出」（没有勾选框时）；非 null 时是用户勾选的方法 key。
+   勾选一变就整体重渲染 #ipMethods，而不是对着兄弟节点做增删 ——
+   收纳卡本身是 <details>，嵌进去之后原来那套「找 nextElementSibling 逐个删」会变得很脆。 */
+var picked = null;
+
+function renderMethods(prob, r) {
+  var box = $('ipMethods');
+  if (!box) return;
+  box.innerHTML = buildMethods(prob, r);
+  addScrollHints(document);
+}
+
+function buildMethods(prob, r) {
+  var h = '', n = 0;
+  applicable(r).forEach(function (m) {
+    if (m.tooBig) return;                        // 规模过大的：只在上面的提示里说明
+    if (picked && picked.indexOf(m.key) < 0) return;
+    n++;
+    var inner = '';
+    if (m.key === 'graph') inner = viewGraph(prob, r, m);
+    else if (m.key === 'bnb') inner = viewBnb(prob, r, m);
+    else if (m.key === 'cut') inner = viewCut(prob, r, m);
+    else if (m.key === 'enum') inner = viewEnum(prob, r, m);
+    h += methodSection(n, m.name, chipOf(prob, r, m), inner);
+  });
+  if (!h) {
+    h = '<div class="card"><div class="sens-note">没有勾选任何解法。</div></div>';
+  }
+  return h;
+}
+
+/* 标题栏右侧那句结论：卡片收起来时也还能一眼看到这个算法算出了什么 */
+function chipOf(prob, r, m) {
+  if (m.key === 'graph') {
+    var best = ipSolutionOf(r);
+    return best ? '最优 z = ' + num(ipObjective(prob, best)) : '';
+  }
+  if (m.key === 'bnb') {
+    if (!m.complete) return '未跑完（' + m.nodes.length + ' 个结点）';
+    return m.best ? m.nodes.length + ' 个结点 · 最优 z = ' + num(m.bestZ) : '无可行整数解';
+  }
+  if (m.key === 'cut') {
+    return m.converged
+      ? m.cuts.length + ' 刀 · 最优 z = ' + num(m.objective)
+      : '未收敛（已割 ' + m.cuts.length + ' 刀）';
+  }
+  if (m.key === 'enum') {
+    return m.best ? m.total + ' 个点 · 最优 z = ' + num(m.bestZ) : '无可行解';
+  }
+  return '';
+}
+
+/* 每个算法一个可收纳卡片。标题栏刻意做得比正文突出：
+   编号徽章 + 加大的名称 + 一句结论 + 会旋转的箭头；点标题栏整行即可收起/展开。 */
+function methodSection(idx, name, chip, inner) {
+  return '<details class="meth" open>'
+    + '<summary class="meth-h">'
+    + '<span class="meth-i">' + idx + '</span>'
+    + '<span class="meth-n">' + esc(name) + '</span>'
+    + (chip ? '<span class="meth-c">' + chip + '</span>' : '')
+    + '<span class="meth-x"></span>'
+    + '</summary>'
+    + '<div class="meth-body">' + inner + '</div>'
+    + '</details>';
+}
+
+function wireMethodPick(prob, r) {
+  var box = $('ipPick');
+  if (!box) return;
+  Array.prototype.forEach.call(box.querySelectorAll('input'), function (i) {
+    i.addEventListener('change', function () {
+      picked = [];
+      Array.prototype.forEach.call(box.querySelectorAll('input:checked'), function (x) {
+        picked.push(x.value);
+      });
+      renderMethods(prob, r);
+    });
+  });
+}
+
+/* ---------------- 图解法 ---------------- */
+function viewGraph(prob, r, m) {
+  /* 标题不再写在这里 —— 由外层的可收纳卡片（methodSection）统一生成 */
+  var h = '<div class="card">';
+  var ipBest = ipSolutionOf(r);
+  var g = (typeof renderGraph === 'function')
+    ? renderGraph(ipWithVarBounds(prob), r.relax, ipBest ? { best: ipBest } : null) : null;
+  if (!g) {
+    h += '<div class="sens-note">画不出图（需要恰好两个变量、且有可行域）。</div></div>';
+    return h;
+  }
+  h += '<div class="graph">' + g.svg + '</div><div class="explain">' + esc(g.caption) + '</div>';
+  h += '<div class="judge">'
+    + '<span class="row blk">怎么读这张图</span>'
+    + '<span class="row">· 蓝区 = 松弛问题的可行域；灰点 = 蓝区里所有横纵坐标都是整数的点。</span>'
+    + '<span class="row">· <b>整数规划的解只能从灰点里挑</b> —— 这就是它与普通线性规划的全部区别。</span>'
+    + '<span class="row">· 橙点 = 松弛问题的最优解（等值线平移到蓝区边界时取到）。'
+    + '它常常落在边界上、不是灰点。</span>'
+    + '<span class="row">· 绿点 = 在灰点里让目标函数最大的那个，就是整数最优解。</span>'
+    + '<span class="row">· 橙点和绿点一般不重合 —— 所以「把松弛解四舍五入」是错的：'
+    + '四舍五入后的点可能根本不在蓝区里（不可行），也可能不是灰点里最好的（不是最优）。</span>'
+    + '</div>';
+  if (ipBest) {
+    h += resultVerdict(prob, ipBest, ipObjective(prob, ipBest), '图解法');
+  }
+  return h + '</div>';
+}
+
+function ipSolutionOf(r) {
+  var best = null;
+  r.methods.forEach(function (m) {
+    if (m.key === 'bnb' && m.best) best = m.best;
+    else if (m.key === 'cut' && m.converged && m.integral && !best) best = m.solution;
+    else if (m.key === 'enum' && m.best && !best) best = m.best;
+  });
+  return best;
+}
+function ipObjective(prob, x) {
+  var z = 0;
+  for (var j = 0; j < prob.c.length; j++) z += prob.c[j] * x[j];
+  return z;
+}
+function resultVerdict(prob, x, z, who) {
+  return '<div class="verdict opt"><div class="vtitle">最优整数解（' + esc(who) + '）</div>'
+    + '<div class="sol">' + x.map(function (v, j) {
+        return 'x' + subs(j + 1) + ' = <span class="v">' + num(v) + '</span>';
+      }).join('　　') + '</div>'
+    + '<div class="sol">z = <span class="zv">' + num(z) + '</span></div></div>';
+}
+
+/* ---------------- 分枝定界法 ---------------- */
+function viewBnb(prob, r, m) {
+  var h = '<div class="card">';
+  h += '<div class="sens-note">做法：反复解松弛问题。只要最优解里还有非整数变量，就把它劈成'
+    + '「x<sub>j</sub> ≤ ⌊v⌋」与「x<sub>j</sub> ≥ ⌈v⌉」两支分别再解 —— '
+    + '这样既不漏掉任何整数解，又能让每支的范围变小。同时手里攥着当前最好的整数解当「界」，'
+    + '凡是松弛最优值已经不如它的分支直接剪掉，不必展开。</div>';
+  h += '<div class="judge"><span class="row blk">本题的搜索过程</span>'
+    + '<span class="row">共展开 <b>' + m.nodes.length + '</b> 个结点，其中'
+    + '分枝 ' + m.nodes.filter(function (x) { return x.action === 'branch'; }).length + ' 次、'
+    + '剪枝 ' + m.nodes.filter(function (x) { return x.action === 'prune'; }).length + ' 次、'
+    + '得到整数解 ' + m.nodes.filter(function (x) { return x.action === 'incumbent'; }).length + ' 次。</span>'
+    + (m.complete ? '<span class="row">搜索已完整结束，所以当前最好的整数解就是最优解。</span>'
+                  : '<span class="row"><b>注意：结点数达到上限（' + m.maxNodes
+                    + '）提前中止，下面给出的是「目前找到的最好整数解」，不能保证是全局最优。</b></span>')
+    + '</div>';
+
+  var many = m.nodes.length > 25;
+  if (many) {
+    h += '<details class="help"><summary>展开全部 ' + m.nodes.length + ' 个结点（默认折叠：结点较多）</summary>';
+  }
+  m.nodes.forEach(function (nd) {
+    h += '<div class="judge"><span class="row blk">结点 ' + nd.id
+      + (nd.parent ? '（由结点 ' + nd.parent + ' 分出）' : '（根结点）')
+      + '　深度 ' + nd.depth + '</span>';
+    h += '<span class="row">· 附加约束：'
+      + (nd.bounds.length
+          ? nd.bounds.map(function (b) {
+              return 'x' + subs(b.j + 1) + ' ' + (b.rel === '<=' ? '≤' : '≥') + ' ' + num(b.val);
+            }).join('，')
+          : '无（就是原问题）') + '</span>';
+    if (nd.res.status === 'optimal') {
+      h += '<span class="row">· 松弛解：' + nd.solution.map(function (v, j) {
+          var t = prob.vtypes[j], isInt = ipIsInt(v);
+          var tag = (t !== 'cont' && !isInt) ? '<b>' + num(v) + '</b>' : num(v);
+          return 'x' + subs(j + 1) + ' = ' + tag;
+        }).join('　') + '　　z = <b>' + num(nd.objective) + '</b>'
+        + (nd.action === 'branch' ? '（加粗的是非整数分量，就是它要分枝）' : '') + '</span>';
+    } else {
+      h += '<span class="row">· 松弛问题' + (nd.res.status === 'infeasible' ? '无可行解' : '无界') + '</span>';
+    }
+    h += '<span class="row">· <b>' + esc(nd.actionName) + '</b>：' + esc(nd.note) + '</span>';
+    h += '</div>';
+    /* 每个结点的单纯形迭代也留着，需要时展开 */
+    h += '<details class="help"><summary>结点 ' + nd.id + ' 的单纯形法迭代</summary>'
+      + '<div class="iter-body">' + relaxIterations(nd.res) + '</div></details>';
+  });
+  if (many) h += '</details>';
+
+  if (m.best) {
+    h += resultVerdict(prob, m.best, m.bestZ, m.complete ? '分枝定界法' : '分枝定界法·未跑完');
+  } else {
+    h += '<div class="verdict no"><div class="vtitle">无可行整数解</div>'
+      + '<div class="vsum">所有分支都被剪掉了，说明这道整数规划没有可行解。</div></div>';
+  }
+  return h + '</div>';
+}
+
+/* ---------------- 割平面法 ---------------- */
+function viewCut(prob, r, m) {
+  var h = '<div class="card">';
+  h += '<div class="sens-note">做法：先解松弛问题得到最优表。如果某个基变量取的是分数，'
+    + '就<b>直接从那一行</b>读出一条新的约束（割）加进模型 —— 这条约束把当前这个分数解割掉，'
+    + '但任何一个整数可行解都仍然满足它。加完之后右端项变成负的，用<b>对偶单纯形法</b>重新求最优。'
+    + '反复做，直到最优解全部取整。</div>';
+  h += '<div class="judge"><span class="row blk">割是怎么从一行读出来的</span>'
+    + '<span class="row">把第 r 行写成 x<sub>Br</sub> = b̄<sub>r</sub> − Σ ā<sub>rj</sub>x<sub>j</sub>'
+    + '（求和只对非基变量）。两边取小数部分 f(·)，因为 x<sub>Br</sub> 与非基变量都要求取整，可得：</span>'
+    + '<span class="row"><b>Σ f(ā<sub>rj</sub>)·x<sub>j</sub> ≥ f(b̄<sub>r</sub>)</b>　—— 这就是 Gomory 割。</span>'
+    + '<span class="row">写成等式并整行取负（好让新剩余变量直接当基变量）：'
+    + '−Σ f(ā<sub>rj</sub>)x<sub>j</sub> + s = −f(b̄<sub>r</sub>)。</span></div>';
+
+  if (!m.cuts.length) {
+    h += '<div class="judge"><span class="row">松弛问题的解已经是整数解，一刀都不用割。</span></div>';
+  }
+  m.cuts.forEach(function (c) {
+    h += '<div class="sens-h">第 ' + c.round + ' 刀</div><div class="judge">';
+    h += '<span class="row">· ' + esc(c.text) + '</span>';
+    h += '<span class="row">· 小数部分：f(b̄) = ' + num(ipFrac(c.value)) + '，'
+      + '于是割为 Σ f(ā)·x<sub>j</sub> ≥ ' + num(ipFrac(c.value)) + '</span>';
+    var parts = [];
+    for (var j = 0; j < prob.c.length; j++) {
+      var co = -c.cutCoef[j];          // cutCoef 存的是取负后的系数
+      if (Math.abs(co) < 1e-9) continue;
+      parts.push(num(co) + '·x' + subs(j + 1));
+    }
+    h += '<span class="row">· 展开：' + (parts.length ? parts.join(' + ') : '0')
+      + ' ≥ ' + num(ipFrac(c.value))
+      + '　→　加入剩余变量 ' + esc(c.newVarName) + ' 后整行取负，'
+      + '右端项变成 ' + num(c.rhs) + '（负的）</span>';
+    h += '<span class="row">· 右端项为负说明原基不再可行，但检验数仍全 ≤ 0，'
+      + '正好用对偶单纯形法，共 ' + c.dualSteps.length + ' 步：</span>';
+    c.dualSteps.forEach(function (s, k) {
+      h += '<span class="row">　第 ' + (k + 1) + ' 步：' + esc(s.note) + '</span>';
+    });
+    h += '</div>';
+    /* 加完割之后的表 */
+    h += '<details class="help"><summary>第 ' + c.round + ' 刀加入后的单纯形表</summary>'
+      + '<div class="iter-body">' + cutTableau(m, c) + '</div></details>';
+  });
+  h += '<div class="judge"><span class="row blk">结论</span><span class="row">'
+    + (m.converged ? '所有基变量都已取整，迭代结束。' :
+        '<b>割了 ' + m.maxCuts + ' 刀仍未收敛</b>（达到刀数上限），下面给出的解不保证最优。')
+    + '</span></div>';
+  if (m.converged) h += resultVerdict(prob, m.solution, m.objective, '割平面法');
+  return h + '</div>';
+}
+
+/* 把割平面法内部的表拼成 renderTable 认得的形状。
+   每一刀都用自己的列数快照（c.varsAfter / c.N），不能拿最终的 vars ——
+   每加一刀表就宽一列，拿最终列数渲染早期表会越界。 */
+function cutTableau(m, c) {
+  var out = '';
+  var res = {
+    vars: c.varsAfter, mConstraints: c.m, nDecision: c.varsAfter.length,
+    steps: [{
+      rows: c.rowsAfter, obj: c.objAfter, basis: c.basisAfter,
+      entering: null, leaving: null, ratios: null, degenerate: false,
+      iter: 0, note: '这就是加入第 ' + c.round + ' 刀之后的表（新行就是割，'
+        + '新变量 ' + c.newVarName + ' 是它的剩余变量，右端项为负 → 需要继续用对偶单纯形法）。'
+    }]
+  };
+  out += renderTable(res, res.steps[0]) + explain(res, res.steps[0]);
+  c.dualSteps.forEach(function (s) {
+    if (!s.ok || !s.snapshot) return;
+    out += '<div class="iter-head"><span class="name">' + esc(s.leaveName)
+      + ' 出基 → ' + esc(s.enterName) + ' 入基</span></div>';
+    var rs = {
+      vars: c.varsAfter, mConstraints: c.m, nDecision: c.varsAfter.length,
+      steps: [{
+        rows: s.snapshot.rows, obj: s.snapshot.obj, basis: s.snapshot.basis,
+        entering: s.enter, leaving: s.negRow, ratios: null, degenerate: false,
+        iter: 0, note: s.note
+      }]
+    };
+    out += renderTable(rs, rs.steps[0]) + explain(rs, rs.steps[0]);
+  });
+  return out;
+}
+
+/* ---------------- 隐枚举法 ---------------- */
+function viewEnum(prob, r, m) {
+  var h = '<div class="card">';
+  if (m.tooBig) {
+    h += '<div class="sens-note">' + esc(m.reason) + '</div></div>';
+    return h;
+  }
+  h += '<div class="sens-note">做法：0-1 问题一共只有 2<sup>n</sup> 个解。'
+    + '但没必要每个都逐条检查约束 —— 先设法化成「目标系数全非负」的形式'
+    + '（这样目标值随任一个变量由 0 变 1 只会更大），再拿当前最好的解当<b>过滤条件</b>：'
+    + '目标值还不如它的点，连约束都不用看，直接跳过。这就是「隐」枚举 —— '
+    + '表面上枚举了 2<sup>n</sup> 个，实际上绝大多数被过滤条件挡掉了。</div>';
+
+  /* 标准化说明 */
+  h += '<div class="judge"><span class="row blk">标准化</span>';
+  if (prob.direction === 'min') {
+    h += '<span class="row">· 原题求<b>最小</b>。隐枚举法按教材是在「求最大」的标准形上做的，'
+      + '所以先把目标系数<b>整体取负</b>（min 转 max），最后把最优解再还原回原题方向。</span>';
+    h += '<span class="row">· 因此过滤条件比较的是<b>标准形</b>的目标值 z′ = −z。'
+      + '下表 z 列显示的仍然是<b>你原题的 z</b>，方便直接对着题目看。</span>';
+  } else {
+    h += '<span class="row">· 原题已经是求最大，标准形与它一致，不需要取负。</span>';
+  }
+  if (m.flipped.length) {
+    h += '<span class="row">· 标准形里目标系数为负的变量做替换 x<sub>j</sub> = 1 − y<sub>j</sub>：'
+      + m.flipped.map(function (j) { return 'x' + subs(j + 1); }).join('、')
+      + '。这样它们的系数变成正数，目标值随任一变量由 0 变 1 单调不减。</span>';
+    h += '<span class="row">· 常数项随之变成 ' + num(m.offset) + '。</span>';
+  } else {
+    h += '<span class="row">· 标准形的目标系数本来就都非负，不需要替换。</span>';
+  }
+  h += '</div>';
+
+  var rows = m.rows;
+  var show = rows.length <= MAX_SHOW_ROWS;
+  if (!show) {
+    h += '<div class="sens-warn">一共 ' + rows.length + ' 个枚举点，全部铺开会很长；'
+      + '下面只列出<b>通过过滤条件、真正需要检查约束的</b>那些点。'
+      + '（被过滤掉的一律只记「不满足过滤条件」）</div>';
+  }
+  h += '<details class="help"' + (show ? '' : ' open') + '><summary>'
+    + (show ? '展开枚举表（' + rows.length + ' 个点）' : '展开有效点的枚举表')
+    + '</summary><div class="scroll"><table class="sens en"><thead><tr>'
+    + '<th>#</th><th>取值</th><th>z（本题）</th><th>过滤条件</th><th>约束检查</th><th>结论</th>'
+    + '</tr></thead><tbody>';
+  rows.forEach(function (row) {
+    if (!show && row.passFilter === false) return;
+    var chk = row.checks.length
+      ? row.checks.map(function (c) {
+          return (c.sat ? '✓' : '✗') + '第' + (c.i + 1) + '条(' + num(c.lhs) + ')';
+        }).join(' ')
+      : (row.passFilter === false ? '—' : '');
+    h += '<tr>'
+      + '<td class="nm">' + row.idx + '</td>'
+      + '<td class="nowrap">(' + row.y.join(',') + ')</td>'
+      + '<td class="nowrap">' + num(row.z) + '</td>'
+      + '<td class="nowrap">' + (row.passFilter ? '✓ 要查约束' : '✗ 跳过') + '</td>'
+      + '<td class="nowrap">' + chk + '</td>'
+      + '<td>' + esc(row.verdict) + '</td></tr>';
+  });
+  h += '</tbody></table></div></details>';
+  h += '<div class="judge">'
+    + '<span class="row">过滤条件 = 「这个点的（标准形）目标值是否优于目前已找到的最好解」。'
+    + '不优于就直接跳过，连约束都不用查 —— 这就是「隐」枚举省下来的那部分计算。</span>'
+    + '<span class="row">共 ' + rows.length + ' 个 0-1 点，其中 <b>'
+    + m.filteredOut + '</b> 个被过滤条件直接挡掉（占 '
+    + Math.round(m.filteredOut / rows.length * 100) + '%），不必检查约束。</span></div>';
+  if (m.best) {
+    h += resultVerdict(prob, m.best, m.bestZ, '隐枚举法');
+  } else {
+    h += '<div class="verdict no"><div class="vtitle">无可行解</div>'
+      + '<div class="vsum">所有 0-1 点都不满足约束。</div></div>';
+  }
+  return h + '</div>';
+}
+
+
+module.exports = { render: render };
+});
+
 __define__("src/web/ip-ui.js", function (module, exports, require) {
 /* =========================================================================
    整数规划模块界面
@@ -6704,26 +7606,9 @@ __define__("src/web/ip-ui.js", function (module, exports, require) {
          · 不能用的不输出，只留一行「为什么不能用」
    ========================================================================= */
 
-var format = require('../core/format.js');
-var fmtNum = format.fmtNum;
-
-var integer = require('../core/integer.js');
-var ipSolve = integer.ipSolve;
-var ipWithVarBounds = integer.ipWithVarBounds;
-var ipIsInt = integer.ipIsInt;
-var ipFrac = integer.ipFrac;
-
-var inputPanel = require('./input-panel.js');
-var createInputPanel = inputPanel.createInputPanel;
-var addScrollHints = inputPanel.addScrollHints;
-
-var graph = require('./graph.js');
-var renderGraph = graph.renderGraph;
-
-var tableRender = require('./table-render.js');
-var renderTable = tableRender.renderTable;
-var explain = tableRender.explain;
-
+var ipSolve = require('../core/integer.js').ipSolve;
+var createInputPanel = require('./input-panel.js').createInputPanel;
+var render = require('./integer-report.js').render;
 var dom = require('./dom.js');
 var $ = dom.$, esc = dom.esc, subs = dom.subs;
 
@@ -6731,21 +7616,29 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
   'use strict';
 
   var TYPE_NAMES = { cont: '连续', int: '整数', bin: '0-1' };
-  var MAX_ENUM_POINTS = 4096;      // 隐枚举超过这个点数就不默认全跑
-  var MAX_SHOW_ROWS = 300;         // 隐枚举表一次最多铺这么多行，多了折叠
 
   var panel = createInputPanel({
     mount: 'ipPanel',
     tbl: 'ipInTbl', dirSeg: 'ipDirSeg',
     addVar: 'ipAddVar', delVar: 'ipDelVar', addCon: 'ipAddCon', delCon: 'ipDelCon',
     maxN: 8, maxM: 8,
-    state: { dir: 'max', n: 0, m: 0, c: [], cons: [] }
+    example: require('./examples.js').integer,
+    onLoad: function (p) { vtypes = p.vtypes.slice(); renderTypes(); },
+    onResize: renderTypes,
+    state: { dir: 'max', n: 0, m: 0, c: [], cons: [] },
+    onChange: invalidate
   });
   var vtypes = [];                 // 与变量一一对应的类型
 
   var last = null;
 
-  function num(v) { return fmtNum(v); }
+  function invalidate() {
+    var hadResult = !!$('ipOut').textContent;
+    last = null;
+    $('ipOut').innerHTML = '';
+    banner(hadResult ? '输入已修改，请重新求解。' : '', '');
+  }
+
   function banner(msg, kind) {
     $('ipBanners').innerHTML = msg
       ? '<div class="banner ' + (kind || 'err') + '">' + esc(msg) + '</div>' : '';
@@ -6781,7 +7674,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
             x.classList.toggle('on', x === b);
           });
           vtypes[j] = b.dataset.t;
-          $('ipOut').innerHTML = '';
+          invalidate();
         });
       });
     });
@@ -6810,477 +7703,16 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
       banner('这道题算不了：' + e.message);
       return;
     }
+    if (!r.ok) { banner(r.message); return; }
     banner('');
     last = r;
     render(prob, r);
-  }
-
-  /* ===================== 输出 ===================== */
-  function render(prob, r) {
-    var h = '';
-    picked = null;        // 每次重新求解都回到「全部输出」
-
-    /* ① 松弛问题 */
-    h += '<h2 class="sec">松弛问题（先不管整数限制）</h2><div class="card">';
-    h += '<div class="sens-note">整数规划的可行域是松弛问题可行域里<b>那些取整的点</b>。'
-      + '所以第一步总是先把整数限制去掉，解这个普通线性规划 —— 它给出的是'
-      + '「界限」（max 问题是最优值的上界），也是后面几种方法的出发点。</div>';
-    if (r.noOptimum) {
-      var st = r.relax.status === 'infeasible' ? '无可行解' : '无界';
-      h += '<div class="verdict no"><div class="vtitle">松弛问题' + st + '</div>'
-        + '<div class="vsum">松弛问题的可行域比原问题大，它都' + st + '了，'
-        + '原整数规划必然也' + st + '，所以四种方法都无从谈起。</div></div>';
-      h += methodListOnly(r);
-      $('ipOut').innerHTML = h;
-      addScrollHints(document);
-      return;
-    }
-    h += '<div class="verdict opt"><div class="vtitle">松弛问题最优解</div>'
-      + '<div class="sol">' + r.relax.solution.map(function (v, j) {
-          return 'x' + subs(j + 1) + ' = <span class="v">' + num(v) + '</span>';
-        }).join('　　') + '</div>'
-      + '<div class="sol">z = <span class="zv">' + num(r.relax.objective) + '</span></div>'
-      + '<div class="vsum">' + (r.relaxIntegral
-          ? '<b>这个解本身就已经满足所有整数要求</b>，所以它就是整数规划的最优解，'
-            + '不必再分枝或割平面。'
-          : '解里有非整数分量，不能直接当整数规划的解（直接四舍五入往往既不可行、也不是最优），'
-            + '需要用下面的方法求解。') + '</div></div>';
-    h += '<details class="help"><summary>展开松弛问题的单纯形法迭代过程</summary>'
-      + '<div class="iter-body">' + relaxIterations(r.relax) + '</div></details>';
-    h += '</div>';
-
-    /* ② 各方法的适用性一览 */
-    h += renderApplicability(prob, r);
-
-    /* ③ 按适用性输出（或按用户勾选输出）。这一块单独占一个容器：
-         勾选框一变就整体重渲染它，比对着一堆兄弟节点做增删稳得多。 */
-    h += '<div id="ipMethods"></div>';
-
-    $('ipOut').innerHTML = h;
-    renderMethods(prob, r);
-    wireMethodPick(prob, r);
-    addScrollHints(document);
-  }
-
-  function relaxIterations(res) {
-    var shown = res.steps.filter(function (s) { return s.entering !== null; });
-    var lastStep = res.steps[res.steps.length - 1];
-    var all = shown.concat([lastStep].filter(function (s) { return shown.indexOf(s) < 0; }));
-    return all.map(function (step, k) {
-      return '<div class="iter-head"><span class="name">第 ' + (k + 1) + ' 张表</span></div>'
-        + renderTable(res, step) + explain(res, step);
-    }).join('');
-  }
-
-  function methodListOnly(r) {
-    var h = '<h2 class="sec">四种方法</h2><div class="card">';
-    r.methods.forEach(function (m) {
-      h += '<div class="judge"><span class="row blk">' + esc(m.name) + '</span>'
-        + '<span class="row">' + esc(m.reason || '不适用') + '</span></div>';
-    });
-    return h + '</div>';
-  }
-
-  /* 适用性一览：能用的打勾，不能用的写清理由 */
-  function renderApplicability(prob, r) {
-    var h = '<h2 class="sec">四种方法在这道题上能不能用</h2><div class="card">';
-    h += '<div class="sens-note">不是每种方法对每道题都适用 —— 下面逐个判定，'
-      + '<b>不适用的不输出结果</b>（只说清为什么），适用的会把完整过程全部输出。</div>';
-    r.methods.forEach(function (m) {
-      var ok = m.applicable && !m.tooBig;
-      h += '<div class="judge"><span class="row blk">'
-        + (ok ? '✓ ' : '✗ ') + esc(m.name) + '</span>';
-      if (ok) {
-        h += '<span class="row">' + esc(applicableWhy(m, prob, r)) + '</span>';
-      } else {
-        h += '<span class="row">' + esc(m.reason || '不适用') + '</span>';
-      }
-      h += '</div>';
-    });
-    if (needPick(r)) {
-      h += '<div class="sens-warn">本题的规模较大：'
-        + applicable(r).filter(function (m) { return m.tooBig; })
-            .map(function (m) { return m.name + '（' + m.reason + '）'; }).join('；')
-        + '。为了避免卡顿，下面<b>不默认全部输出</b>，请勾选要看的解法。</div>';
-      h += '<div id="ipPick" class="pickbox">'
-        + applicable(r).filter(function (m) { return !m.tooBig; }).map(function (m) {
-            return '<label class="pick"><input type="checkbox" value="' + m.key + '" checked> '
-              + esc(m.name) + '</label>';
-          }).join('')
-        + '</div>';
-    }
-    return h + '</div>';
-  }
-
-  function applicable(r) { return r.methods.filter(function (m) { return m.applicable; }); }
-  function needPick(r) { return r.methods.some(function (m) { return m.tooBig; }); }
-
-  function applicableWhy(m, prob, r) {
-    if (m.key === 'graph') return '两个决策变量可以在平面上画出可行域，再把整数格点标出来。';
-    if (m.key === 'bnb') return '分枝定界法对任何整数规划都适用（只要求松弛问题有最优解）。';
-    if (m.key === 'cut') return '本题是全整数、全 ≤ 约束、数据为整数，符合教材里割平面法要求的标准形式。';
-    if (m.key === 'enum') return '本题所有变量都是 0-1 变量，可以按「非 0 即 1」逐点枚举。';
-    return '';
-  }
-
-  /* ===================== 各方法的详细输出 ===================== */
-  /* ---- 算法输出的收纳卡 ----
-     picked = null 表示「全部输出」（没有勾选框时）；非 null 时是用户勾选的方法 key。
-     勾选一变就整体重渲染 #ipMethods，而不是对着兄弟节点做增删 ——
-     收纳卡本身是 <details>，嵌进去之后原来那套「找 nextElementSibling 逐个删」会变得很脆。 */
-  var picked = null;
-
-  function renderMethods(prob, r) {
-    var box = $('ipMethods');
-    if (!box) return;
-    box.innerHTML = buildMethods(prob, r);
-    addScrollHints(document);
-  }
-
-  function buildMethods(prob, r) {
-    var h = '', n = 0;
-    applicable(r).forEach(function (m) {
-      if (m.tooBig) return;                        // 规模过大的：只在上面的提示里说明
-      if (picked && picked.indexOf(m.key) < 0) return;
-      n++;
-      var inner = '';
-      if (m.key === 'graph') inner = viewGraph(prob, r, m);
-      else if (m.key === 'bnb') inner = viewBnb(prob, r, m);
-      else if (m.key === 'cut') inner = viewCut(prob, r, m);
-      else if (m.key === 'enum') inner = viewEnum(prob, r, m);
-      h += methodSection(n, m.name, chipOf(prob, r, m), inner);
-    });
-    if (!h) {
-      h = '<div class="card"><div class="sens-note">没有勾选任何解法。</div></div>';
-    }
-    return h;
-  }
-
-  /* 标题栏右侧那句结论：卡片收起来时也还能一眼看到这个算法算出了什么 */
-  function chipOf(prob, r, m) {
-    if (m.key === 'graph') {
-      var best = ipSolutionOf(r);
-      return best ? '最优 z = ' + num(ipObjective(prob, best)) : '';
-    }
-    if (m.key === 'bnb') {
-      if (!m.complete) return '未跑完（' + m.nodes.length + ' 个结点）';
-      return m.best ? m.nodes.length + ' 个结点 · 最优 z = ' + num(m.bestZ) : '无可行整数解';
-    }
-    if (m.key === 'cut') {
-      return m.converged
-        ? m.cuts.length + ' 刀 · 最优 z = ' + num(m.objective)
-        : '未收敛（已割 ' + m.cuts.length + ' 刀）';
-    }
-    if (m.key === 'enum') {
-      return m.best ? m.total + ' 个点 · 最优 z = ' + num(m.bestZ) : '无可行解';
-    }
-    return '';
-  }
-
-  /* 每个算法一个可收纳卡片。标题栏刻意做得比正文突出：
-     编号徽章 + 加大的名称 + 一句结论 + 会旋转的箭头；点标题栏整行即可收起/展开。 */
-  function methodSection(idx, name, chip, inner) {
-    return '<details class="meth" open>'
-      + '<summary class="meth-h">'
-      + '<span class="meth-i">' + idx + '</span>'
-      + '<span class="meth-n">' + esc(name) + '</span>'
-      + (chip ? '<span class="meth-c">' + chip + '</span>' : '')
-      + '<span class="meth-x"></span>'
-      + '</summary>'
-      + '<div class="meth-body">' + inner + '</div>'
-      + '</details>';
-  }
-
-  function wireMethodPick(prob, r) {
-    var box = $('ipPick');
-    if (!box) return;
-    Array.prototype.forEach.call(box.querySelectorAll('input'), function (i) {
-      i.addEventListener('change', function () {
-        picked = [];
-        Array.prototype.forEach.call(box.querySelectorAll('input:checked'), function (x) {
-          picked.push(x.value);
-        });
-        renderMethods(prob, r);
-      });
-    });
-  }
-
-  /* ---------------- 图解法 ---------------- */
-  function viewGraph(prob, r, m) {
-    /* 标题不再写在这里 —— 由外层的可收纳卡片（methodSection）统一生成 */
-    var h = '<div class="card">';
-    var ipBest = ipSolutionOf(r);
-    var g = (typeof renderGraph === 'function')
-      ? renderGraph(ipWithVarBounds(prob), r.relax, ipBest ? { best: ipBest } : null) : null;
-    if (!g) {
-      h += '<div class="sens-note">画不出图（需要恰好两个变量、且有可行域）。</div></div>';
-      return h;
-    }
-    h += '<div class="graph">' + g.svg + '</div><div class="explain">' + esc(g.caption) + '</div>';
-    h += '<div class="judge">'
-      + '<span class="row blk">怎么读这张图</span>'
-      + '<span class="row">· 蓝区 = 松弛问题的可行域；灰点 = 蓝区里所有横纵坐标都是整数的点。</span>'
-      + '<span class="row">· <b>整数规划的解只能从灰点里挑</b> —— 这就是它与普通线性规划的全部区别。</span>'
-      + '<span class="row">· 橙点 = 松弛问题的最优解（等值线平移到蓝区边界时取到）。'
-      + '它常常落在边界上、不是灰点。</span>'
-      + '<span class="row">· 绿点 = 在灰点里让目标函数最大的那个，就是整数最优解。</span>'
-      + '<span class="row">· 橙点和绿点一般不重合 —— 所以「把松弛解四舍五入」是错的：'
-      + '四舍五入后的点可能根本不在蓝区里（不可行），也可能不是灰点里最好的（不是最优）。</span>'
-      + '</div>';
-    if (ipBest) {
-      h += resultVerdict(prob, ipBest, ipObjective(prob, ipBest), '图解法');
-    }
-    return h + '</div>';
-  }
-
-  function ipSolutionOf(r) {
-    var best = null;
-    r.methods.forEach(function (m) {
-      if (m.key === 'bnb' && m.best) best = m.best;
-      else if (m.key === 'cut' && m.converged && m.integral && !best) best = m.solution;
-      else if (m.key === 'enum' && m.best && !best) best = m.best;
-    });
-    return best;
-  }
-  function ipObjective(prob, x) {
-    var z = 0;
-    for (var j = 0; j < prob.c.length; j++) z += prob.c[j] * x[j];
-    return z;
-  }
-  function resultVerdict(prob, x, z, who) {
-    return '<div class="verdict opt"><div class="vtitle">最优整数解（' + esc(who) + '）</div>'
-      + '<div class="sol">' + x.map(function (v, j) {
-          return 'x' + subs(j + 1) + ' = <span class="v">' + num(v) + '</span>';
-        }).join('　　') + '</div>'
-      + '<div class="sol">z = <span class="zv">' + num(z) + '</span></div></div>';
-  }
-
-  /* ---------------- 分枝定界法 ---------------- */
-  function viewBnb(prob, r, m) {
-    var h = '<div class="card">';
-    h += '<div class="sens-note">做法：反复解松弛问题。只要最优解里还有非整数变量，就把它劈成'
-      + '「x<sub>j</sub> ≤ ⌊v⌋」与「x<sub>j</sub> ≥ ⌈v⌉」两支分别再解 —— '
-      + '这样既不漏掉任何整数解，又能让每支的范围变小。同时手里攥着当前最好的整数解当「界」，'
-      + '凡是松弛最优值已经不如它的分支直接剪掉，不必展开。</div>';
-    h += '<div class="judge"><span class="row blk">本题的搜索过程</span>'
-      + '<span class="row">共展开 <b>' + m.nodes.length + '</b> 个结点，其中'
-      + '分枝 ' + m.nodes.filter(function (x) { return x.action === 'branch'; }).length + ' 次、'
-      + '剪枝 ' + m.nodes.filter(function (x) { return x.action === 'prune'; }).length + ' 次、'
-      + '得到整数解 ' + m.nodes.filter(function (x) { return x.action === 'incumbent'; }).length + ' 次。</span>'
-      + (m.complete ? '<span class="row">搜索已完整结束，所以当前最好的整数解就是最优解。</span>'
-                    : '<span class="row"><b>注意：结点数达到上限（' + m.maxNodes
-                      + '）提前中止，下面给出的是「目前找到的最好整数解」，不能保证是全局最优。</b></span>')
-      + '</div>';
-
-    var many = m.nodes.length > 25;
-    if (many) {
-      h += '<details class="help"><summary>展开全部 ' + m.nodes.length + ' 个结点（默认折叠：结点较多）</summary>';
-    }
-    m.nodes.forEach(function (nd) {
-      h += '<div class="judge"><span class="row blk">结点 ' + nd.id
-        + (nd.parent ? '（由结点 ' + nd.parent + ' 分出）' : '（根结点）')
-        + '　深度 ' + nd.depth + '</span>';
-      h += '<span class="row">· 附加约束：'
-        + (nd.bounds.length
-            ? nd.bounds.map(function (b) {
-                return 'x' + subs(b.j + 1) + ' ' + (b.rel === '<=' ? '≤' : '≥') + ' ' + num(b.val);
-              }).join('，')
-            : '无（就是原问题）') + '</span>';
-      if (nd.res.status === 'optimal') {
-        h += '<span class="row">· 松弛解：' + nd.solution.map(function (v, j) {
-            var t = prob.vtypes[j], isInt = ipIsInt(v);
-            var tag = (t !== 'cont' && !isInt) ? '<b>' + num(v) + '</b>' : num(v);
-            return 'x' + subs(j + 1) + ' = ' + tag;
-          }).join('　') + '　　z = <b>' + num(nd.objective) + '</b>'
-          + (nd.action === 'branch' ? '（加粗的是非整数分量，就是它要分枝）' : '') + '</span>';
-      } else {
-        h += '<span class="row">· 松弛问题' + (nd.res.status === 'infeasible' ? '无可行解' : '无界') + '</span>';
-      }
-      h += '<span class="row">· <b>' + esc(nd.actionName) + '</b>：' + esc(nd.note) + '</span>';
-      h += '</div>';
-      /* 每个结点的单纯形迭代也留着，需要时展开 */
-      h += '<details class="help"><summary>结点 ' + nd.id + ' 的单纯形法迭代</summary>'
-        + '<div class="iter-body">' + relaxIterations(nd.res) + '</div></details>';
-    });
-    if (many) h += '</details>';
-
-    if (m.best) {
-      h += resultVerdict(prob, m.best, m.bestZ, m.complete ? '分枝定界法' : '分枝定界法·未跑完');
-    } else {
-      h += '<div class="verdict no"><div class="vtitle">无可行整数解</div>'
-        + '<div class="vsum">所有分支都被剪掉了，说明这道整数规划没有可行解。</div></div>';
-    }
-    return h + '</div>';
-  }
-
-  /* ---------------- 割平面法 ---------------- */
-  function viewCut(prob, r, m) {
-    var h = '<div class="card">';
-    h += '<div class="sens-note">做法：先解松弛问题得到最优表。如果某个基变量取的是分数，'
-      + '就<b>直接从那一行</b>读出一条新的约束（割）加进模型 —— 这条约束把当前这个分数解割掉，'
-      + '但任何一个整数可行解都仍然满足它。加完之后右端项变成负的，用<b>对偶单纯形法</b>重新求最优。'
-      + '反复做，直到最优解全部取整。</div>';
-    h += '<div class="judge"><span class="row blk">割是怎么从一行读出来的</span>'
-      + '<span class="row">把第 r 行写成 x<sub>Br</sub> = b̄<sub>r</sub> − Σ ā<sub>rj</sub>x<sub>j</sub>'
-      + '（求和只对非基变量）。两边取小数部分 f(·)，因为 x<sub>Br</sub> 与非基变量都要求取整，可得：</span>'
-      + '<span class="row"><b>Σ f(ā<sub>rj</sub>)·x<sub>j</sub> ≥ f(b̄<sub>r</sub>)</b>　—— 这就是 Gomory 割。</span>'
-      + '<span class="row">写成等式并整行取负（好让新剩余变量直接当基变量）：'
-      + '−Σ f(ā<sub>rj</sub>)x<sub>j</sub> + s = −f(b̄<sub>r</sub>)。</span></div>';
-
-    if (!m.cuts.length) {
-      h += '<div class="judge"><span class="row">松弛问题的解已经是整数解，一刀都不用割。</span></div>';
-    }
-    m.cuts.forEach(function (c) {
-      h += '<div class="sens-h">第 ' + c.round + ' 刀</div><div class="judge">';
-      h += '<span class="row">· ' + esc(c.text) + '</span>';
-      h += '<span class="row">· 小数部分：f(b̄) = ' + num(ipFrac(c.value)) + '，'
-        + '于是割为 Σ f(ā)·x<sub>j</sub> ≥ ' + num(ipFrac(c.value)) + '</span>';
-      var parts = [];
-      for (var j = 0; j < prob.c.length; j++) {
-        var co = -c.cutCoef[j];          // cutCoef 存的是取负后的系数
-        if (Math.abs(co) < 1e-9) continue;
-        parts.push(num(co) + '·x' + subs(j + 1));
-      }
-      h += '<span class="row">· 展开：' + (parts.length ? parts.join(' + ') : '0')
-        + ' ≥ ' + num(ipFrac(c.value))
-        + '　→　加入剩余变量 ' + esc(c.newVarName) + ' 后整行取负，'
-        + '右端项变成 ' + num(c.rhs) + '（负的）</span>';
-      h += '<span class="row">· 右端项为负说明原基不再可行，但检验数仍全 ≤ 0，'
-        + '正好用对偶单纯形法，共 ' + c.dualSteps.length + ' 步：</span>';
-      c.dualSteps.forEach(function (s, k) {
-        h += '<span class="row">　第 ' + (k + 1) + ' 步：' + esc(s.note) + '</span>';
-      });
-      h += '</div>';
-      /* 加完割之后的表 */
-      h += '<details class="help"><summary>第 ' + c.round + ' 刀加入后的单纯形表</summary>'
-        + '<div class="iter-body">' + cutTableau(m, c) + '</div></details>';
-    });
-    h += '<div class="judge"><span class="row blk">结论</span><span class="row">'
-      + (m.converged ? '所有基变量都已取整，迭代结束。' :
-          '<b>割了 ' + m.maxCuts + ' 刀仍未收敛</b>（达到刀数上限），下面给出的解不保证最优。')
-      + '</span></div>';
-    if (m.converged) h += resultVerdict(prob, m.solution, m.objective, '割平面法');
-    return h + '</div>';
-  }
-
-  /* 把割平面法内部的表拼成 renderTable 认得的形状。
-     每一刀都用自己的列数快照（c.varsAfter / c.N），不能拿最终的 vars ——
-     每加一刀表就宽一列，拿最终列数渲染早期表会越界。 */
-  function cutTableau(m, c) {
-    var out = '';
-    var res = {
-      vars: c.varsAfter, mConstraints: c.m, nDecision: c.varsAfter.length,
-      steps: [{
-        rows: c.rowsAfter, obj: c.objAfter, basis: c.basisAfter,
-        entering: null, leaving: null, ratios: null, degenerate: false,
-        iter: 0, note: '这就是加入第 ' + c.round + ' 刀之后的表（新行就是割，'
-          + '新变量 ' + c.newVarName + ' 是它的剩余变量，右端项为负 → 需要继续用对偶单纯形法）。'
-      }]
-    };
-    out += renderTable(res, res.steps[0]) + explain(res, res.steps[0]);
-    c.dualSteps.forEach(function (s) {
-      if (!s.ok || !s.snapshot) return;
-      out += '<div class="iter-head"><span class="name">' + esc(s.leaveName)
-        + ' 出基 → ' + esc(s.enterName) + ' 入基</span></div>';
-      var rs = {
-        vars: c.varsAfter, mConstraints: c.m, nDecision: c.varsAfter.length,
-        steps: [{
-          rows: s.snapshot.rows, obj: s.snapshot.obj, basis: s.snapshot.basis,
-          entering: s.enter, leaving: s.negRow, ratios: null, degenerate: false,
-          iter: 0, note: s.note
-        }]
-      };
-      out += renderTable(rs, rs.steps[0]) + explain(rs, rs.steps[0]);
-    });
-    return out;
-  }
-
-  /* ---------------- 隐枚举法 ---------------- */
-  function viewEnum(prob, r, m) {
-    var h = '<div class="card">';
-    if (m.tooBig) {
-      h += '<div class="sens-note">' + esc(m.reason) + '</div></div>';
-      return h;
-    }
-    h += '<div class="sens-note">做法：0-1 问题一共只有 2<sup>n</sup> 个解。'
-      + '但没必要每个都逐条检查约束 —— 先设法化成「目标系数全非负」的形式'
-      + '（这样目标值随任一个变量由 0 变 1 只会更大），再拿当前最好的解当<b>过滤条件</b>：'
-      + '目标值还不如它的点，连约束都不用看，直接跳过。这就是「隐」枚举 —— '
-      + '表面上枚举了 2<sup>n</sup> 个，实际上绝大多数被过滤条件挡掉了。</div>';
-
-    /* 标准化说明 */
-    h += '<div class="judge"><span class="row blk">标准化</span>';
-    if (prob.direction === 'min') {
-      h += '<span class="row">· 原题求<b>最小</b>。隐枚举法按教材是在「求最大」的标准形上做的，'
-        + '所以先把目标系数<b>整体取负</b>（min 转 max），最后把最优解再还原回原题方向。</span>';
-      h += '<span class="row">· 因此过滤条件比较的是<b>标准形</b>的目标值 z′ = −z。'
-        + '下表 z 列显示的仍然是<b>你原题的 z</b>，方便直接对着题目看。</span>';
-    } else {
-      h += '<span class="row">· 原题已经是求最大，标准形与它一致，不需要取负。</span>';
-    }
-    if (m.flipped.length) {
-      h += '<span class="row">· 标准形里目标系数为负的变量做替换 x<sub>j</sub> = 1 − y<sub>j</sub>：'
-        + m.flipped.map(function (j) { return 'x' + subs(j + 1); }).join('、')
-        + '。这样它们的系数变成正数，目标值随任一变量由 0 变 1 单调不减。</span>';
-      h += '<span class="row">· 常数项随之变成 ' + num(m.offset) + '。</span>';
-    } else {
-      h += '<span class="row">· 标准形的目标系数本来就都非负，不需要替换。</span>';
-    }
-    h += '</div>';
-
-    var rows = m.rows;
-    var show = rows.length <= MAX_SHOW_ROWS;
-    if (!show) {
-      h += '<div class="sens-warn">一共 ' + rows.length + ' 个枚举点，全部铺开会很长；'
-        + '下面只列出<b>通过过滤条件、真正需要检查约束的</b>那些点。'
-        + '（被过滤掉的一律只记「不满足过滤条件」）</div>';
-    }
-    h += '<details class="help"' + (show ? '' : ' open') + '><summary>'
-      + (show ? '展开枚举表（' + rows.length + ' 个点）' : '展开有效点的枚举表')
-      + '</summary><div class="scroll"><table class="sens en"><thead><tr>'
-      + '<th>#</th><th>取值</th><th>z（本题）</th><th>过滤条件</th><th>约束检查</th><th>结论</th>'
-      + '</tr></thead><tbody>';
-    rows.forEach(function (row) {
-      if (!show && row.passFilter === false) return;
-      var chk = row.checks.length
-        ? row.checks.map(function (c) {
-            return (c.sat ? '✓' : '✗') + '第' + (c.i + 1) + '条(' + num(c.lhs) + ')';
-          }).join(' ')
-        : (row.passFilter === false ? '—' : '');
-      h += '<tr>'
-        + '<td class="nm">' + row.idx + '</td>'
-        + '<td class="nowrap">(' + row.y.join(',') + ')</td>'
-        + '<td class="nowrap">' + num(row.z) + '</td>'
-        + '<td class="nowrap">' + (row.passFilter ? '✓ 要查约束' : '✗ 跳过') + '</td>'
-        + '<td class="nowrap">' + chk + '</td>'
-        + '<td>' + esc(row.verdict) + '</td></tr>';
-    });
-    h += '</tbody></table></div></details>';
-    h += '<div class="judge">'
-      + '<span class="row">过滤条件 = 「这个点的（标准形）目标值是否优于目前已找到的最好解」。'
-      + '不优于就直接跳过，连约束都不用查 —— 这就是「隐」枚举省下来的那部分计算。</span>'
-      + '<span class="row">共 ' + rows.length + ' 个 0-1 点，其中 <b>'
-      + m.filteredOut + '</b> 个被过滤条件直接挡掉（占 '
-      + Math.round(m.filteredOut / rows.length * 100) + '%），不必检查约束。</span></div>';
-    if (m.best) {
-      h += resultVerdict(prob, m.best, m.bestZ, '隐枚举法');
-    } else {
-      h += '<div class="verdict no"><div class="vtitle">无可行解</div>'
-        + '<div class="vsum">所有 0-1 点都不满足约束。</div></div>';
-    }
-    return h + '</div>';
   }
 
   /* ===================== 启动 ===================== */
   panel.init();
   syncVtypes();
   panel.state.cons = [];
-  var origRender = panel.render;
-  /* 变量增删后要同步类型选择器 —— 包一层，不动组件本身 */
-  var desc = panel.el('addVar');
-  ['ipAddVar', 'ipDelVar'].forEach(function (id) {
-    $(id).addEventListener('click', function () { setTimeout(function () { renderTypes(); }, 0); });
-  });
   $('ipSolveBtn').addEventListener('click', solve);
   renderTypes();
   /* 供回归脚本与截图脚本使用：变量增删后类型选择器是延时渲染的，
@@ -7290,6 +7722,40 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
 
 /* 本模块没有对外接口：require 一次即完成整数规划界面初始化（副作用模块）。 */
 module.exports = {};
+});
+
+__define__("src/web/result-layout.js", function (module, exports, require) {
+'use strict';
+var esc = require('./dom.js').esc;
+var addScrollHints = require('./input-panel.js').addScrollHints;
+
+function navigation(items) {
+  return '<nav class="result-nav" aria-label="结果章节">' + items.map(function (item) {
+    return '<button type="button" class="btn" data-jump="' + esc(item[0]) + '">' + esc(item[1]) + '</button>';
+  }).join('') + '</nav>';
+}
+
+/* 章节跳转不改 hash，避免与模块路由冲突；从折叠状态跳转时先展开。 */
+function wire(root) {
+  Array.prototype.forEach.call(root.querySelectorAll('[data-jump]'), function (button) {
+    button.addEventListener('click', function () {
+      var section = root.querySelector('[data-section="' + button.getAttribute('data-jump') + '"]');
+      if (!section) return;
+      var parent = section.parentNode;
+      while (parent && parent !== root) {
+        if (parent.tagName === 'DETAILS') parent.open = true;
+        parent = parent.parentNode;
+      }
+      section.setAttribute('tabindex', '-1');
+      section.focus({preventScroll:true});
+      section.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+  });
+  Array.prototype.forEach.call(root.querySelectorAll('details'), function (details) {
+    details.addEventListener('toggle', function () { if (details.open) addScrollHints(details); });
+  });
+}
+module.exports = { navigation: navigation, wire: wire };
 });
 
 __define__("src/web/router.js", function (module, exports, require) {
@@ -7425,6 +7891,8 @@ var explain = tableRender.explain;
 
 var dom = require('./dom.js');
 var $ = dom.$, esc = dom.esc, subs = dom.subs;
+var parseNumber = require('../core/number-input.js').parseNumber;
+var resultLayout = require('./result-layout.js');
 
 (function () {
   'use strict';
@@ -7435,16 +7903,33 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
     tbl: 'sInTbl', dirSeg: 'sDirSeg',
     addVar: 'sAddVar', delVar: 'sDelVar', addCon: 'sAddCon', delCon: 'sDelCon',
     maxN: 6, maxM: 8,
-    state: { dir: 'max', n: 0, m: 0, c: [], cons: [] }
+    example: require('./examples.js').linear,
+    state: { dir: 'max', n: 0, m: 0, c: [], cons: [] },
+    onChange: invalidateBase
   });
 
   var base = null;      // 基准问题的求解结果
   var baseProb = null;  // 基准问题本身
   var last = null;      // 最近一次场景分析的结果
 
+  function clearAnalysis() {
+    last = null;
+    var out = $('sensOut');
+    if (out) out.parentNode.removeChild(out);
+  }
+
+  function invalidateBase() {
+    var hadBase = !!base;
+    base = null; baseProb = null;
+    clearAnalysis();
+    $('sBase').innerHTML = '';
+    $('sScenario').innerHTML = '';
+    banner(hadBase ? '基准题已修改，请重新求基准最优解。' : '');
+  }
 
   /* ---------------- 基准题求解 ---------------- */
   function solveBase() {
+    invalidateBase();
     var prob = panel.getProblem();
     if (prob.c.length < 1) {
       banner('还没有决策变量，先点「+ 变量」搭一个线性规划。');
@@ -7526,6 +8011,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
   };
 
   function renderForm(t) {
+    clearAnalysis();
     var n = baseProb.c.length, m = baseProb.constraints.length, h = '';
     var small = ' class="num sm" type="text" inputmode="decimal" placeholder="0"';
 
@@ -7616,6 +8102,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
   /* 参数线性规划的 λ 系数输入（跟着上面的小标签切换） */
   var paramKind = 'c';
   function renderParamBody() {
+    clearAnalysis();
     var n = baseProb.c.length, m = baseProb.constraints.length, h = '', k;
     var small = ' class="num sm" type="text" inputmode="decimal" placeholder="0"';
     if (paramKind === 'c') {
@@ -7641,8 +8128,10 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
   function num(sel) {
     var el = document.querySelector(sel);
     if (!el) return 0;
-    var v = parseFloat(String(el.value).replace(/[^0-9.\-]/g, ''));
-    return isNaN(v) ? 0 : v;
+    var v = parseNumber(el.value, true);
+    el.setAttribute('aria-invalid', isFinite(v) ? 'false' : 'true');
+    if (!isFinite(v)) throw new Error('请输入完整数字（支持小数和科学计数法）');
+    return v;
   }
   function collect(t) {
     var n = baseProb.c.length, m = baseProb.constraints.length, i;
@@ -7685,7 +8174,10 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
   }
 
   function runScenario(t) {
-    var sc = collect(t);
+    if (!base || !baseProb) { banner('请先重新求基准最优解。'); return; }
+    clearAnalysis();
+    var sc;
+    try { sc = collect(t); } catch (e) { banner(e.message); return; }
     var r = sc.param ? sensParam(baseProb, sc) : sensAnalyze(baseProb, sc);
     if (!r.ok) { banner(r.message); return; }
     banner('');
@@ -7810,6 +8302,8 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
     });
 
     /* ③ 结论 */
+    var reasoning = h;
+    h = '';
     h += '<h2 class="sec">结论</h2>';
     if (r.status === 'optimal') {
       var sols = r.result.solution.map(function (v, j) {
@@ -7827,10 +8321,14 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
         + '，因此没有最优解。</div></div>';
     }
 
+    h += resultLayout.navigation([['sensitivity-work','查看判断与迭代']])
+      + '<details class="result-work" open><summary>完整推导（可收起）</summary><section data-section="sensitivity-work">'
+      + reasoning + '</section></details>';
     $('sBase').innerHTML = $('sBase').innerHTML.replace(/<h2 class="sec">分析结果<\/h2>[\s\S]*$/, '');
     var box = document.createElement('div');
     box.id = 'sensOut';
     box.innerHTML = h;
+    resultLayout.wire(box);
     var old = $('sensOut');
     if (old) old.parentNode.removeChild(old);
     $('sScenario').parentNode.insertBefore(box, $('sScenario').nextSibling);
@@ -7845,6 +8343,13 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
 
   /* ---------------- 启动 ---------------- */
   panel.init();
+  $('sScenario').addEventListener('input', function (e) {
+    clearAnalysis();
+    if (e.target.tagName === 'INPUT') {
+      e.target.setAttribute('aria-invalid', isFinite(parseNumber(e.target.value, true)) ? 'false' : 'true');
+    }
+  });
+  $('sScenario').addEventListener('change', clearAnalysis);
   $('sSolveBtn').addEventListener('click', solveBase);
 })();
 
@@ -7965,6 +8470,267 @@ module.exports = {
 };
 });
 
+__define__("src/web/simplex-report.js", function (module, exports, require) {
+/* 单纯形结果的 HTML 生成；不持有页面状态。 */
+'use strict';
+var format = require('../core/format.js');
+var fmtNum = format.fmtNum, fmtPair = format.fmtPair;
+var esc = require('./dom.js').esc;
+var renderGraph = require('./graph.js').renderGraph;
+function verdict(res) {
+  if (res.status === 'optimal') {
+    var sols = res.solution.map(function (v, j) {
+      return 'x' + (j + 1) + ' = <span class="v">' + fmtNum(v) + '</span>';
+    }).join('　　');
+    if (res.solution.length === 0) {
+      sols = '<span class="muted">本题没有决策变量</span>';
+    }
+    var extra = '<div class="vsum">';
+    extra += '非基变量取 0。';
+    if (res.altOptimal.length) {
+      var names = res.vars.map(function (v) { return v.name; });
+      extra += '<br>注意：非基变量 ' + res.altOptimal.map(function (i) { return names[i]; }).join('、')
+        + ' 的检验数为 0，说明本题存在<b>多重最优解</b>（还有别的方案达到同样最优值）。';
+    }
+    if (res.swapped) extra += '<br>原问题为 min 型，已按 max 求解后还原目标值。';
+    extra += '</div>';
+    return '<div class="verdict opt">'
+      + '<div class="vtitle">最优解</div>'
+      + '<div class="sol">' + sols + '</div>'
+      + '<div class="sol">z = <span class="zv">' + fmtNum(res.objective) + '</span></div>'
+      + extra + '</div>';
+  }
+  if (res.status === 'infeasible') {
+    return '<div class="verdict no">'
+      + '<div class="vtitle">无可行解</div>'
+      + '<div class="vsum">迭代结束时人工变量仍然留在基中并取正值，说明约束条件之间互相矛盾，'
+      + '不存在能同时满足全部约束的非负解。</div></div>';
+  }
+  if (res.status === 'unbounded') {
+    return '<div class="verdict unb">'
+      + '<div class="vtitle">无界解</div>'
+      + '<div class="vsum">入基变量的列中没有正的系数，它可以在满足约束的前提下无限增大，'
+      + '目标函数值也随之无限增大（或减小），因此最优解不存在。</div></div>';
+  }
+  return '<div class="verdict no">'
+    + '<div class="vtitle">未能在限定步数内收敛</div>'
+    + '<div class="vsum">可能存在退化导致的循环，请检查题目数据。</div></div>';
+}
+
+/* 对偶解（影子价格）：y = c_B·B⁻¹，由算法层算出 */
+function dualCard(res, prob) {
+  if (res.status !== 'optimal' || !res.dual || !res.dual.length) return '';
+  var items = res.dual.map(function (v, i) {
+    return '<span>y' + (i + 1) + ' = <span class="dv">' + fmtNum(v) + '</span></span>';
+  }).join('');
+  var loose = [];
+  for (var i = 0; i < res.dual.length; i++) {
+    if (Math.abs(res.dual[i]) < 1e-9) loose.push(i + 1);
+  }
+  return '<div class="card"><div class="iter-head"><span class="name">对偶解（影子价格）</span></div>'
+    + '<div class="dlist">' + items + '</div>'
+    + '<div class="explain">yᵢ 表示第 i 个约束的右端项每增加 1 个单位时，最优目标值 z 会变化多少'
+    + '（在最优基不变的前提下）。'
+    + (loose.length
+        ? '其中第 ' + loose.join('、') + ' 个约束的影子价格为 0 —— '
+          + (loose.length > 1 ? '它们' : '它') + '还有余量、没被用尽，放宽也不会改变最优值。'
+        : '这里全是紧约束：每条约束都被用尽了，放宽任何一条都会改变最优值。')
+    + '</div></div>';
+}
+
+/* 灵敏度分析：保持当前最优基不变时，c 与 b 的允许变化范围。
+   算法层已经把区间算好（见 core/sensitivity.js 的 sensitivityAnalysis），
+   这里只负责把区间写成教材里那种不等式。 */
+function sensCard(res) {
+  var s = res.sensitivity;
+  if (!s || (!s.c.length && !s.b.length)) return '';
+
+  /* 把区间写成「3/2 ≤ c1 ≤ 5」「c1 ≥ 3/2」这种形式 */
+  function rng(lo, hi, name) {
+    var noLo = (lo === -Infinity), noHi = (hi === Infinity);
+    if (noLo && noHi) return '<span class="free">可任意取值</span>';
+    if (noLo) return name + ' ≤ <b>' + fmtNum(hi) + '</b>';
+    if (noHi) return name + ' ≥ <b>' + fmtNum(lo) + '</b>';
+    if (Math.abs(hi - lo) < 1e-9) return name + ' = <b>' + fmtNum(lo) + '</b>';
+    return '<b>' + fmtNum(lo) + '</b> ≤ ' + name + ' ≤ <b>' + fmtNum(hi) + '</b>';
+  }
+
+  var pinned = 0;
+  var h = '<h2 class="sec">灵敏度分析</h2><div class="card">';
+  h += '<div class="sens-note">保持当前最优基不变时，各系数允许的变化范围。</div>';
+
+  if (s.c.length) {
+    h += '<div class="sens-h">目标函数系数 c</div>';
+    h += '<div class="scroll"><table class="sens"><tbody>';
+    s.c.forEach(function (e) {
+      var nm = 'c' + (e.j + 1);
+      var eff;
+      if (!e.basic || Math.abs(e.slope) < 1e-9) {
+        eff = '不改变 z*';
+      } else {
+        eff = '每 +1 → z* ' + (e.slope > 0 ? '+' : '−') + fmtNum(Math.abs(e.slope));
+      }
+      h += '<tr>'
+        + '<td class="nm">x' + (e.j + 1) + '<span class="btag' + (e.basic ? ' on' : '') + '">'
+        + (e.basic ? '基' : '非基') + '</span></td>'
+        + '<td class="cur">' + fmtNum(e.current) + '</td>'
+        + '<td class="rng">' + rng(e.lo, e.hi, nm) + '</td>'
+        + '<td class="eff">' + eff + '</td>'
+        + '</tr>';
+    });
+    h += '</tbody></table></div>';
+    h += '<div class="sens-note">基变量的 c 每增加 1，最优值就变化 x 的取值；'
+      + '非基变量仍取 0，所以改它的 c 在这段范围内不影响最优值。</div>';
+  }
+
+  if (s.b.length) {
+    h += '<div class="sens-h">右端项 b</div>';
+    h += '<div class="scroll"><table class="sens"><tbody>';
+    s.b.forEach(function (e) {
+      var nm = 'b' + (e.i + 1);
+      if (e.pinned) pinned++;
+      h += '<tr>'
+        + '<td class="nm">约束 ' + (e.i + 1) + '</td>'
+        + '<td class="cur">' + fmtNum(e.current) + '</td>'
+        + '<td class="rng">' + rng(e.lo, e.hi, nm) + '</td>'
+        + '<td class="eff">y = ' + fmtNum(e.shadow) + '</td>'
+        + '</tr>';
+    });
+    h += '</tbody></table></div>';
+    h += '<div class="sens-note">区间内影子价格 y 保持有效：b 每增加 1，最优值变化 y。</div>';
+  }
+
+  if (s.degenerate) {
+    h += '<div class="sens-warn">本题最优基里含取值为 0 的人工变量（退化情形），'
+      + '允许区间不唯一，下表给出的是「当前这个基」能保持的范围。';
+    if (pinned) h += '写成「= 某值」的表示该系数一动，最优基就会改变。';
+    h += '</div>';
+  }
+
+  h += '</div>';
+  return h;
+}
+
+/* 关系符显示成数学符号 */
+function relSym(rel) {
+  return rel === '<=' ? '≤' : (rel === '>=' ? '≥' : '=');
+}
+
+/* 把 Σ c_j·name_j 渲染成可读表达式：系数 1 省略，系数 0 默认跳过 */
+function linExpr(coeffs, names, keepZero) {
+  var out = '';
+  for (var j = 0; j < coeffs.length; j++) {
+    var c = coeffs[j];
+    if (Math.abs(c) < 1e-12 && !keepZero) continue;
+    var a = Math.abs(c);
+    var cs = (Math.abs(a - 1) < 1e-12) ? '' : fmtNum(a);
+    var term = cs + names[j];
+    if (!out) out = (c < 0 ? '-' : '') + term;
+    else out += (c < 0 ? ' - ' : ' + ') + term;
+  }
+  return out || '0';
+}
+
+/* 标准化卡片：把「原问题 → 标准型」的变换摊开给学生看。
+   原问题用用户输入的形式；标准型取自算法第一张表（即标准化后的约束矩阵）。 */
+function standardCard(prob, res) {
+  var names = res.vars.map(function (v) { return v.name; });
+  var kinds = res.vars.map(function (v) { return v.kind; });
+  var N = names.length;
+  var n = prob.c.length;
+  var xNames = names.slice(0, n);
+  var cons = prob.constraints || [];
+  var init = res.steps[0];
+  /* 续行缩进必须正好等于 's.t.  ' 的宽度（6 个字符），否则第二行起的约束会错开半格。
+     .std-line 用等宽字体渲染，所以这里数空格就是数宽度。 */
+  var pad = '      ';
+
+  /* ---- ① 原问题 ---- */
+  var orig = ['<div class="std-line">' + prob.direction + ' z = ' + linExpr(prob.c, xNames) + '</div>'];
+  cons.forEach(function (k, i) {
+    orig.push('<div class="std-line">' + (i === 0 ? 's.t.  ' : pad)
+      + linExpr(k.coef, xNames) + ' ' + relSym(k.rel) + ' ' + fmtNum(k.rhs) + '</div>');
+  });
+  orig.push('<div class="std-line">' + (cons.length ? pad : 's.t.  ') + xNames.join(', ') + ' ≥ 0</div>');
+
+  /* ---- ② 标准型的目标函数（人工变量带 M，松弛变量系数为 0） ----
+     显示顺序按「决策变量 → 松弛/剩余 → 人工变量」分组，否则 s 和 a 交织会很乱 */
+  var order = [];
+  ['x', 's', 'a'].forEach(function (kind) {
+    kinds.forEach(function (k, i) { if (k === kind) order.push(i); });
+  });
+  var zStr = '';
+  order.forEach(function (j) {
+    var c, isM = false;
+    if (kinds[j] === 'a') { isM = true; c = 0; }
+    else if (kinds[j] === 'x') { c = res.swapped ? -prob.c[j] : prob.c[j]; }
+    else { c = 0; }
+    var abs = Math.abs(c);
+    var cs = isM ? 'M' : (abs < 1e-12 ? '0' : (Math.abs(abs - 1) < 1e-12 ? '' : fmtNum(abs)));
+    var neg = isM ? true : (c < 0);
+    var term = cs + names[j];
+    if (!zStr) zStr = (neg ? '-' : '') + term;
+    else zStr += (neg ? ' - ' : ' + ') + term;
+  });
+  if (!zStr) zStr = '0';
+
+  /* ---- ② 标准型的约束（等式形式） ---- */
+  var std = ['<div class="std-line">max z' + (res.swapped ? "'" : '') + ' = ' + zStr + '</div>'];
+  for (var i2 = 0; i2 < res.mConstraints; i2++) {
+    var row = init.rows[i2];
+    std.push('<div class="std-line">' + (i2 === 0 ? 's.t.  ' : pad)
+      + linExpr(row.slice(0, N), names) + ' = ' + fmtNum(row[N]) + '</div>');
+  }
+  std.push('<div class="std-line">' + (res.mConstraints ? pad : 's.t.  ') + names.join(', ') + ' ≥ 0</div>');
+
+  /* ---- 变换说明 ---- */
+  var notes = [];
+  if (res.swapped) {
+    notes.push('原问题是 <b>min</b> 型，先把目标函数整体取负转成 max 型（记 z′ = −z），结果再还原回 z。');
+  }
+  if (kinds.indexOf('s') >= 0) {
+    notes.push('不等式约束通过加减<b>松弛 / 剩余变量</b> s 化成等式：≤ 加 s，≥ 减 s。s 在目标函数里系数为 0。');
+  }
+  if (kinds.indexOf('a') >= 0) {
+    notes.push('出现人工变量 a：≥ 约束减去剩余变量后要再补一个 a，= 约束直接补 a，'
+      + '目的是凑出初始单位基。a 在目标函数里带 <b>−M</b>（M 是形式上无穷大的正数），逼它退到 0。');
+  }
+  if (cons.some(function (k) { return k.rhs < 0; })) {
+    notes.push('有约束的右端项为负，已整行取负并翻转关系符，使右端项非负。');
+  }
+
+  return '<h2 class="sec">标准化</h2>'
+    + '<div class="card stdcard">'
+    + '<div class="std-h">① 原问题</div>'
+    + orig.join('')
+    + '<div class="std-arrow">↓ 引入松弛 / 剩余 / 人工变量，化为等式</div>'
+    + '<div class="std-h">② 标准型</div>'
+    + std.join('')
+    + (notes.length ? '<div class="std-note">' + notes.join('<br>') + '</div>' : '')
+    + '</div>';
+}
+
+/* 图解法：仅当决策变量恰好 2 个、且不是无可行解时才画 */
+function graphCard(prob, res) {
+  if (typeof renderGraph !== 'function') return '';
+  var g = null;
+  try { g = renderGraph(prob, res); } catch (e) { g = null; }
+  if (!g) return '';
+  return '<h2 class="sec">图解法</h2>'
+    + '<div class="card"><div class="graph">' + g.svg + '</div>'
+    + '<div class="explain">' + g.caption + '</div></div>';
+}
+
+
+module.exports = {
+  verdict: verdict,
+  dualCard: dualCard,
+  sensCard: sensCard,
+  standardCard: standardCard,
+  graphCard: graphCard
+};
+});
+
 __define__("src/web/table-render.js", function (module, exports, require) {
 /* =========================================================================
    迭代表 + 迭代讲解的渲染
@@ -8061,10 +8827,6 @@ __define__("src/web/ui.js", function (module, exports, require) {
    界面逻辑：输入表 ↔ 状态 ↔ 渲染迭代过程
    ========================================================================= */
 
-var format = require('../core/format.js');
-var fmtNum = format.fmtNum;
-var fmtPair = format.fmtPair;
-
 var simplex = require('../core/simplex.js');
 var simplexSolve = simplex.simplexSolve;
 
@@ -8072,15 +8834,19 @@ var inputPanel = require('./input-panel.js');
 var createInputPanel = inputPanel.createInputPanel;
 var addScrollHints = inputPanel.addScrollHints;
 
-var graph = require('./graph.js');
-var renderGraph = graph.renderGraph;
-
 var tableRender = require('./table-render.js');
 var renderTable = tableRender.renderTable;
 var explain = tableRender.explain;
 
 var dom = require('./dom.js');
 var $ = dom.$, esc = dom.esc;
+var report = require('./simplex-report.js');
+var verdict = report.verdict;
+var dualCard = report.dualCard;
+var sensCard = report.sensCard;
+var standardCard = report.standardCard;
+var graphCard = report.graphCard;
+var resultLayout = require('./result-layout.js');
 
 (function () {
   'use strict';
@@ -8092,6 +8858,7 @@ var $ = dom.$, esc = dom.esc;
     tbl: 'inTbl', dirSeg: 'dirSeg',
     addVar: 'addVar', delVar: 'delVar', addCon: 'addCon', delCon: 'delCon',
     maxN: 6, maxM: 8,
+    example: require('./examples.js').linear,
     state: { dir: 'max', n: 0, m: 0, c: [], cons: [] },
     onChange: function () { markStale(); }
   });
@@ -8114,22 +8881,26 @@ var $ = dom.$, esc = dom.esc;
     box.classList.remove('stale');
 
     if (!res.ok) {
+      $('mod-simplex').classList.remove('has-result');
       banners.innerHTML = '<div class="banner err"><b>输入有误</b>：' + esc(res.message) + '</div>';
       box.classList.remove('show');
       box.innerHTML = '';
       return;
     }
 
-    var html = '';
+    var html = '<h2 class="sec">结论</h2>' + verdict(res) + dualCard(res, prob);
+    html += resultLayout.navigation([['standard','查看标准化'],['iterations','查看迭代过程']]);
+    html += sensCard(res);
+    html += '<details class="result-work" open><summary>完整推导（可收起）</summary>';
     var legend = '<span class="nb">x = 决策变量</span>　<span class="nb">s = 松弛 / 剩余变量</span>　'
       + '<span class="nb">a = 人工变量</span>　·　<span class="nb">σ 行末列为 −z</span>';
     if (res.swapped) legend += '　·　<span class="nb">min 问题已取负转为 max，z 已还原</span>';
     html += '<div class="banner">' + legend + '</div>';
 
-    html += standardCard(prob, res);
+    html += '<section data-section="standard">' + standardCard(prob, res) + '</section>';
     html += graphCard(prob, res);
 
-    html += '<h2 class="sec">迭代过程（共 ' + (res.steps.length - 1) + ' 次迭代）</h2>';
+    html += '<section data-section="iterations"><h2 class="sec">迭代过程（共 ' + (res.steps.length - 1) + ' 次迭代）</h2>';
     res.steps.forEach(function (step, idx) {
       var title = idx === 0 ? '初始表' : '第 ' + idx + ' 次迭代';
       var isLast = (idx === res.steps.length - 1);
@@ -8145,259 +8916,14 @@ var $ = dom.$, esc = dom.esc;
         + '</div>';
     });
 
-    html += '<h2 class="sec">结论</h2>';
-    html += verdict(res);
-    html += dualCard(res, prob);
-    html += sensCard(res);
+    html += '</section></details>';
 
     box.innerHTML = html;
     box.classList.add('show');
+    $('mod-simplex').classList.add('has-result');
     addScrollHints(box);
+    resultLayout.wire(box);
     box.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  function verdict(res) {
-    if (res.status === 'optimal') {
-      var sols = res.solution.map(function (v, j) {
-        return 'x' + (j + 1) + ' = <span class="v">' + fmtNum(v) + '</span>';
-      }).join('　　');
-      if (res.solution.length === 0) {
-        sols = '<span class="muted">本题没有决策变量</span>';
-      }
-      var extra = '<div class="vsum">';
-      extra += '非基变量取 0。';
-      if (res.altOptimal.length) {
-        var names = res.vars.map(function (v) { return v.name; });
-        extra += '<br>注意：非基变量 ' + res.altOptimal.map(function (i) { return names[i]; }).join('、')
-          + ' 的检验数为 0，说明本题存在<b>多重最优解</b>（还有别的方案达到同样最优值）。';
-      }
-      if (res.swapped) extra += '<br>原问题为 min 型，已按 max 求解后还原目标值。';
-      extra += '</div>';
-      return '<div class="verdict opt">'
-        + '<div class="vtitle">最优解</div>'
-        + '<div class="sol">' + sols + '</div>'
-        + '<div class="sol">z = <span class="zv">' + fmtNum(res.objective) + '</span></div>'
-        + extra + '</div>';
-    }
-    if (res.status === 'infeasible') {
-      return '<div class="verdict no">'
-        + '<div class="vtitle">无可行解</div>'
-        + '<div class="vsum">迭代结束时人工变量仍然留在基中并取正值，说明约束条件之间互相矛盾，'
-        + '不存在能同时满足全部约束的非负解。</div></div>';
-    }
-    if (res.status === 'unbounded') {
-      return '<div class="verdict unb">'
-        + '<div class="vtitle">无界解</div>'
-        + '<div class="vsum">入基变量的列中没有正的系数，它可以在满足约束的前提下无限增大，'
-        + '目标函数值也随之无限增大（或减小），因此最优解不存在。</div></div>';
-    }
-    return '<div class="verdict no">'
-      + '<div class="vtitle">未能在限定步数内收敛</div>'
-      + '<div class="vsum">可能存在退化导致的循环，请检查题目数据。</div></div>';
-  }
-
-  /* 对偶解（影子价格）：y = c_B·B⁻¹，由算法层算出 */
-  function dualCard(res, prob) {
-    if (res.status !== 'optimal' || !res.dual || !res.dual.length) return '';
-    var items = res.dual.map(function (v, i) {
-      return '<span>y' + (i + 1) + ' = <span class="dv">' + fmtNum(v) + '</span></span>';
-    }).join('');
-    var loose = [];
-    for (var i = 0; i < res.dual.length; i++) {
-      if (Math.abs(res.dual[i]) < 1e-9) loose.push(i + 1);
-    }
-    return '<div class="card"><div class="iter-head"><span class="name">对偶解（影子价格）</span></div>'
-      + '<div class="dlist">' + items + '</div>'
-      + '<div class="explain">yᵢ 表示第 i 个约束的右端项每增加 1 个单位时，最优目标值 z 会变化多少'
-      + '（在最优基不变的前提下）。'
-      + (loose.length
-          ? '其中第 ' + loose.join('、') + ' 个约束的影子价格为 0 —— '
-            + (loose.length > 1 ? '它们' : '它') + '还有余量、没被用尽，放宽也不会改变最优值。'
-          : '这里全是紧约束：每条约束都被用尽了，放宽任何一条都会改变最优值。')
-      + '</div></div>';
-  }
-
-  /* 灵敏度分析：保持当前最优基不变时，c 与 b 的允许变化范围。
-     算法层已经把区间算好（见 core/sensitivity.js 的 sensitivityAnalysis），
-     这里只负责把区间写成教材里那种不等式。 */
-  function sensCard(res) {
-    var s = res.sensitivity;
-    if (!s || (!s.c.length && !s.b.length)) return '';
-
-    /* 把区间写成「3/2 ≤ c1 ≤ 5」「c1 ≥ 3/2」这种形式 */
-    function rng(lo, hi, name) {
-      var noLo = (lo === -Infinity), noHi = (hi === Infinity);
-      if (noLo && noHi) return '<span class="free">可任意取值</span>';
-      if (noLo) return name + ' ≤ <b>' + fmtNum(hi) + '</b>';
-      if (noHi) return name + ' ≥ <b>' + fmtNum(lo) + '</b>';
-      if (Math.abs(hi - lo) < 1e-9) return name + ' = <b>' + fmtNum(lo) + '</b>';
-      return '<b>' + fmtNum(lo) + '</b> ≤ ' + name + ' ≤ <b>' + fmtNum(hi) + '</b>';
-    }
-
-    var pinned = 0;
-    var h = '<h2 class="sec">灵敏度分析</h2><div class="card">';
-    h += '<div class="sens-note">保持当前最优基不变时，各系数允许的变化范围。</div>';
-
-    if (s.c.length) {
-      h += '<div class="sens-h">目标函数系数 c</div>';
-      h += '<div class="scroll"><table class="sens"><tbody>';
-      s.c.forEach(function (e) {
-        var nm = 'c' + (e.j + 1);
-        var eff;
-        if (!e.basic || Math.abs(e.slope) < 1e-9) {
-          eff = '不改变 z*';
-        } else {
-          eff = '每 +1 → z* ' + (e.slope > 0 ? '+' : '−') + fmtNum(Math.abs(e.slope));
-        }
-        h += '<tr>'
-          + '<td class="nm">x' + (e.j + 1) + '<span class="btag' + (e.basic ? ' on' : '') + '">'
-          + (e.basic ? '基' : '非基') + '</span></td>'
-          + '<td class="cur">' + fmtNum(e.current) + '</td>'
-          + '<td class="rng">' + rng(e.lo, e.hi, nm) + '</td>'
-          + '<td class="eff">' + eff + '</td>'
-          + '</tr>';
-      });
-      h += '</tbody></table></div>';
-      h += '<div class="sens-note">基变量的 c 每增加 1，最优值就变化 x 的取值；'
-        + '非基变量仍取 0，所以改它的 c 在这段范围内不影响最优值。</div>';
-    }
-
-    if (s.b.length) {
-      h += '<div class="sens-h">右端项 b</div>';
-      h += '<div class="scroll"><table class="sens"><tbody>';
-      s.b.forEach(function (e) {
-        var nm = 'b' + (e.i + 1);
-        if (e.pinned) pinned++;
-        h += '<tr>'
-          + '<td class="nm">约束 ' + (e.i + 1) + '</td>'
-          + '<td class="cur">' + fmtNum(e.current) + '</td>'
-          + '<td class="rng">' + rng(e.lo, e.hi, nm) + '</td>'
-          + '<td class="eff">y = ' + fmtNum(e.shadow) + '</td>'
-          + '</tr>';
-      });
-      h += '</tbody></table></div>';
-      h += '<div class="sens-note">区间内影子价格 y 保持有效：b 每增加 1，最优值变化 y。</div>';
-    }
-
-    if (s.degenerate) {
-      h += '<div class="sens-warn">本题最优基里含取值为 0 的人工变量（退化情形），'
-        + '允许区间不唯一，下表给出的是「当前这个基」能保持的范围。';
-      if (pinned) h += '写成「= 某值」的表示该系数一动，最优基就会改变。';
-      h += '</div>';
-    }
-
-    h += '</div>';
-    return h;
-  }
-
-  /* 关系符显示成数学符号 */
-  function relSym(rel) {
-    return rel === '<=' ? '≤' : (rel === '>=' ? '≥' : '=');
-  }
-
-  /* 把 Σ c_j·name_j 渲染成可读表达式：系数 1 省略，系数 0 默认跳过 */
-  function linExpr(coeffs, names, keepZero) {
-    var out = '';
-    for (var j = 0; j < coeffs.length; j++) {
-      var c = coeffs[j];
-      if (Math.abs(c) < 1e-12 && !keepZero) continue;
-      var a = Math.abs(c);
-      var cs = (Math.abs(a - 1) < 1e-12) ? '' : fmtNum(a);
-      var term = cs + names[j];
-      if (!out) out = (c < 0 ? '-' : '') + term;
-      else out += (c < 0 ? ' - ' : ' + ') + term;
-    }
-    return out || '0';
-  }
-
-  /* 标准化卡片：把「原问题 → 标准型」的变换摊开给学生看。
-     原问题用用户输入的形式；标准型取自算法第一张表（即标准化后的约束矩阵）。 */
-  function standardCard(prob, res) {
-    var names = res.vars.map(function (v) { return v.name; });
-    var kinds = res.vars.map(function (v) { return v.kind; });
-    var N = names.length;
-    var n = prob.c.length;
-    var xNames = names.slice(0, n);
-    var cons = prob.constraints || [];
-    var init = res.steps[0];
-    /* 续行缩进必须正好等于 's.t.  ' 的宽度（6 个字符），否则第二行起的约束会错开半格。
-       .std-line 用等宽字体渲染，所以这里数空格就是数宽度。 */
-    var pad = '      ';
-
-    /* ---- ① 原问题 ---- */
-    var orig = ['<div class="std-line">' + prob.direction + ' z = ' + linExpr(prob.c, xNames) + '</div>'];
-    cons.forEach(function (k, i) {
-      orig.push('<div class="std-line">' + (i === 0 ? 's.t.  ' : pad)
-        + linExpr(k.coef, xNames) + ' ' + relSym(k.rel) + ' ' + fmtNum(k.rhs) + '</div>');
-    });
-    orig.push('<div class="std-line">' + (cons.length ? pad : 's.t.  ') + xNames.join(', ') + ' ≥ 0</div>');
-
-    /* ---- ② 标准型的目标函数（人工变量带 M，松弛变量系数为 0） ----
-       显示顺序按「决策变量 → 松弛/剩余 → 人工变量」分组，否则 s 和 a 交织会很乱 */
-    var order = [];
-    ['x', 's', 'a'].forEach(function (kind) {
-      kinds.forEach(function (k, i) { if (k === kind) order.push(i); });
-    });
-    var zStr = '';
-    order.forEach(function (j) {
-      var c, isM = false;
-      if (kinds[j] === 'a') { isM = true; c = 0; }
-      else if (kinds[j] === 'x') { c = res.swapped ? -prob.c[j] : prob.c[j]; }
-      else { c = 0; }
-      var abs = Math.abs(c);
-      var cs = isM ? 'M' : (abs < 1e-12 ? '0' : (Math.abs(abs - 1) < 1e-12 ? '' : fmtNum(abs)));
-      var neg = isM ? true : (c < 0);
-      var term = cs + names[j];
-      if (!zStr) zStr = (neg ? '-' : '') + term;
-      else zStr += (neg ? ' - ' : ' + ') + term;
-    });
-    if (!zStr) zStr = '0';
-
-    /* ---- ② 标准型的约束（等式形式） ---- */
-    var std = ['<div class="std-line">max z' + (res.swapped ? "'" : '') + ' = ' + zStr + '</div>'];
-    for (var i2 = 0; i2 < res.mConstraints; i2++) {
-      var row = init.rows[i2];
-      std.push('<div class="std-line">' + (i2 === 0 ? 's.t.  ' : pad)
-        + linExpr(row.slice(0, N), names) + ' = ' + fmtNum(row[N]) + '</div>');
-    }
-    std.push('<div class="std-line">' + (res.mConstraints ? pad : 's.t.  ') + names.join(', ') + ' ≥ 0</div>');
-
-    /* ---- 变换说明 ---- */
-    var notes = [];
-    if (res.swapped) {
-      notes.push('原问题是 <b>min</b> 型，先把目标函数整体取负转成 max 型（记 z′ = −z），结果再还原回 z。');
-    }
-    if (kinds.indexOf('s') >= 0) {
-      notes.push('不等式约束通过加减<b>松弛 / 剩余变量</b> s 化成等式：≤ 加 s，≥ 减 s。s 在目标函数里系数为 0。');
-    }
-    if (kinds.indexOf('a') >= 0) {
-      notes.push('出现人工变量 a：≥ 约束减去剩余变量后要再补一个 a，= 约束直接补 a，'
-        + '目的是凑出初始单位基。a 在目标函数里带 <b>−M</b>（M 是形式上无穷大的正数），逼它退到 0。');
-    }
-    if (cons.some(function (k) { return k.rhs < 0; })) {
-      notes.push('有约束的右端项为负，已整行取负并翻转关系符，使右端项非负。');
-    }
-
-    return '<h2 class="sec">标准化</h2>'
-      + '<div class="card stdcard">'
-      + '<div class="std-h">① 原问题</div>'
-      + orig.join('')
-      + '<div class="std-arrow">↓ 引入松弛 / 剩余 / 人工变量，化为等式</div>'
-      + '<div class="std-h">② 标准型</div>'
-      + std.join('')
-      + (notes.length ? '<div class="std-note">' + notes.join('<br>') + '</div>' : '')
-      + '</div>';
-  }
-
-  /* 图解法：仅当决策变量恰好 2 个、且不是无可行解时才画 */
-  function graphCard(prob, res) {
-    if (typeof renderGraph !== 'function') return '';
-    var g = null;
-    try { g = renderGraph(prob, res); } catch (e) { g = null; }
-    if (!g) return '';
-    return '<h2 class="sec">图解法</h2>'
-      + '<div class="card"><div class="graph">' + g.svg + '</div>'
-      + '<div class="explain">' + g.caption + '</div></div>';
   }
 
   /* ---------------- 求解 ---------------- */

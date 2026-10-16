@@ -6,6 +6,7 @@
   · 最优值必须与 JS 的 λ 仿射表达式算出来的值一致。
 """
 import json
+import sys
 import numpy as np
 from scipy.optimize import linprog
 
@@ -19,8 +20,10 @@ import os
 #   —— 原点可行、射线 (t,0,3t) 对任意 t>0 可行且 z = -12t，数学上确定无界；
 #   而 method='highs' 报 infeasible，presolve=False / highs-ds / interior-point 都报 unbounded。
 #   所以本脚本一旦出现「状态不一致」，先关掉 presolve 复核，再判断是谁错。
-_HERE = os.path.dirname(os.path.abspath(__file__))
+_HERE = os.environ.get('OR_TEST_BANK_DIR') or os.path.dirname(os.path.abspath(__file__))
 bank = json.load(open(os.path.join(_HERE, 'param-bank.json'), encoding='utf-8'))
+if not bank:
+    sys.exit('题库为空，不能判定通过')
 print(f'载入 {len(bank)} 个抽样点（每个点都是某个 λ 区间内部的一个 λ）')
 
 
@@ -86,3 +89,5 @@ else:
     print('\n✓ 全部抽样点与 scipy 从头重解的最优值一致')
 
 print('\n结论:', 'PASS' if not bad else 'FAIL')
+
+sys.exit(1 if bad else 0)

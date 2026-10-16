@@ -5,7 +5,7 @@
      node tools/check-no-dp.js          扫全仓库，命中就列出 file:line 并退出码 1
      node tools/check-no-dp.js --list   只列出被扫的文件数与各模式命中数
 
-   扫描范围：仓库根下所有文本文件，跳过 .git/ 与 node_modules/。
+   扫描范围：项目源码与文档，跳过版本库、外部依赖和 preview/ 生成物。
    为了让「零残留」可核查，下面是**逐条列出的**匹配模式（而不是一个含糊的关键词）：
 
      ① 中文名：动态规划
@@ -24,7 +24,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const SKIP_DIRS = new Set(['.git', 'node_modules', '.hermes']);
+const SKIP_DIRS = new Set(['.git', 'node_modules', '.hermes', 'preview', '__pycache__']);
 /* 本脚本自己当然包含这些模式（它们就是匹配规则），扫描时要跳过自己 */
 const SKIP_FILES = new Set(['tools/check-no-dp.js']);
 const TEXT_EXT = new Set(['.js', '.mjs', '.cjs', '.json', '.html', '.htm', '.css',

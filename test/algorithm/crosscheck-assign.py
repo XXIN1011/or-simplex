@@ -27,11 +27,13 @@ import sys
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
+_HERE = os.environ.get('OR_TEST_BANK_DIR') or os.path.dirname(os.path.abspath(__file__))
 bank_path = os.path.join(_HERE, 'assignment-bank.json')
 if not os.path.exists(bank_path):
     sys.exit('题库不存在：' + bank_path + '\n请先运行 node test/algorithm/assignment-test.js')
 bank = json.load(open(bank_path, encoding='utf-8'))
+if not bank:
+    sys.exit('题库为空，不能判定通过')
 print(f'载入题目: {len(bank)}')
 
 n_opt = n_inf = 0

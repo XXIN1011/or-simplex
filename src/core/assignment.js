@@ -54,6 +54,7 @@ var fmtNum = _fmt.fmtNum;
 
 /* 「禁止指派」的入参记号。界面填 ×、JSON 里写 null 都认。 */
 var FORBIDDEN_TOKENS = ['x', 'X', '×', '-', '—', '–', '∞', 'M', 'inf', 'INF', 'Inf'];
+var parseNumber = require('./number-input.js').parseNumber;
 
 /**
  * asCell —— 把一格输入规范化成「数字」或「null（禁止指派）」。
@@ -67,7 +68,7 @@ function asCell(raw) {
     var s = raw.trim();
     if (s === '') return 0;                            // 与项目其它模块一致：空格按 0 计
     if (FORBIDDEN_TOKENS.indexOf(s) >= 0) return null;
-    var t = Number(s);
+    var t = parseNumber(s, true);
     return isFinite(t) ? t : undefined;
   }
   return undefined;

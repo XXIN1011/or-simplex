@@ -101,7 +101,11 @@ const SLOT = '/*__BUNDLE__*/';
 if (tpl.indexOf(SLOT) === -1) throw new Error('template.html 缺少占位符 ' + SLOT);
 
 /* 用函数作为替换值，避免 $& 等替换模式被解释 */
-const out = tpl.replace(SLOT, () => bundle);
+const styles = ['tokens', 'components', 'theme', 'workspace'].map(name =>
+  fs.readFileSync(path.join(root, 'styles', name + '.css'), 'utf8')).join('\n');
+const STYLE_SLOT = '/*__STYLES__*/';
+if (tpl.indexOf(STYLE_SLOT) === -1) throw new Error('template.html 缺少样式占位符');
+const out = tpl.replace(STYLE_SLOT, () => styles).replace(SLOT, () => bundle);
 
 fs.writeFileSync(OUT, out, 'utf8');
 

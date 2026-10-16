@@ -11,6 +11,7 @@
     这类只统计、不直接判失败，但会单独列出来看。
 """
 import json
+import sys
 import numpy as np
 from scipy.optimize import linprog
 
@@ -24,8 +25,10 @@ import os
 #   —— 原点可行、射线 (t,0,3t) 对任意 t>0 可行且 z = -12t，数学上确定无界；
 #   而 method='highs' 报 infeasible，presolve=False / highs-ds / interior-point 都报 unbounded。
 #   所以本脚本一旦出现「状态不一致」，先关掉 presolve 复核，再判断是谁错。
-_HERE = os.path.dirname(os.path.abspath(__file__))
+_HERE = os.environ.get('OR_TEST_BANK_DIR') or os.path.dirname(os.path.abspath(__file__))
 bank = json.load(open(os.path.join(_HERE, 'sens-bank.json'), encoding='utf-8'))
+if not bank:
+    sys.exit('题库为空，不能判定通过')
 n_prob = len(bank)
 n_in = sum(1 for t in bank for s in t['samples'] if s['tag'] == 'in')
 n_out = sum(1 for t in bank for s in t['samples'] if s['tag'] == 'out')
@@ -115,3 +118,5 @@ else:
     print('✓ 所有越界样本的预测都已失效 —— 区间没有给窄')
 
 print('\n结论:', 'PASS' if not fail_in else 'FAIL')
+
+sys.exit(1 if fail_in else 0)

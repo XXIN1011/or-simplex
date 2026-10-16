@@ -77,8 +77,9 @@ function unitTests() {
     .map(f => path.join('test', 'unit', f));
   const r = sh(process.execPath, ['--test'].concat(files), { maxBuffer: 32 * 1024 * 1024 });
   const out = (r.stdout || '') + (r.stderr || '');
-  const m = out.match(/# tests (\d+)[\s\S]*?# pass (\d+)[\s\S]*?# fail (\d+)/);
-  return m ? { files: files.length, total: Number(m[1]), pass: Number(m[2]), fail: Number(m[3]) } : null;
+  const m = out.match(/(?:#|ℹ)\s*tests\s+(\d+)[\s\S]*?(?:#|ℹ)\s*pass\s+(\d+)[\s\S]*?(?:#|ℹ)\s*fail\s+(\d+)/);
+  return m ? { ok: r.status === 0 && Number(m[3]) === 0,
+    files: files.length, total: Number(m[1]), pass: Number(m[2]), fail: Number(m[3]) } : null;
 }
 
 /* ---------------- ⑤ 两个静态检查 ---------------- */
@@ -98,6 +99,7 @@ const data = {
   branch, head, headMsg, dirty, remoteUrl, build, coreStats, webStats,
   modules, mounts, unit, registryOk, noDpOk, algorithmSuites
 };
+process.exitCode = build.ok && unit && unit.ok && registryOk && noDpOk ? 0 : 1;
 
 function card(d) {
   const L = [];

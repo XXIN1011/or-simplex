@@ -1,0 +1,78 @@
+
+/* =========================================================================
+   设计令牌（design tokens）
+   -------------------------------------------------------------------------
+   全部颜色 / 圆角 / 阴影 / 间距都先落到变量上，组件只引用变量。这样浅色与
+   深色是「同一套结构换一组值」，不会出现某条规则忘了跟着深色走的情况。
+
+   配色取向参考了 GitHub 上几套被广泛使用的中性色系统（shadcn/ui 的
+   background / card / muted / border 分层，GitHub Primer 的「中性底色 + 单一
+   强调色」用法）：大面积用中性灰蓝，强调色只出现在可操作元素与关键数字上，
+   颜色越少，层次反而越清楚。
+   ========================================================================= */
+:root{
+  color-scheme:light dark;
+
+  /* --fg2 承担绝大部分次要文字（副标题、章节标题、说明）。浅色下要过 WCAG AA
+     的 4.5:1 —— 它在白卡上是 5.5:1、在灰底 --soft 上仍有 5.2:1，留了余量。 */
+  --fg:#0f1623; --fg2:#55606f; --fg3:#8b95a5;
+  --line:#e5e8ee; --line2:#d1d7e1;
+  --bg:#f5f7fa; --card:#fff; --input:#fff; --soft:#f1f4f9; --zebra:#fafbfd;
+
+  --accent:#2563eb; --accent-hi:#5b8cf7; --accent-soft:#eef4ff; --accent-text:#1d4ed8;
+  --leave-soft:#fff5e9; --pivot:#f59e0b; --pivot-soft:#fef3c7;
+  --violet:#7c3aed; --violet-soft:#f4f0ff;
+  /* 覆盖线的颜色：比 --warn 淡一点，线压在数字旁边时不至于抢走数字的分量 */
+  --line-warn:rgba(180,83,9,.66);
+  --ok:#116b33; --ok-soft:#eefbf2;
+  --warn:#b45309; --warn-soft:#fff8ea;
+  --err:#c02626; --err-soft:#fef3f2;
+
+  /* 页面背景上那两团极淡的光晕：只负责氛围，不承载任何文字（对比度审查取的是
+     background-color，始终是纯色，所以不会被它稀释） */
+  --glow-1:rgba(37,99,235,.10);
+  --glow-2:rgba(245,158,11,.10);
+
+  --shadow-1:0 1px 2px rgba(15,22,35,.05), 0 1px 3px rgba(15,22,35,.04);
+  --shadow-2:0 6px 18px -6px rgba(15,22,35,.14), 0 2px 6px -2px rgba(15,22,35,.06);
+  --shadow-3:0 16px 40px -12px rgba(15,22,35,.26);
+  --focus:0 0 0 3px rgba(37,99,235,.20);
+
+  --r-sm:9px; --r:13px; --r-lg:16px; --r-xl:20px;
+
+  --mono:ui-monospace,"SF Mono","Cascadia Mono",Consolas,"Courier New",monospace;
+  --caret:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%238b95a5' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+/* ---------- 深色：颜色全部走变量，这里整体换一套 ----------
+   ★ 这里原本是 @media (prefers-color-scheme: dark)，改成属性驱动，是为了让
+   「跟随系统 / 浅色 / 深色」三档共用同一份配色 —— 媒体查询表达不了
+   「系统是深色、但用户在本应用里偏要浅色」这种情况。
+   现在由 src/web/settings-ui.js 把系统偏好解析成 light / dark 写进
+   <html data-theme>，「跟随系统」这一档也走同一条路，所以深色配色只有一份，
+   不存在「媒体查询一份 + 属性一份」的双份维护。
+   选择器用 html[data-theme="dark"]（权重 0,1,1）而不是 :root（0,1,0），
+   这样无论本区块排在源码哪里都压得过浅色基础规则，不再依赖源码顺序。 */
+html[data-theme="dark"]{
+  --fg:#e8ecf3; --fg2:#a4aec1; --fg3:#6e7a8d;
+  --line:#242c3a; --line2:#333d4e;
+  --bg:#0d1016; --card:#151a23; --input:#1c222d; --soft:#1b212c; --zebra:#181e28;
+
+  --accent:#7aa2ff; --accent-hi:#a3bdff; --accent-soft:#1b2740; --accent-text:#9ab8ff;
+  --leave-soft:#2e2416; --pivot:#fbbf24; --pivot-soft:#3d320f;
+  --violet:#b79bff; --violet-soft:#241d3a;
+  --line-warn:rgba(251,191,36,.62);
+  --ok:#4ade80; --ok-soft:#0f2a1c;
+  --warn:#fbbf24; --warn-soft:#2f2710;
+  --err:#f87171; --err-soft:#301a1a;
+
+  --glow-1:rgba(90,130,255,.13);
+  --glow-2:rgba(245,158,11,.06);
+
+  --shadow-1:0 1px 2px rgba(0,0,0,.5);
+  --shadow-2:0 8px 22px -8px rgba(0,0,0,.7);
+  --shadow-3:0 18px 44px -14px rgba(0,0,0,.8);
+  --focus:0 0 0 3px rgba(122,162,255,.28);
+
+  --caret:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%236e7a8d' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+}

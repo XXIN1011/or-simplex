@@ -1,0 +1,39 @@
+/* 输入与结果工作区：品牌/导航保留玻璃，长篇数字内容使用稳定底色。 */
+:root{--content-surface:rgba(255,255,255,.96)}
+html[data-theme="dark"]{--content-surface:rgba(21,26,35,.97)}
+.input-guide{margin:0 0 16px;padding:0 0 14px;border-bottom:1px solid var(--line2)}
+.guide-intro{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.guide-intro b{font-size:14px}
+.guide-intro p{margin:3px 0 0;color:var(--fg2);font-size:12.5px}
+.guide-intro .btn{flex-shrink:0}
+.guide-size{margin-top:8px}
+.guide-size summary,.result-work>summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:650;color:var(--fg)}
+.guide-size summary::before,.result-work>summary::before{content:'＋';display:inline-block;margin-right:8px;color:var(--accent)}
+.guide-size[open]>summary::before,.result-work[open]>summary::before{content:'−'}
+.guide-fields{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;padding:4px 0}
+.guide-fields label{display:flex;flex:1;min-width:90px;flex-direction:column;gap:5px;font-size:12px;color:var(--fg2)}
+.guide-fields select{min-height:44px;width:100%;padding:8px 12px;font:inherit;font-size:15px;color:var(--fg);background:var(--input);border:1px solid var(--line2);border-radius:var(--r-sm)}
+.guide-note{font-size:12px;line-height:1.65;color:var(--fg2);margin:8px 0 0}
+.input-guide.has-model>.guide-note,.input-guide.has-model .guide-intro p{display:none}
+.result-nav{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 18px}
+.result-nav .btn{min-height:44px}
+.result-work{margin:14px 0}
+.result-work>summary{padding:8px 14px;border:1px solid var(--line2);border-radius:var(--r);background:var(--content-surface);margin-bottom:16px}
+[data-section]{scroll-margin-top:18px}
+#result .card,#ipOut .card,#sensOut .card,#asOut .card{
+  background:var(--content-surface);backdrop-filter:none;-webkit-backdrop-filter:none;
+  box-shadow:var(--shadow-1);border-color:var(--line);border-radius:var(--r);
+}
+.result-nav .btn{backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:var(--shadow-1)}
+@media(min-width:1000px){.wrap{max-width:1000px}.hero{padding:26px 30px}.modcard .md{font-size:14px}}
+@media(min-width:1100px){
+  .wrap{max-width:1240px}
+  #mod-home,#mod-ip,#mod-sens,#mod-assign,#mod-settings{max-width:1000px;margin:0 auto}
+  #mod-simplex.on.has-result{display:grid;grid-template-columns:minmax(340px,420px) minmax(0,1fr);grid-template-rows:auto auto auto 1fr;column-gap:24px;align-items:start}
+  #mod-simplex.has-result>header{grid-column:1/-1;grid-row:1}
+  #mod-simplex.has-result>.card{grid-column:1;grid-row:2}
+  #mod-simplex.has-result>.help{grid-column:1;grid-row:3}
+  #mod-simplex.has-result>#banners{grid-column:1;grid-row:4}
+  #mod-simplex.has-result>#result{grid-column:2;grid-row:2/5;min-width:0}
+}
+@media(max-width:360px){.guide-intro{align-items:flex-start;flex-direction:column}.guide-fields .btn{width:100%}}

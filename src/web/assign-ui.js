@@ -19,6 +19,8 @@ var fmtNum = format.fmtNum;
 
 var assignment = require('../core/assignment.js');
 var assignSolve = assignment.assignSolve;
+var parseNumber = require('../core/number-input.js').parseNumber;
+var resultLayout = require('./result-layout.js');
 var assignSymbols = assignment.assignSymbols;
 
 var inputPanel = require('./input-panel.js');
@@ -48,8 +50,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
     var s = String(raw === undefined || raw === null ? '' : raw).trim();
     if (s === '') return 0;                                  // 与项目其它模块一致：空格按 0 计
     if (FORBIDDEN.indexOf(s) >= 0) return null;
-    var v = parseFloat(s.replace(/[^0-9.\-+eE]/g, ''));
-    return isFinite(v) ? v : 0;
+    return parseNumber(s, true);
   }
 
   /* ===================== 输入表 ===================== */
@@ -79,11 +80,13 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
     h += '</tbody>';
     $('asInTbl').innerHTML = h;
     bindInput();
+    Array.prototype.forEach.call($('asInTbl').querySelectorAll('input.num'), validateCell);
     $('asDelRow').disabled = (m < 1);
     $('asAddRow').disabled = (m >= MAX_ROW);
     $('asDelCol').disabled = (n < 1);
     $('asAddCol').disabled = (n >= MAX_COL);
     addScrollHints(document);
+    if (guide) guide.sync(m, n);
   }
 
   function bindInput() {
@@ -92,9 +95,15 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
         var i = +inp.dataset.i, j = +inp.dataset.j;
         if (!state.cells[i]) state.cells[i] = [];
         state.cells[i][j] = inp.value;
+        validateCell(inp);
         $('asOut').innerHTML = '';          // 一改输入就把上一次的结果收掉，免得对不上
       });
     });
+  }
+
+  function validateCell(inp) {
+    var v = parseCell(inp.value);
+    inp.setAttribute('aria-invalid', v === null || isFinite(v) ? 'false' : 'true');
   }
 
   function rowName(i, m) { return i < m ? '人员' + (i + 1) : '虚拟人员' + (i - m + 1); }
@@ -110,6 +119,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
       cells.push(row);
     }
     state.rows = rows; state.cols = cols; state.cells = cells;
+    $('asOut').innerHTML = '';
     renderInput();
   }
 
@@ -157,10 +167,13 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
       addScrollHints(document);
       return;
     }
-    h += roundsCard(res);
-    h += conclusionCard(res);
+    h = conclusionCard(res)
+      + resultLayout.navigation([['assignment-steps','查看匈牙利法过程']])
+      + '<details class="result-work" open><summary>完整推导（可收起）</summary>' + h
+      + '<section data-section="assignment-steps">' + roundsCard(res) + '</section></details>';
     $('asOut').innerHTML = h;
     addScrollHints(document);
+    resultLayout.wire($('asOut'));
   }
 
   /* ---------------- ① 转换（只在真做了转换时才出现） ---------------- */
@@ -361,10 +374,22 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
   inputPanel.buildChrome({
     mount: 'asPanel',
     tbl: 'asInTbl', dirSeg: 'asDirSeg', tblClass: 'inp mtx',
+    matrix: true, maxN: MAX_ROW, maxM: MAX_COL,
     dirOrder: ['min', 'max'],
     addVar: 'asAddRow', delVar: 'asDelRow', addCon: 'asAddCol', delCon: 'asDelCol',
     labels: { addVar: '+ 行', delVar: '− 行', addCon: '+ 列', delCon: '− 列' },
     state: state
+  });
+
+  var guide = require('./input-guide.js').attach($('asPanel'), {
+    resize: setSize,
+    sample: function () {
+      var p = require('./examples.js').assignment();
+      $('asDirSeg').querySelector('[data-dir="' + p.direction + '"]').click();
+      setSize(p.cost.length, p.cost[0].length);
+      state.cells = p.cost.map(function (row) { return row.map(String); });
+      renderInput();
+    }
   });
 
   Array.prototype.forEach.call($('asDirSeg').querySelectorAll('button'), function (b) {
@@ -372,6 +397,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
       state.dir = b.dataset.dir;
       Array.prototype.forEach.call($('asDirSeg').querySelectorAll('button'), function (x) {
         x.classList.toggle('on', x === b);
+        x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
       });
       $('asOut').innerHTML = '';
     });

@@ -27,6 +27,7 @@ var pSub = require('./util.js').pSub;
 var pMul = require('./util.js').pMul;
 var model = require('./model.js');
 var errors = require('./errors.js');
+var parseNumber = require('./number-input.js').parseNumber;
 
 /**
  * validate —— 校验输入能否求解。
@@ -37,9 +38,15 @@ var errors = require('./errors.js');
  *          message 用全角分号连接各条原因，顺序即校验顺序（界面直接显示这段文字）
  */
 function validate(problem) {
+  if (!problem || typeof problem !== 'object' || Array.isArray(problem)) {
+    return errors.invalidInput(['题目必须是对象']);
+  }
+  if (!Array.isArray(problem.c) || !Array.isArray(problem.constraints)) {
+    return errors.invalidInput(['目标函数系数和约束条件必须是数组']);
+  }
   var direction = problem.direction === 'min' ? 'min' : 'max';
   var swapped = direction === 'min';            // min z  ->  max w = -z
-  var c0 = problem.c.map(Number);
+  var c0 = problem.c.map(function (v) { return parseNumber(v); });
   var n = c0.length;
   var m = problem.constraints.length;
 
@@ -50,8 +57,16 @@ function validate(problem) {
   var invalid = [];
   for (var q = 0; q < m; q++) {
     var kk = problem.constraints[q];
+    if (!kk || typeof kk !== 'object' || !Array.isArray(kk.coef)) {
+      invalid.push('第 ' + (q + 1) + ' 个约束必须包含系数数组');
+      continue;
+    }
     if (kk.coef.length !== n) invalid.push('第 ' + (q + 1) + ' 个约束的系数个数与变量数不一致');
-    if (!isFinite(Number(kk.rhs))) invalid.push('第 ' + (q + 1) + ' 个约束的右端项不是有效数字');
+    if (!isFinite(parseNumber(kk.rhs))) invalid.push('第 ' + (q + 1) + ' 个约束的右端项不是有效数字');
+    for (var j = 0; j < kk.coef.length; j++) {
+      if (!isFinite(parseNumber(kk.coef[j]))) invalid.push('第 ' + (q + 1) + ' 个约束的第 ' + (j + 1) + ' 个系数不是有效数字');
+    }
+    if (['<=', '>=', '='].indexOf(kk.rel) < 0) invalid.push('第 ' + (q + 1) + ' 个约束的关系符无效');
   }
   for (var q2 = 0; q2 < n; q2++) {
     if (!isFinite(c0[q2])) invalid.push('目标函数第 ' + (q2 + 1) + ' 个系数不是有效数字');
@@ -76,7 +91,7 @@ function toStandardForm(problem) {
      顺便记下哪些约束被取负过：内部 b = flipSign · 用户 b。后面算影子价格和
      b 的允许区间都要乘回去，否则「-x1 ≤ -2」这类约束的方向会反。 */
   var cons = problem.constraints.map(function (k) {
-    return model.createConstraint(k.coef.map(Number), k.rel, Number(k.rhs));
+    return model.createConstraint(k.coef.map(function (v2) { return parseNumber(v2); }), k.rel, parseNumber(k.rhs));
   });
   var flipSign = [];
   for (var i = 0; i < m; i++) {
@@ -150,7 +165,7 @@ function toStandardForm(problem) {
       vars: vars, basis: basis, cObj: cObj, rows: rows, A0: A0, obj: obj,
       flipSign: flipSign,
       consRhs: cons.map(function (k) { return k.rhs; }),
-      userRhs: problem.constraints.map(function (k) { return Number(k.rhs); })
+      userRhs: problem.constraints.map(function (k) { return parseNumber(k.rhs); })
     })
   };
 }

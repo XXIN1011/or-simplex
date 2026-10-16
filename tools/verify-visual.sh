@@ -16,8 +16,14 @@ FAIL=0
 OUT=preview/verify
 mkdir -p "$OUT"
 VERBOSE="${1:-}"
+FILTER="${VERIFY_CASE:-}"
+RUNS=0
 
-echo "构建：$(node src/build.js)"
+if ! build=$(node src/build.js); then
+  echo "构建失败，停止视觉验证" >&2
+  exit 1
+fi
+echo "构建：$build"
 echo
 
 # 名称|hash|模式|填充脚本|滚动位置(逗号分隔)
@@ -38,21 +44,33 @@ settings-dark|#/settings|dark||0
 
 while IFS='|' read -r name hash mode fill offs; do
   [ -z "$name" ] && continue
+  [ -n "$FILTER" ] && [ "$name" != "$FILTER" ] && continue
   [ -z "$offs" ] && offs=0
   IFS=',' read -ra OFFS <<< "$offs"
   for off in "${OFFS[@]}"; do
+    RUNS=$((RUNS + 1))
     png="$OUT/vp-$name-$off.png"; json="$OUT/r-$name-$off.json"
-    node tools/visual/shot-vp.js "index.html$hash" "$png" "$off" "$mode" "$fill" >/dev/null 2>&1
+    if ! node tools/visual/shot-vp.js "index.html$hash" "$png" "$off" "$mode" "$fill" >"$OUT/shot-$name-$off.log" 2>&1; then
+      echo "$name scroll=$off : 截图失败，见 $OUT/shot-$name-$off.log"
+      FAIL=1
+      continue
+    fi
     if [ "$mode" = dark ]; then
       PROBE_FILL="$fill" node tools/visual/probe-color.js "index.html$hash" dark > "$json"
     else
       PROBE_FILL="$fill" node tools/visual/probe-color.js "index.html$hash" > "$json"
     fi
-    res=$(python tools/visual/measure-contrast.py "$png" "$json" 2 "$off" 844 2>/dev/null)
+    if [ $? -ne 0 ]; then
+      echo "$name scroll=$off : 颜色探针失败"
+      FAIL=1
+      continue
+    fi
+    res=$(python tools/visual/measure-contrast.py "$png" "$json" 2 "$off" 844 2>&1)
+    status=$?
     cnt=$(printf '%s\n' "$res" | grep -cE "OK |★不过")
-    if printf '%s\n' "$res" | grep -qE "★不过"; then
+    if [ "$status" -ne 0 ] || [ "$cnt" -eq 0 ] || printf '%s\n' "$res" | grep -qE "★不过"; then
       printf "%-18s scroll=%-5s 检查 %2s 项 : ★ 不达标\n" "$name" "$off" "$cnt"
-      printf '%s\n' "$res" | grep "★不过" | sed 's/^/      /'
+      printf '%s\n' "$res" | sed 's/^/      /'
       FAIL=1
     else
       min=$(printf '%s\n' "$res" | grep -oE "[0-9]+\.[0-9]+ " | tr -d ' ' | sort -n | head -1)
@@ -63,6 +81,7 @@ while IFS='|' read -r name hash mode fill offs; do
 done <<< "$CASES"
 
 echo
+if [ "$RUNS" -eq 0 ]; then echo "没有匹配的视觉用例：$FILTER" >&2; exit 1; fi
 if [ $FAIL -eq 0 ]; then
   echo "像素级对比度：全部达标 ✓"
 else

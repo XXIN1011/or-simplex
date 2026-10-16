@@ -249,8 +249,9 @@ const AUDIT = `(function(){
   console.log(`       viewport=${data.viewport}`);
   console.log(`       横向溢出=${data.hOverflow ? '是（' + data.scrollW + ' > ' + data.innerW + '）' : '否'}`);
 
-  q.end(data.smallTargets.length === 0 && data.tinyFonts.length === 0 && !data.hOverflow,
-    `触摸目标<44px ${data.smallTargets.length} 个 / 小字号 ${data.tinyFonts.length} 个 / 横向溢出 ${data.hOverflow ? '有' : '无'}`);
+  const ok = require('./audit-result.js').auditPassed(data);
+  q.end(ok,
+    `触摸目标<44px ${data.smallTargets.length} 个 / 小字号 ${data.tinyFonts.length} 个 / 对比度不足 ${data.lowContrast.length} 个 / 无标注 ${data.forms.unlabeled} 个 / 横向溢出 ${data.hOverflow ? '有' : '无'}`);
   await sess.close();
-  process.exit(0);
+  process.exit(ok ? 0 : 1);
 })().catch(e => { console.error('FAIL:', e.message); process.exit(1); });
