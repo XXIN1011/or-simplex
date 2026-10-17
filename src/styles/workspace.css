@@ -94,7 +94,7 @@
 /* 基变量：运量外套细框 */
 .transport-table td.tp-has-base .tp-value{box-shadow:0 0 0 1.5px var(--fg3);border-radius:2px;padding:2px 8px}
 /* 格子底部的角色标签（本次选择 / 离基格 / 零值基…） */
-.tp-tag{position:absolute;left:0;right:0;bottom:4px;font-size:11px;line-height:1.2;color:var(--fg2)}
+.tp-tag{position:absolute;left:0;right:0;bottom:3px;font-size:12px;line-height:1.2;color:var(--fg2)}
 /* 回路连线的节点：费用角标下方、运量上方的留白 */
 .tp-anchor{position:absolute;left:24px;top:52px;width:1px;height:1px}
 /* 只给读屏和测试看的文字 */
@@ -103,8 +103,8 @@
 .transport-table th.tp-corner{position:relative;padding:0;height:52px;overflow:hidden}
 .transport-table th.tp-corner::after{content:'';position:absolute;inset:0;
   background:linear-gradient(to top right,transparent calc(50% - .5px),var(--line2) 50%,transparent calc(50% + .5px))}
-.transport-table th.tp-corner .tp-corner-x{position:absolute;top:2px;right:7px;font-size:11px;font-weight:600}
-.transport-table th.tp-corner .tp-corner-y{position:absolute;left:7px;bottom:2px;font-size:11px;font-weight:600}
+.transport-table th.tp-corner .tp-corner-x{position:absolute;top:2px;right:7px;font-size:12px;font-weight:600}
+.transport-table th.tp-corner .tp-corner-y{position:absolute;left:7px;bottom:2px;font-size:12px;font-weight:600}
 .tp-balance{font-size:14px;font-weight:650;line-height:1.7;margin:14px 0}
 .transport-input .tp-margin{background:var(--soft)}
 .tp-blocked,.transport-table td.tp-virtual{--cell-bg:var(--soft);background:var(--soft);color:var(--fg2)}
@@ -168,7 +168,7 @@
 .tp-route-item{display:inline-flex;align-items:center;gap:6px;padding:4px 9px 4px 5px;border:1px solid var(--line);
   border-radius:999px;background:var(--card);color:var(--fg2)}
 .tp-route-n{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 3px;
-  border-radius:999px;background:var(--soft);color:var(--fg2);font-size:11px;line-height:1}
+  border-radius:999px;background:var(--soft);color:var(--fg2);font-size:12px;line-height:1}
 .tp-route-cell{font-family:var(--mono);font-size:12px}
 .tp-route-sign{font-size:14px;font-weight:700;line-height:1}
 .tp-route-plus .tp-route-sign{color:var(--accent-text)}
