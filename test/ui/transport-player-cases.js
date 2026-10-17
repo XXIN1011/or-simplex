@@ -2,6 +2,14 @@
 'use strict';
 const {sleep} = require('../../lib/chrome');
 module.exports = async function playerCases(sess, run) {
+  async function waitFor(expression) {
+    const deadline=Date.now()+4000;
+    while(Date.now()<deadline) {
+      if(await sess.evl(expression)) return;
+      await sleep(50);
+    }
+    // 由随后的功能断言报告失败，不用固定延时掩盖没有发生的状态变化。
+  }
   await sess.cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'no-preference'}]},sess.sessionId);
   await run(`
     q('#tpDirSeg [data-dir=min]').click();q('#tpPanel [data-guide=sample]').click();click('tpSolveBtn');
@@ -36,15 +44,20 @@ module.exports = async function playerCases(sess, run) {
     p.querySelector('[data-tp-reset]').click();
     var box=q('#tpOut [data-study]');box.querySelector('[data-study-mode=single]').click();
     expect(box.querySelectorAll('[data-study-step]:not([hidden])').length===1,'分配演示与单步学习共存');
-    a=q('[data-kind=allocation]');a.scrollIntoView({block:'start'});
-    a.querySelector('[data-tp-speed]').value='600';a.querySelector('[data-tp-play]').click();
+    a=q('[data-kind=allocation]');a.scrollIntoView({block:'start',behavior:'instant'});
+    a.querySelector('[data-tp-speed]').value='600';
+  `);
+  // 让 IntersectionObserver 收到定位后的可见性，再模拟用户点击可见控件。
+  await sleep(100);
+  await run(`
+    var a=q('[data-kind=allocation]');a.querySelector('[data-tp-play]').click();
     expect(a.getAttribute('data-playing')==='true' && a.querySelector('[data-tp-play]').textContent==='暂停','显式播放启动且可暂停');
   `);
-  await sleep(750);
+  await waitFor("+document.querySelector('[data-kind=allocation]').getAttribute('data-frame')>=1");
   await run(`
     var a=q('[data-kind=allocation]');
     expect(+a.getAttribute('data-frame')>=1,'计时器推进演示帧');
-    a.querySelector('[data-tp-play]').click();
+    if(a.getAttribute('data-playing')==='true')a.querySelector('[data-tp-play]').click();
     window.__tpPausedFrame=a.getAttribute('data-frame');
     expect(a.getAttribute('data-playing')==='false','暂停停止播放状态');
   `);
@@ -54,14 +67,14 @@ module.exports = async function playerCases(sess, run) {
     expect(a.getAttribute('data-frame')===window.__tpPausedFrame,'暂停后计时器不继续推进');
     a.querySelector('[data-tp-play]').click();
   `);
-  await sleep(750);
+  await waitFor("document.querySelector('[data-kind=allocation]').getAttribute('data-frame')==='2' && document.querySelector('[data-kind=allocation]').getAttribute('data-playing')==='false'");
   await run(`
     var a=q('[data-kind=allocation]');
     expect(a.getAttribute('data-frame')==='2' && a.getAttribute('data-playing')==='false','自动播放到末帧后停止');
     a.querySelector('[data-tp-reset]').click();a.querySelector('[data-tp-play]').click();
     q('#tpOut [data-study-next]').click();
     expect(a.getAttribute('data-playing')==='false','切换学习步骤暂停被隐藏演示');
-    q('#tpOut [data-study-prev]').click();a.scrollIntoView({block:'start'});a.querySelector('[data-tp-play]').click();
+    q('#tpOut [data-study-prev]').click();a.scrollIntoView({block:'start',behavior:'instant'});a.querySelector('[data-tp-play]').click();
   `);
   await sess.evl("location.hash='#/'");
   await sleep(100);
