@@ -19,3 +19,4 @@ __pycache__/
 # 视觉量测的输出（tools/verify-visual.sh 会往这里写截图与探针 JSON）
 preview/
 .impeccable/review/
+.impeccable/questions/
