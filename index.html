@@ -125,9 +125,12 @@ h1{margin:0;font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1.3
 header p{margin:8px 0 0;font-size:14px;color:var(--fg2);letter-spacing:.01em}
 
 /* ---------- 卡片 ---------- */
+/* --card-pad 是卡片左右内边距的唯一来源：.scroll 用它做负外边距出血，
+   两者必须同值，否则滚动区会顶出卡片边框（窄屏曾因写死 -20px 而越界 4px）。 */
 .card{
+  --card-pad:20px;
   background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);
-  padding:20px;margin-bottom:16px;box-shadow:var(--shadow-1);
+  padding:var(--card-pad);margin-bottom:16px;box-shadow:var(--shadow-1);
 }
 
 /* ---------- 符号说明（可折叠） ---------- */
@@ -177,7 +180,13 @@ header p{margin:8px 0 0;font-size:14px;color:var(--fg2);letter-spacing:.01em}
 .seg button.on{background:var(--card);color:var(--accent);box-shadow:var(--shadow-1);font-weight:700}
 
 /* ---------- 输入表 ---------- */
-.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -20px;padding:0 20px}
+/* 滚动区左右各出血到卡片内边距的外沿，表格才能贴着卡片边缘滑动。
+   出血量取卡片自己的 --card-pad（非卡片内退回 20px），保证滚动区始终落在边框内。 */
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 calc(-1*var(--card-pad,20px));padding:0 var(--card-pad,20px)}
+/* 表格在滚动区里水平居中：比滚动区窄时两侧留白相等；比滚动区宽时 auto 边距
+   退化为 0，表格仍从左端开始、能整张滑到右边 —— 不会像 flex 居中那样把左端
+   裁到滚动范围之外。 */
+.scroll>table{margin-left:auto;margin-right:auto}
 .scroll-hint{
   font-size:12px;color:var(--fg2);text-align:center;
   margin:-1px 0 8px;transition:opacity .2s;
@@ -776,8 +785,7 @@ button.btn.primary:disabled{filter:none}
 @media(max-width:480px){
   .wrap{padding:24px 16px calc(108px + env(safe-area-inset-bottom))}
   #mod-home{padding:0 8px}
-  .card{padding:16px}
-  .card>.scroll{margin:0 -16px;padding:0 16px}
+  .card{--card-pad:16px;padding:var(--card-pad)}
   .guide-intro{gap:8px;flex-wrap:wrap}
   .guide-actions{flex-wrap:wrap}
   .result-nav{gap:8px}
@@ -1060,6 +1068,11 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
   .tp-route{margin:8px 0;gap:4px}
   .tp-route-item{padding:3px 7px 3px 4px}
   .tp-balance{font-size:13px;margin:10px 0}
+}
+/* ≤480px 卡片内边距降到 16px，滚动区随之收窄 8px：把输入格左右内边距收掉，
+   5 列产销平衡表在 320px 屏幕仍能整表放下，不会把最后一列裁掉几个像素。 */
+@media(max-width:480px){
+  .transport-input td{padding:1px 0}
 }
 
 </style>

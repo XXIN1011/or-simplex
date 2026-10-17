@@ -267,3 +267,8 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
   .tp-route-item{padding:3px 7px 3px 4px}
   .tp-balance{font-size:13px;margin:10px 0}
 }
+/* ≤480px 卡片内边距降到 16px，滚动区随之收窄 8px：把输入格左右内边距收掉，
+   5 列产销平衡表在 320px 屏幕仍能整表放下，不会把最后一列裁掉几个像素。 */
+@media(max-width:480px){
+  .transport-input td{padding:1px 0}
+}

@@ -35,8 +35,7 @@ button.btn.primary:disabled{filter:none}
 @media(max-width:480px){
   .wrap{padding:24px 16px calc(108px + env(safe-area-inset-bottom))}
   #mod-home{padding:0 8px}
-  .card{padding:16px}
-  .card>.scroll{margin:0 -16px;padding:0 16px}
+  .card{--card-pad:16px;padding:var(--card-pad)}
   .guide-intro{gap:8px;flex-wrap:wrap}
   .guide-actions{flex-wrap:wrap}
   .result-nav{gap:8px}
