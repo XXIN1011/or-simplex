@@ -78,13 +78,27 @@
    ========================================================================= */
 #mod-transport{max-width:1000px;margin:0 auto}
 .transport-table caption,.transport-input caption{text-align:left;color:var(--fg2);font-size:13px;padding:12px 0;white-space:normal}
+/* 单元格网格：每格只画右边和下边，相邻格各画一遍也不会叠成 4px；整张表再补上边
+   和左边收口。线宽 2px —— 1px 在手机和高分屏上会被压成一条淡线，手机上分不清
+   格子；2px 才稳定呈现为实线（Chrome 会把 1.5px 舍入回 1px，所以不要用小数）。
+   这里用 separate + 零间距而不是 collapse —— collapse 下边框属于表格的网格，
+   position:sticky 的固定行列滚动时边框留在原处，行名和数字就会错位。
+   表格是实心网格，表头的圆角一并收方，免得圆角和网格线打架。
+   ★ 选择器必须写成 table.tb.transport-table（0,2,2）：通用表 table.tb td 的
+   border-bottom:1px solid var(--soft) 是（0,1,2），权重更高，写成 .transport-table td
+   就会被它压掉 —— 竖线变深、横线仍是那条几乎看不见的浅灰线。 */
+table.tb.transport-table,.transport-input{border-collapse:separate;border-spacing:0;
+  border-top:2px solid var(--grid);border-left:2px solid var(--grid)}
+table.tb.transport-table th,table.tb.transport-table td,
+.transport-input th,.transport-input td{border:0;border-right:2px solid var(--grid);border-bottom:2px solid var(--grid)}
+table.transport-table th:first-child,table.transport-table th:last-child{border-radius:0}
 .transport-table td,.transport-table th{min-width:98px}
 .transport-table td{--cell-bg:var(--card);position:relative;height:108px;padding:40px 0 14px;
   vertical-align:middle;text-align:center}
 .transport-table .tp-sub{display:block;margin-top:4px;font-size:12px;color:var(--fg2)}
-/* 费用角标：右边和下边各一条细线，另外两边借格子自己的格线。 */
+/* 费用角标：右边和下边各一条线，线宽与网格一致；另外两边借格子自己的格线。 */
 .tp-cost{position:absolute;left:0;top:0;z-index:2;padding:2px 12px 4px;
-  border-right:1px solid var(--line2);border-bottom:1px solid var(--line2);
+  border-right:2px solid var(--grid);border-bottom:2px solid var(--grid);
   background:var(--cell-bg);font:600 26px/1.15 var(--mono);color:var(--fg2)}
 /* 运量：居中的主数字；正负号在左边并染色 */
 .tp-value{display:inline-block;font-size:20px;font-weight:600;line-height:1.1;color:var(--fg)}
@@ -99,10 +113,10 @@
 .tp-anchor{position:absolute;left:24px;top:52px;width:1px;height:1px}
 /* 只给读屏和测试看的文字 */
 .tp-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
-/* 教材的对角线表头 */
+/* 教材的对角线表头；线宽与网格一致，否则斜线会比周围格线细一档 */
 .transport-table th.tp-corner{position:relative;padding:0;height:52px;overflow:hidden}
 .transport-table th.tp-corner::after{content:'';position:absolute;inset:0;
-  background:linear-gradient(to top right,transparent calc(50% - .5px),var(--line2) 50%,transparent calc(50% + .5px))}
+  background:linear-gradient(to top right,transparent calc(50% - 1px),var(--grid) 50%,transparent calc(50% + 1px))}
 .transport-table th.tp-corner .tp-corner-x{position:absolute;top:2px;right:7px;font-size:12px;font-weight:600}
 .transport-table th.tp-corner .tp-corner-y{position:absolute;left:7px;bottom:2px;font-size:12px;font-weight:600}
 .tp-balance{font-size:14px;font-weight:650;line-height:1.7;margin:14px 0}
@@ -143,10 +157,14 @@
 .tp-scene-title{font-size:16px;line-height:1.5;margin:16px 0 8px}
 .tp-player .transport-table td{min-width:112px;height:134px;padding:46px 0 18px}
 .tp-player .tp-stage{isolation:isolate}
-.tp-player .transport-table tr>th:first-child{position:sticky;left:0;z-index:2;background:var(--soft);width:72px;min-width:72px;max-width:72px;white-space:normal}
+/* 固定行列必须整块压住滚动内容。费用角标是 z-index:2 的定位元素、固定列原来
+   也是 2，同值时后画的赢 —— 滚动后角标从固定列上透出来，盖住「产地1」这类
+   行名，看起来就像表格乱码。固定列一律排到格内容之上，表头/表尾再高一层，
+   两个固定列相交时由表头/表尾收口。 */
+.tp-player .transport-table tr>th:first-child{position:sticky;left:0;z-index:3;background:var(--soft);width:72px;min-width:72px;max-width:72px;white-space:normal}
 .tp-player .transport-table tr>:last-child{width:64px;min-width:64px}
-.tp-player .transport-table tbody td:last-child{position:sticky;right:0;z-index:2;background:var(--soft)}
-.tp-player .transport-table thead th:last-child,.tp-player .transport-table tfoot td:last-child{position:sticky;right:0;z-index:3;background:var(--soft)}
+.tp-player .transport-table tbody td:last-child{position:sticky;right:0;z-index:3;background:var(--soft)}
+.tp-player .transport-table thead th:last-child,.tp-player .transport-table tfoot td:last-child{position:sticky;right:0;z-index:4;background:var(--soft)}
 .tp-player .transport-table tbody td.tp-margin-active:last-child{background:var(--accent-soft);color:var(--accent-text)}
 .tp-player .transport-table tr>th.tp-cut-label:first-child{background:var(--warn-soft);color:var(--warn)}
 .tp-player .tp-active{outline:3px solid var(--accent);outline-offset:-3px}

@@ -62,6 +62,7 @@
 - 运输模型将禁运状态与费用分开保存。基按可运图分量形成森林；退化零值基变量与正运量分开处理。
 - 运输问题返回 `infeasible` 时，方案和目标值为 `null`；虚拟行列不得绕过禁运限制。详见 [运输问题](docs/运输问题.md)。
 - `transport-player` 读取 core 的分配 / 换基前后快照，展示所选格、剩余供需、闭回路正负号、θ 与同步调整；回路连线的节点在费用角标下方的格内留白处，`transport-table` 只负责费用角标、基解方框、正负号与淡出，几何量测留在 `transport-player`。播放需用户启动，减少动态效果时仅手动。`transport-ui.invalidate` 清理播放器；隐藏步骤、折叠、切路由和离开视口暂停。`transport-table` 统一静态表、演示表及瓶颈标记。首页 `.module-list` 按实际首尾处理圆角，不再硬编码指派入口收口。
+- 运输表用实线网格：横竖同为 2px、共用 `grid` 令牌、每格只画右边和下边、`border-collapse:separate`。线宽不能退回 1px 或 1.5px（前者手机上淡成一条，后者被 Chrome 舍入回 1px）；`collapse` 也不行，sticky 固定列滚动时边框会留在原处。选择器必须写成 `table.tb.transport-table td`（0,2,2）：通用表的 `table.tb td` 是（0,1,2），写过就会把横线压回 `--soft`，只剩竖线变深。固定行名列与供应列的 z-index 必须高于格内费用角标，否则滚动后角标会从固定列上方透出盖住行名；`transport-player` 的自动横向定位按格边界取整。断言见 `test/ui/transport-player-cases.js` 的多宽度用例（含横竖同宽同色）。
 
 ## 6. 验证与发布
 

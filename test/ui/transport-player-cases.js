@@ -127,10 +127,41 @@ module.exports = async function playerCases(sess, run) {
       var p=q('[data-kind=pivot]');
       expect(document.documentElement.scrollWidth<=window.innerWidth+1,'演示表无页面横向溢出 ${width}px');
       expect(p.querySelector('[data-tp-play]').getBoundingClientRect().height>=44,'演示控制触摸目标 ${width}px');
+      /* 命中测试只对视口内的点有效，先把演示区滚进视口 */
+      p.scrollIntoView({block:'center',behavior:'instant'});
       var current=p.querySelector('.tp-active').getBoundingClientRect(),left=p.querySelector('tbody th').getBoundingClientRect(),right=p.querySelector('tbody td:last-child').getBoundingClientRect();
       var fits=current.left>=left.right-1 && current.right<=right.left+1;
       expect(fits,'自动定位当前格且不被固定列遮挡 ${width}px'+(fits?'':'；格宽 '+current.width+'，可视空间 '+(right.left-left.right)));
       expect(Math.abs(p.querySelector('thead th:last-child').getBoundingClientRect().left-right.left)<=1,'固定供应列标题与运量对齐 ${width}px');
+      /* 固定行名列必须整块压住滚动内容：费用角标曾经和固定列同为 z-index:2，
+         滚动后从列上透出来盖住行名。这里按命中测试守住「谁在上面」。 */
+      var labelTh=p.querySelector('tbody th'),leaks=0;
+      [].forEach.call(p.querySelectorAll('.tp-cost'),function(b){
+        var r=b.getBoundingClientRect();
+        if(!(r.right>left.left+1&&r.left<left.right-1&&r.bottom>left.top+1&&r.top<left.bottom-1))return;
+        var x=Math.round((Math.max(r.left,left.left)+Math.min(r.right,left.right))/2);
+        var y=Math.round((Math.max(r.top,left.top)+Math.min(r.bottom,left.bottom))/2);
+        if(y<0||y>window.innerHeight-1)return;
+        var hit=document.elementFromPoint(x,y);
+        if(!hit||!(hit===labelTh||labelTh.contains(hit)))leaks++;
+      });
+      expect(leaks===0,'固定行名列压住滚动内容，费用角标不外溢 ${width}px'+(leaks?'；'+leaks+' 处外溢':''));
+      /* 网格线：横竖两向必须同宽同色，且与表头底色至少 3:1。通用表
+         table.tb td 的浅色底边权重比 .transport-table td 高，曾把横线压回
+         --soft（只深了竖线），所以这里把颜色和宽度都比一遍。 */
+      function lum(c){var v=c.match(/[\\d.]+/g).slice(0,3).map(function(x){x/=255;return x<=0.03928?x/12.92:Math.pow((x+0.055)/1.055,2.4)});return 0.2126*v[0]+0.7152*v[1]+0.0722*v[2]}
+      var cellStyle=getComputedStyle(p.querySelector('tbody td')),thStyle=getComputedStyle(p.querySelector('thead th'));
+      var lineLum=lum(cellStyle.borderRightColor),bgLum=lum(thStyle.backgroundColor);
+      var lineRatio=(Math.max(lineLum,bgLum)+0.05)/(Math.min(lineLum,bgLum)+0.05);
+      expect(cellStyle.borderRightStyle==='solid'&&cellStyle.borderBottomStyle==='solid'
+        &&cellStyle.borderRightWidth===cellStyle.borderBottomWidth
+        &&cellStyle.borderRightColor===cellStyle.borderBottomColor
+        &&thStyle.borderBottomColor===cellStyle.borderRightColor
+        &&parseFloat(cellStyle.borderRightWidth)>=2&&lineRatio>=3,
+        '运输格横竖网格线同宽同色且清晰 ${width}px（'+cellStyle.borderRightWidth+'，对比 '+(+lineRatio.toFixed(2))+'）');
+      var inCell=getComputedStyle(q('#tpInTbl tbody td'));
+      expect(inCell.borderRightColor===inCell.borderBottomColor&&inCell.borderRightWidth===cellStyle.borderRightWidth,
+        '产销平衡表横竖网格线与运输表一致 ${width}px（'+inCell.borderRightWidth+'）');
       var stage=p.querySelector('.tp-stage'),line=p.querySelector('.tp-path polyline'),r=stage.getBoundingClientRect();
       expect(line && line.getAttribute('points').split(' ').every(function(point){var a=point.split(',').map(Number);return a[0]>=0 && a[0]<=r.width+1 && a[1]>=0 && a[1]<=r.height+1}),'回路路径位于运输表内 ${width}px');
     `);

@@ -17,6 +17,11 @@
      的 4.5:1 —— 它在白卡上是 5.5:1、在灰底 --soft 上仍有 5.2:1，留了余量。 */
   --fg:#182230; --fg2:#536174; --fg3:#657287;
   --line:#dce2eb; --line2:#c4cdd9; --control-line:#8491a3;
+  /* 表格网格线：产销平衡表 / 运输表的单元格分隔线。--line / --line2 是面板
+     结构线，放到格子里太淡（在卡片白底上不到 2:1），手机上一眼分不出格子；
+     这里单独取一档，与卡片白底约 3.4:1、与 --soft 表头底约 3.1:1，和输入框
+     边界（--control-line）同一量级。 */
+  --grid:#7e8da3;
   --bg:#f5f7fa; --card:#fff; --input:#fff; --soft:#f1f4f9; --zebra:#fafbfd;
 
   --accent:#2563eb; --accent-hi:#5b8cf7; --accent-soft:#eef4ff; --accent-text:#1d4ed8;
@@ -54,6 +59,8 @@
 html[data-theme="dark"]{
   --fg:#ecf0f7; --fg2:#adb8cb; --fg3:#9aa8be;
   --line:#303948; --line2:#46546a; --control-line:#6b7c94;
+  /* 深色下同样按「卡片底约 3.4:1、--soft 底约 3.2:1」取值，比 --line2 深一档 */
+  --grid:#5f6f86;
   --bg:#0d1016; --card:#151a23; --input:#1c222d; --soft:#1b212c; --zebra:#181e28;
 
   --accent:#7aa2ff; --accent-hi:#a3bdff; --accent-soft:#1b2740; --accent-text:#9ab8ff;

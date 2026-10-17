@@ -141,13 +141,19 @@ function wire(root, result) {
       box.querySelector('.tp-motion-note').hidden = !media.matches;
       progress.textContent = '第 ' + (frame + 1) + ' / ' + count(s) + ' 帧 · ' + (playing ? '播放中' : frame === count(s) - 1 ? '演示完成' : '已暂停');
       addScrollHints(body); body.querySelector('.scroll').scrollLeft = left;
-      /* 只移动表内横向滚动，手机上不能把正在标记的格留在屏幕外，也不抢页面焦点。 */
+      /* 只移动表内横向滚动，手机上不能把正在标记的格留在屏幕外，也不抢页面焦点。
+         滚动量按格边界取整：把当前格的左边界正好贴到固定行名列的右边界上，
+         固定列外侧就永远是完整的一格 —— 半个格子和半个费用角标露在固定列旁，
+         正是手机上读起来像乱码的样子。 */
       var viewport = body.querySelector('.scroll'), current = body.querySelector('.tp-active');
-      var cr = current.getBoundingClientRect();
+      var vr = viewport.getBoundingClientRect(), cr = current.getBoundingClientRect();
       var leading = body.querySelector('tbody th').getBoundingClientRect().right;
       var trailing = body.querySelector('tbody td:last-child').getBoundingClientRect().left;
-      if (cr.left < leading) viewport.scrollLeft -= leading - cr.left;
-      else if (cr.right > trailing) viewport.scrollLeft += cr.right - trailing;
+      if (cr.left < leading - 1 || cr.right > trailing + 1) {
+        var offset = cr.left - vr.left + viewport.scrollLeft;   /* 当前格在内容里的左边界 */
+        var max = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+        viewport.scrollLeft = Math.max(0, Math.min(max, offset - (leading - vr.left)));
+      }
       draw(box, rendered.loop, s.type === 'pivot' && frame >= s.cycle.length, playing && !media.matches);
     }
     function schedule() {
