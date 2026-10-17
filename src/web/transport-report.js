@@ -16,6 +16,7 @@ function table(m, values, basis, loop, caption, costs) {
   for (i = 0; i < m.rows; i++) {
     h += '<tr' + (i >= m.m ? ' class="tp-virtual"' : '') + '><th scope="row">' + rowName(m, i) + '</th>';
     for (j = 0; j < m.cols; j++) {
+      if (!m.allowed[i][j]) { h += '<td class="tp-blocked">禁运<small class="tp-cost">x = 0，不参与计算</small></td>'; continue; }
       var mark = '', at = -1;
       (loop || []).forEach(function (c, k) { if (c.i === i && c.j === j) { mark = c.sign > 0 ? '+' : '−'; at = k; } });
       h += '<td class="' + (j >= m.n || i >= m.m ? 'tp-virtual ' : '') + (mark ? 'tp-cycle' : '') + '">'
@@ -43,21 +44,25 @@ function stepContent(m, s, index) {
   var title, h = '', values = s.allocation, loop = null;
   if (s.type === 'allocation') {
     title = '最小元素分配 ' + cellName(s.cell);
-    h += '<p>在剩余供需均为正的格中，选择最小工作费用 ' + num(s.cost) + '，格 ' + cellName(s.cell)
+    h += '<p>在尚未固定且剩余供需均为正的可运格中，选择最小工作费用 ' + num(s.cost) + '，格 ' + cellName(s.cell)
       + '；并列候选 ' + s.ties.map(cellName).join('、') + '，取行列下标最小者。</p>'
-      + '<p>分配量 min(剩余供应, 剩余需求) = <b>' + num(s.quantity) + '</b>。剩余供应 [' + vector(s.remainingSupply)
+      + '<p>普通分配上限 min(剩余供应, 剩余需求) = ' + num(s.proposedQuantity) + '。'
+      + (s.guarded ? '可行性检查发现按上限分配会堵住后续路线，剩余网络将有 ' + num(s.feasibilityDeficit)
+        + ' 单位无法匹配；瓶颈产地：' + s.blockedCutRows.map(function (i) { return rowName(m, i); }).join('、')
+        + '。本格改取保持剩余供需可满足的最大量。' : '')
+      + '实际分配 <b>' + num(s.quantity) + '</b>。' + (s.quantity === 0 ? '本格跳过，不作为基变量。' : '') + '剩余供应 [' + vector(s.remainingSupply)
       + ']；剩余需求 [' + vector(s.remainingDemand) + ']。</p>';
   } else if (s.type === 'initial') {
     title = '初始可行方案（尚未检验最优）';
     h += '<p>最小元素分配结束。按行列下标补入不形成回路的零值基变量：'
       + (s.zeroBasics.length ? s.zeroBasics.map(cellName).join('、') : '无需补基')
-      + '。基格构成 m+n−1 条边的树；零值基仍是基变量，实际运量为 0。</p>';
+      + '。可运图有 ' + m.components + ' 个连通分量（含孤立结点），基格构成 m+n−分量数 = ' + m.basisSize + ' 条边的森林；只用可运格补基。零值基仍是基变量，实际运量为 0。</p>';
   } else if (s.type === 'potentials') {
     title = s.entering ? 'MODI 位势与检验：选择入基格' : 'MODI 最优性检验';
-    h += '<p>令 u₁ = 0，对每个基格解 uᵢ + vⱼ = c′ᵢⱼ。行位势 u = [' + vector(s.u) + ']；列位势 v = [' + vector(s.v) + ']。</p>'
+    h += '<p>每个连通分量独立选一个结点令位势为 0，对每个基格解 uᵢ + vⱼ = c′ᵢⱼ。行位势 u = [' + vector(s.u) + ']；列位势 v = [' + vector(s.v) + ']。</p>'
       + '<p>检验数 Δᵢⱼ = c′ᵢⱼ − uᵢ − vⱼ；负检验数表示工作目标可下降。逐格按费用与位势的大小估计浮点舍入容差，参考上界 ' + num(m.costTolerance) + '。</p>'
       + table(m, s.reduced, null, null, '检验数 Δ（基格应为 0；数值在本格容差内视为 0）', true)
-      + '<p>' + (s.entering ? '按 Bland 规则取行列下标最小的负检验数非基格 ' + cellName(s.entering) + ' 入基。' : '所有非基检验数 ≥ −容差，当前方案在数值容差内最优。') + '</p>';
+      + '<p>' + (s.entering ? '按 Bland 规则取行列下标最小的负检验数可运非基格 ' + cellName(s.entering) + ' 入基。' : '所有可运非基检验数 ≥ −容差，当前方案在数值容差内最优；禁运格不参与检验。') + '</p>';
   } else {
     title = '闭回路调整 · 第 ' + s.iteration + ' 轮';
     values = s.beforeAllocation; loop = s.cycle;
@@ -76,6 +81,16 @@ function stepContent(m, s, index) {
 }
 function render(res) {
   var m = res.model, optimal = res.status === 'optimal';
+  if (res.status === 'infeasible') {
+    var f = res.feasibility;
+    return '<div class="card"><div class="verdict no"><div class="vtitle">禁运限制下无可行方案</div></div>'
+      + '<p>' + esc(res.message) + '</p><p>在辅助网络中，最大可匹配量为 ' + num(m.total - f.deficit)
+      + '，仍有 ' + num(f.deficit) + ' 单位供需无法匹配；这不是最优运输方案，也不新增虚拟线路绕过禁运。</p>'
+      + '<p>瓶颈产地集合：' + f.cutRows.map(function (i) { return rowName(m, i); }).join('、')
+      + '；其可达销地集合：' + (f.cutCols.length ? f.cutCols.map(function (j) { return colName(m, j); }).join('、') : '无')
+      + '。这些产地供应 ' + num(f.cutSupply) + '，可达需求仅 ' + num(f.cutDemand) + '。请检查禁运标记或调整供需。</p>'
+      + '<p>' + balanceNote(m) + '</p>' + table(m, m.cost, null, null, '平衡后运输表（禁运格明确排除）', true) + '</div>';
+  }
   var h = '<div class="card"><div class="verdict ' + (optimal ? 'opt' : 'no') + '"><div class="vtitle">'
     + (optimal ? m.direction === 'max' ? '最优净收益' : '最小总费用' : res.feasible ? '当前可行方案（未确认最优）' : '数值校验未通过（未确认最优）') + '</div>'
     + '<div class="sol">z = <span class="zv">' + num(res.objective) + '</span></div></div>';
@@ -93,6 +108,7 @@ function render(res) {
     + '<div class="card"><h2 class="sec">模型平衡与转换</h2><p>' + balanceNote(m) + '</p>'
     + table(m, m.cost, null, null, '平衡后原费用 / 收益矩阵（含虚拟行列）', true)
     + (m.direction === 'max' ? table(m, m.working, null, null, '进入最小化算法的工作费用 c′ = −原收益', true) : '')
+    + '<p>禁运格不参与分配、补基、位势检验和闭回路。存在禁运时，先用辅助最大流检查可行性；逐格尝试普通分配上限，必要时减少至可行最大量，再固定该格。最大流只作可行性保护，费用优化仍用 MODI。</p>'
     + '<p>固定规则：最小元素并列取行列下标最小者；MODI 负检验数取下标最小者入基；最小负号运量并列取下标最小者离基。Bland 规则防止退化循环；仍检测重复基及迭代上限，异常停止不报告最优。</p></div>'
     + study.group(res.steps.map(function (s, i) { return stepContent(m, s, i); }), '运输问题逐步推导') + '</section></details>';
   return h;

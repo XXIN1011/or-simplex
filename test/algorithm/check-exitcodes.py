@@ -21,7 +21,7 @@ CASES = [
 with tempfile.TemporaryDirectory(prefix='or-exitcodes-') as tmp:
     for script, filename, key in CASES:
         bank = json.loads((HERE / filename).read_text(encoding='utf-8'))
-        record = next(r for r in bank if r.get('js_status', 'optimal') == 'optimal')
+        record = next(r for r in bank if r.get('js_status', r.get('status', 'optimal')) == 'optimal')
         good = [record]
         bad = copy.deepcopy(good)
         if key == 'samples':
@@ -43,3 +43,20 @@ with tempfile.TemporaryDirectory(prefix='or-exitcodes-') as tmp:
                 print(run.stdout, run.stderr)
                 raise SystemExit(f'{script} {label}: 期望退出码 {expected}，实际 {run.returncode}')
             print(f'PASS {script} {label}: exit={run.returncode}')
+
+    # 运输禁运还需验证无解分支，以及供需/目标值均正确但偷走禁运格的伪解。
+    bank = json.loads((HERE / 'transport-bank.json').read_text(encoding='utf-8'))
+    impossible = next(r for r in bank if r['status'] == 'infeasible')
+    false_impossible = copy.deepcopy(next(r for r in bank if r['status'] == 'optimal'))
+    false_impossible.update(status='infeasible', objective=None, allocation=None)
+    illegal_flow = {'problem': {'direction':'min', 'cost':[[0,'X'],['X',0]], 'supply':[1,1], 'demand':[1,1]},
+                    'status':'optimal', 'objective':0, 'allocation':[[0,1],[1,0]]}
+    for label, record, expected in [('正确禁运无解', impossible, 0), ('可行题误报无解', false_impossible, 1), ('禁运伪解', illegal_flow, 1)]:
+        Path(tmp, 'transport-bank.json').write_text(json.dumps([record]), encoding='utf-8')
+        env = dict(os.environ, OR_TEST_BANK_DIR=tmp)
+        run = subprocess.run([sys.executable, '-X', 'utf8', '-c', code, str(HERE / 'crosscheck-transport.py')],
+                             env=env, capture_output=True, text=True, encoding='utf-8', timeout=60)
+        if run.returncode != expected:
+            print(run.stdout, run.stderr)
+            raise SystemExit(f'crosscheck-transport.py {label}: 期望退出码 {expected}，实际 {run.returncode}')
+        print(f'PASS crosscheck-transport.py {label}: exit={run.returncode}')

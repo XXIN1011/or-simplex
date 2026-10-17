@@ -84,6 +84,8 @@
 .tp-sign small{font-size:12px;font-weight:500}
 .tp-balance{font-size:14px;font-weight:650;line-height:1.7;margin:14px 0}
 .transport-input .tp-margin{background:var(--soft)}
+.tp-blocked{background:var(--soft);color:var(--fg2)}
+.tp-blocked .num{font-weight:700}
 .tp-fee-options>summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:650}
 .tp-fee-options>summary::before{content:'＋';margin-right:8px;color:var(--accent)}
 .tp-fee-options[open]>summary::before{content:'−'}

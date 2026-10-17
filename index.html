@@ -848,6 +848,8 @@ button.btn.primary:disabled{filter:none}
 .tp-sign small{font-size:12px;font-weight:500}
 .tp-balance{font-size:14px;font-weight:650;line-height:1.7;margin:14px 0}
 .transport-input .tp-margin{background:var(--soft)}
+.tp-blocked{background:var(--soft);color:var(--fg2)}
+.tp-blocked .num{font-weight:700}
 .tp-fee-options>summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:650}
 .tp-fee-options>summary::before{content:'＋';margin-right:8px;color:var(--accent)}
 .tp-fee-options[open]>summary::before{content:'−'}
@@ -1044,7 +1046,7 @@ button.btn.primary:disabled{filter:none}
     <section class="card">
       <div id="tpPanel"></div>
       <div class="actions"><button type="button" class="btn primary" id="tpSolveBtn">求　解</button></div>
-      <p class="sens-note">最小元素法只生成初始可行方案，再用位势法检验并沿闭回路调整。空白按 0；供需量须非负。暂不支持禁运路线、线路容量和中转运输。</p>
+      <p class="sens-note">最小元素法生成初始可行方案，再用位势法检验并沿闭回路调整。空白按 0；费用填 X 表示禁运，供需量须非负。暂不支持线路容量和中转运输。</p>
     </section>
     <div id="tpBanners" role="status" aria-live="polite"></div>
     <section id="tpOut" aria-label="运输问题结果"></section>
@@ -5500,30 +5502,108 @@ module.exports = {
 };
 });
 
+__define__("src/core/transport-flow.js", function (module, exports, require) {
+/* 禁运可行性辅助网络：只检查剩余供需，不代替最小元素法与 MODI 优化。 */
+'use strict';
+var common = require('./transport-model.js');
+function completion(model, supply, demand, allowed) {
+  var m = model.rows, n = model.cols, sink = m + n + 1, source = m + n;
+  var graph = [], i, j, head, queue, previous, edges, node, e, theta;
+  for (i = 0; i <= sink; i++) graph[i] = [];
+  function add(a, b, cap) {
+    var forward = { to: b, cap: cap, reverse: graph[b].length };
+    graph[a].push(forward); graph[b].push({ to: a, cap: 0, reverse: graph[a].length - 1 });
+    return forward;
+  }
+  var from = [], to = [];
+  for (i = 0; i < m; i++) from[i] = add(source, i, supply[i]);
+  var capacity = Math.max(common.sum(supply), common.sum(demand));
+  for (i = 0; i < m; i++) for (j = 0; j < n; j++) if (allowed[i][j]) add(i, m + j, capacity);
+  for (j = 0; j < n; j++) to[j] = add(m + j, sink, demand[j]);
+  while (true) {
+    queue = [source]; previous = []; edges = []; previous[source] = source; head = 0;
+    while (head < queue.length && previous[sink] === undefined) {
+      node = queue[head++];
+      for (i = 0; i < graph[node].length; i++) {
+        e = graph[node][i];
+        if (e.cap > 0 && previous[e.to] === undefined) {
+          previous[e.to] = node; edges[e.to] = e; queue.push(e.to);
+        }
+      }
+    }
+    if (previous[sink] === undefined) break;
+    theta = Infinity;
+    for (node = sink; node !== source; node = previous[node]) theta = Math.min(theta, edges[node].cap);
+    for (node = sink; node !== source; node = previous[node]) {
+      e = edges[node]; e.cap -= theta; graph[node][e.reverse].cap += theta;
+    }
+  }
+  var remainingSupply = from.map(function (edge) { return edge.cap; });
+  var remainingDemand = to.map(function (edge) { return edge.cap; });
+  /* 局部相对界保留真正微小但完全不可达的供需，避免被其他行的大数吞掉。 */
+  var feasible = remainingSupply.every(function (v, k) { return v <= supply[k] * common.ROUND_EPS * (m + n); })
+    && remainingDemand.every(function (v, k) { return v <= demand[k] * common.ROUND_EPS * (m + n); });
+  var cutRows = [], cutCols = [];
+  for (i = 0; i < m; i++) if (previous[i] !== undefined) cutRows.push(i);
+  for (j = 0; j < n; j++) if (previous[m + j] !== undefined) cutCols.push(j);
+  return { feasible: feasible, deficit: Math.max(common.sum(remainingSupply), common.sum(remainingDemand)),
+    remainingSupply: remainingSupply, remainingDemand: remainingDemand, cutRows: cutRows, cutCols: cutCols,
+    cutSupply: common.sum(cutRows.map(function (k) { return supply[k]; })),
+    cutDemand: common.sum(cutCols.map(function (k) { return demand[k]; })) };
+}
+module.exports = { completion: completion };
+});
+
 __define__("src/core/transport-initial.js", function (module, exports, require) {
 /* 最小元素法：相同费用按行、列下标；运量和基身份始终独立。 */
 'use strict';
 var common = require('./transport-model.js');
+var completion = require('./transport-flow.js').completion;
 function initial(model, emit) {
   var m = model.rows, n = model.cols, x = common.matrix(m, n, 0), basis = common.matrix(m, n, false);
   var s = model.supply.slice(), d = model.demand.slice(), i, j, best, ties, quantity;
+  var available = common.copy(model.allowed);
+  function active(i, j) {
+    return available[i][j] && s[i] > (model.forbiddenCount ? model.supply[i] * common.ROUND_EPS * (m + n) : 0)
+      && d[j] > (model.forbiddenCount ? model.demand[j] * common.ROUND_EPS * (m + n) : 0);
+  }
+  if (model.forbiddenCount) {
+    var feasibility = completion(model, s, d, available);
+    if (!feasibility.feasible) return { status: 'infeasible', feasibility: feasibility };
+  }
   while (true) {
     best = null; ties = [];
-    for (i = 0; i < m; i++) for (j = 0; j < n; j++) if (s[i] > 0 && d[j] > 0) {
+    for (i = 0; i < m; i++) for (j = 0; j < n; j++) if (active(i, j)) {
       if (!best || model.working[i][j] < best.cost) best = { i: i, j: j, cost: model.working[i][j] };
     }
     if (!best) break;
-    for (i = 0; i < m; i++) for (j = 0; j < n; j++) if (s[i] > 0 && d[j] > 0 && model.working[i][j] === best.cost) ties.push({ i: i, j: j });
+    for (i = 0; i < m; i++) for (j = 0; j < n; j++) if (active(i, j) && model.working[i][j] === best.cost) ties.push({ i: i, j: j });
     i = best.i; j = best.j; quantity = Math.min(s[i], d[j]);
-    x[i][j] = quantity; basis[i][j] = true; s[i] -= quantity; d[j] -= quantity;
+    var proposed = quantity, trial = null;
+    available[i][j] = false;
+    if (model.forbiddenCount) {
+      /* 强制分配上限后，最大流的缺额恰是必须退让的量（供需割约束）。
+         固定本格后不再使用它，按费用顺序逐格取可行最大值，避免贪心堵路。 */
+      var rs = s.slice(), rd = d.slice(); rs[i] -= quantity; rd[j] -= quantity;
+      trial = completion(model, rs, rd, available);
+      if (!trial.feasible) quantity = Math.max(0, quantity - trial.deficit);
+      /* q−缺额发生相消时，仅归零/贴齐本次上限的舍入尾差，不丢掉整题的微小量。 */
+      var round = proposed * common.ROUND_EPS * (m + n);
+      if (quantity < round) quantity = 0;
+      else if (proposed - quantity < round) quantity = proposed;
+    }
+    x[i][j] = quantity; basis[i][j] = quantity > 0; s[i] -= quantity; d[j] -= quantity;
     emit('allocation', x, basis, { cell: { i: i, j: j }, cost: best.cost, quantity: quantity,
+      proposedQuantity: proposed, guarded: quantity < proposed,
+      feasibilityDeficit: trial ? trial.deficit : 0,
+      blockedCutRows: trial ? trial.cutRows : [], blockedCutCols: trial ? trial.cutCols : [],
       ties: ties, remainingSupply: s.slice(), remainingDemand: d.slice() });
   }
-  /* 每次分配至少耗尽一行或一列，正运量边构成森林。按行列顺序连通不同分量，
-     将零供应、零需求结点也纳入生成树；绝不拿 epsilon 当实际运输量。 */
+  /* 普通分配耗尽一行或一列；禁运保护按格逐个固定可行最大量，所得极点亦为森林。
+     按行列顺序仅在可运图内补零基；孤立结点不强行跨禁运连接，不拿 epsilon 当运量。 */
   var f = common.forest(m, n), added = [];
   for (i = 0; i < m; i++) for (j = 0; j < n; j++) if (basis[i][j]) f.join(i, j);
-  for (i = 0; i < m; i++) for (j = 0; j < n; j++) if (!basis[i][j] && f.join(i, j)) {
+  for (i = 0; i < m; i++) for (j = 0; j < n; j++) if (model.allowed[i][j] && !basis[i][j] && f.join(i, j)) {
     basis[i][j] = true; added.push({ i: i, j: j });
   }
   emit('initial', x, basis, { zeroBasics: added, remainingSupply: s, remainingDemand: d });
@@ -5538,6 +5618,7 @@ __define__("src/core/transport-model.js", function (module, exports, require) {
 var parseNumber = require('./number-input.js').parseNumber;
 var EPS = 1e-10;
 var ROUND_EPS = 32 * 2.220446049250313e-16;
+function isForbidden(v) { return typeof v === 'string' && /^(x|×|禁运)$/i.test(v.trim()); }
 function matrix(m, n, value) {
   var a = [], i, j;
   for (i = 0; i < m; i++) { a[i] = []; for (j = 0; j < n; j++) a[i][j] = value; }
@@ -5587,13 +5668,16 @@ function normalize(problem) {
     return out;
   }
   var supply = vector(p.supply, '供应量'), demand = vector(p.demand, '需求量');
-  var cost = matrix(m, n, 0);
+  var cost = matrix(m, n, 0), allowed = matrix(m, n, true), forbiddenCount = 0;
   if (!Array.isArray(p.cost) || p.cost.length !== m) errors.push('费用矩阵行数须等于供应量个数');
   else for (i = 0; i < m; i++) {
     if (!Array.isArray(p.cost[i]) || p.cost[i].length !== n) { errors.push('费用矩阵必须为完整矩形'); continue; }
     for (j = 0; j < n; j++) {
-      cost[i][j] = parseNumber(p.cost[i][j], false);
-      if (!isFinite(cost[i][j])) errors.push('产地' + (i + 1) + '至销地' + (j + 1) + '的费用或收益无效（不支持禁运）');
+      var raw = p.cost[i][j], blocked = isForbidden(raw);
+      allowed[i][j] = !blocked;
+      if (blocked) forbiddenCount++;
+      cost[i][j] = blocked ? 0 : parseNumber(raw, false);
+      if (!isFinite(cost[i][j])) errors.push('产地' + (i + 1) + '至销地' + (j + 1) + '的费用或收益无效（禁运请填 X）');
     }
   }
   function fees(v, count, name) {
@@ -5615,19 +5699,25 @@ function normalize(problem) {
   if (difference > 0) {
     virtual = { type: 'surplus', index: n, amount: difference, fees: surplus.slice() };
     demand.push(difference);
-    for (i = 0; i < m; i++) cost[i].push(p.direction === 'max' ? -surplus[i] : surplus[i]);
+    for (i = 0; i < m; i++) { cost[i].push(p.direction === 'max' ? -surplus[i] : surplus[i]); allowed[i].push(true); }
   } else if (difference < 0) {
     virtual = { type: 'shortage', index: m, amount: -difference, fees: shortage.slice() };
     supply.push(-difference);
     cost.push(shortage.map(function (v) { return p.direction === 'max' ? -v : v; }));
+    allowed.push(demand.map(function () { return true; }));
   }
+  /* 每个可运连通分量各用一棵基树；孤立的零供需结点也计为分量。 */
+  var f = forest(supply.length, demand.length), rank = 0;
+  for (i = 0; i < supply.length; i++) for (j = 0; j < demand.length; j++) if (allowed[i][j] && f.join(i, j)) rank++;
   var working = cost.map(function (row) { return row.map(function (v) { return p.direction === 'max' ? -v : v; }); });
   var costScale = 0;
   working.forEach(function (row) { row.forEach(function (v) { costScale = Math.max(costScale, Math.abs(v)); }); });
   return { ok: true, direction: p.direction, m: m, n: n, rows: supply.length, cols: demand.length,
     original: original, originalSupply: originalSupply, originalDemand: originalDemand,
     supply: supply, demand: demand, originalSupplyTotal: a, originalDemandTotal: b,
-    cost: cost, working: working, virtual: virtual, balanceAdjustment: adjustment,
+    cost: cost, working: working, allowed: allowed, forbiddenCount: forbiddenCount,
+    basisSize: rank, components: supply.length + demand.length - rank,
+    virtual: virtual, balanceAdjustment: adjustment,
     quantityTolerance: (scale || 1) * EPS, costTolerance: (costScale || 1) * ROUND_EPS * (supply.length + demand.length),
     costScale: costScale || 1, total: sum(supply) };
 }
@@ -5638,10 +5728,11 @@ function inspect(model, x, basis, partial) {
     var v = x[i][j];
     if (!isFinite(v) || v < 0) errors.push('运量非负性');
     if (v > 0 && !basis[i][j]) errors.push('正运量必须在基中');
+    if (!model.allowed[i][j] && (v !== 0 || basis[i][j])) errors.push('禁运格不能运输或入基');
     rows[i] += v; cols[j] += v;
     if (basis[i][j]) { count++; if (!f.join(i, j)) errors.push('基中有回路'); }
   }
-  if (!partial && count !== model.rows + model.cols - 1) errors.push('基变量数不是 m+n−1');
+  if (!partial && count !== model.basisSize) errors.push('基变量数不是 m+n−分量数');
   rows.forEach(function (v, k) {
     if (partial ? v - model.supply[k] > model.quantityTolerance : Math.abs(v - model.supply[k]) > model.quantityTolerance) errors.push('供应不守恒');
   });
@@ -5652,7 +5743,7 @@ function inspect(model, x, basis, partial) {
   return { valid: !errors.length, errors: errors, basisCount: count, rowTotals: rows, colTotals: cols };
 }
 module.exports = { normalize: normalize, matrix: matrix, copy: copy, sum: sum, total: total,
-  forest: forest, inspect: inspect, balance: balance, EPS: EPS, ROUND_EPS: ROUND_EPS };
+  forest: forest, inspect: inspect, balance: balance, isForbidden: isForbidden, EPS: EPS, ROUND_EPS: ROUND_EPS };
 });
 
 __define__("src/core/transport-modi.js", function (module, exports, require) {
@@ -5663,16 +5754,21 @@ function potentials(model, basis) {
   var u = [], v = [], i, j, changed = true;
   for (i = 0; i < model.rows; i++) u[i] = null;
   for (j = 0; j < model.cols; j++) v[j] = null;
-  u[0] = 0;
+  /* 禁运可能把可运图分成多个区域。每棵基树任选一个结点为零位势。 */
   while (changed) {
     changed = false;
     for (i = 0; i < model.rows; i++) for (j = 0; j < model.cols; j++) if (basis[i][j]) {
       if (u[i] !== null && v[j] === null) { v[j] = model.working[i][j] - u[i]; changed = true; }
       if (v[j] !== null && u[i] === null) { u[i] = model.working[i][j] - v[j]; changed = true; }
     }
+    if (!changed) {
+      for (i = 0; i < model.rows; i++) if (u[i] === null) { u[i] = 0; changed = true; break; }
+      if (!changed) for (j = 0; j < model.cols; j++) if (v[j] === null) { v[j] = 0; changed = true; break; }
+    }
   }
   var reduced = common.matrix(model.rows, model.cols, 0), tolerance = common.matrix(model.rows, model.cols, 0), entering = null;
   for (i = 0; i < model.rows; i++) for (j = 0; j < model.cols; j++) {
+    if (!model.allowed[i][j]) continue;
     reduced[i][j] = model.working[i][j] - u[i] - v[j];
     /* 每格按参与相减的费用和位势估计舍入界；远处一条昂贵线路不能把本格改善吞掉。 */
     tolerance[i][j] = common.ROUND_EPS * Math.abs(model.working[i][j]) + common.ROUND_EPS * Math.abs(u[i]) + common.ROUND_EPS * Math.abs(v[j]);
@@ -5758,10 +5854,10 @@ function alternative(model, x, basis, p) {
   /* 单个零检验数可能只允许 θ=0。用零检验数残量网络寻找可正量调整的回路，
      穿过多个退化基也能发现不同最优运输方案，且不枚举指数多个基。 */
   var i, j;
-  for (i = 0; i < model.rows; i++) for (j = 0; j < model.cols; j++) if (!basis[i][j] && Math.abs(p.reduced[i][j]) <= p.reducedTolerance[i][j]) {
+  for (i = 0; i < model.rows; i++) for (j = 0; j < model.cols; j++) if (model.allowed[i][j] && !basis[i][j] && Math.abs(p.reduced[i][j]) <= p.reducedTolerance[i][j]) {
     var row = i, col = j;
     var route = path(model, model.rows + j, i, function (a, b, forward) {
-      if (a === row && b === col) return false;
+      if (!model.allowed[a][b] || (a === row && b === col)) return false;
       return forward ? Math.abs(p.reduced[a][b]) <= p.reducedTolerance[a][b] : x[a][b] > 0;
     });
     if (!route) continue;
@@ -5795,6 +5891,10 @@ function transportSolve(problem, options) {
     steps.push(step);
   }
   var state = initial(model, emit), first = steps[steps.length - 1];
+  if (state.status === 'infeasible') return { ok: true, status: 'infeasible', feasible: false,
+    message: '禁运限制下无可行运输方案：可运路线无法满足全部供需。供需总量平衡并不保证路线可达。',
+    model: model, steps: steps, feasibility: state.feasibility, objective: null, allocation: null, basis: null,
+    iterations: 0, multipleOptimal: false, alternative: null };
   var result = first.invariant.valid ? modi.optimize(model, state, emit, max)
     : { status: 'numerical-error', iterations: 0, message: '初始方案未通过守恒或基校验，不能确认最优。请调整数值单位。' };
   result.ok = true; result.model = model; result.steps = steps;
@@ -5812,7 +5912,8 @@ function transportSolve(problem, options) {
   result.multipleOptimal = !!result.alternative;
   return result;
 }
-module.exports = { transportSolve: transportSolve, validate: common.normalize, inspect: common.inspect, balance: common.balance };
+module.exports = { transportSolve: transportSolve, validate: common.normalize, inspect: common.inspect,
+  balance: common.balance, isForbidden: common.isForbidden };
 });
 
 __define__("src/core/util.js", function (module, exports, require) {
@@ -6646,7 +6747,11 @@ function transport() {
   return { direction: 'min', cost: [[6,16,5,2],[9,2,5,8],[15,13,11,6]],
     supply: [20,30,25], demand: [10,25,20,20] };
 }
-module.exports = { linear: linear, integer: integer, assignment: assignment, transport: transport };
+function transportForbidden() {
+  return { direction: 'min', cost: [[1,2],[3,'X']], supply: [5,5], demand: [5,5] };
+}
+module.exports = { linear: linear, integer: integer, assignment: assignment,
+  transport: transport, transportForbidden: transportForbidden };
 });
 
 __define__("src/web/graph.js", function (module, exports, require) {
@@ -9367,6 +9472,7 @@ function table(m, values, basis, loop, caption, costs) {
   for (i = 0; i < m.rows; i++) {
     h += '<tr' + (i >= m.m ? ' class="tp-virtual"' : '') + '><th scope="row">' + rowName(m, i) + '</th>';
     for (j = 0; j < m.cols; j++) {
+      if (!m.allowed[i][j]) { h += '<td class="tp-blocked">禁运<small class="tp-cost">x = 0，不参与计算</small></td>'; continue; }
       var mark = '', at = -1;
       (loop || []).forEach(function (c, k) { if (c.i === i && c.j === j) { mark = c.sign > 0 ? '+' : '−'; at = k; } });
       h += '<td class="' + (j >= m.n || i >= m.m ? 'tp-virtual ' : '') + (mark ? 'tp-cycle' : '') + '">'
@@ -9394,21 +9500,25 @@ function stepContent(m, s, index) {
   var title, h = '', values = s.allocation, loop = null;
   if (s.type === 'allocation') {
     title = '最小元素分配 ' + cellName(s.cell);
-    h += '<p>在剩余供需均为正的格中，选择最小工作费用 ' + num(s.cost) + '，格 ' + cellName(s.cell)
+    h += '<p>在尚未固定且剩余供需均为正的可运格中，选择最小工作费用 ' + num(s.cost) + '，格 ' + cellName(s.cell)
       + '；并列候选 ' + s.ties.map(cellName).join('、') + '，取行列下标最小者。</p>'
-      + '<p>分配量 min(剩余供应, 剩余需求) = <b>' + num(s.quantity) + '</b>。剩余供应 [' + vector(s.remainingSupply)
+      + '<p>普通分配上限 min(剩余供应, 剩余需求) = ' + num(s.proposedQuantity) + '。'
+      + (s.guarded ? '可行性检查发现按上限分配会堵住后续路线，剩余网络将有 ' + num(s.feasibilityDeficit)
+        + ' 单位无法匹配；瓶颈产地：' + s.blockedCutRows.map(function (i) { return rowName(m, i); }).join('、')
+        + '。本格改取保持剩余供需可满足的最大量。' : '')
+      + '实际分配 <b>' + num(s.quantity) + '</b>。' + (s.quantity === 0 ? '本格跳过，不作为基变量。' : '') + '剩余供应 [' + vector(s.remainingSupply)
       + ']；剩余需求 [' + vector(s.remainingDemand) + ']。</p>';
   } else if (s.type === 'initial') {
     title = '初始可行方案（尚未检验最优）';
     h += '<p>最小元素分配结束。按行列下标补入不形成回路的零值基变量：'
       + (s.zeroBasics.length ? s.zeroBasics.map(cellName).join('、') : '无需补基')
-      + '。基格构成 m+n−1 条边的树；零值基仍是基变量，实际运量为 0。</p>';
+      + '。可运图有 ' + m.components + ' 个连通分量（含孤立结点），基格构成 m+n−分量数 = ' + m.basisSize + ' 条边的森林；只用可运格补基。零值基仍是基变量，实际运量为 0。</p>';
   } else if (s.type === 'potentials') {
     title = s.entering ? 'MODI 位势与检验：选择入基格' : 'MODI 最优性检验';
-    h += '<p>令 u₁ = 0，对每个基格解 uᵢ + vⱼ = c′ᵢⱼ。行位势 u = [' + vector(s.u) + ']；列位势 v = [' + vector(s.v) + ']。</p>'
+    h += '<p>每个连通分量独立选一个结点令位势为 0，对每个基格解 uᵢ + vⱼ = c′ᵢⱼ。行位势 u = [' + vector(s.u) + ']；列位势 v = [' + vector(s.v) + ']。</p>'
       + '<p>检验数 Δᵢⱼ = c′ᵢⱼ − uᵢ − vⱼ；负检验数表示工作目标可下降。逐格按费用与位势的大小估计浮点舍入容差，参考上界 ' + num(m.costTolerance) + '。</p>'
       + table(m, s.reduced, null, null, '检验数 Δ（基格应为 0；数值在本格容差内视为 0）', true)
-      + '<p>' + (s.entering ? '按 Bland 规则取行列下标最小的负检验数非基格 ' + cellName(s.entering) + ' 入基。' : '所有非基检验数 ≥ −容差，当前方案在数值容差内最优。') + '</p>';
+      + '<p>' + (s.entering ? '按 Bland 规则取行列下标最小的负检验数可运非基格 ' + cellName(s.entering) + ' 入基。' : '所有可运非基检验数 ≥ −容差，当前方案在数值容差内最优；禁运格不参与检验。') + '</p>';
   } else {
     title = '闭回路调整 · 第 ' + s.iteration + ' 轮';
     values = s.beforeAllocation; loop = s.cycle;
@@ -9427,6 +9537,16 @@ function stepContent(m, s, index) {
 }
 function render(res) {
   var m = res.model, optimal = res.status === 'optimal';
+  if (res.status === 'infeasible') {
+    var f = res.feasibility;
+    return '<div class="card"><div class="verdict no"><div class="vtitle">禁运限制下无可行方案</div></div>'
+      + '<p>' + esc(res.message) + '</p><p>在辅助网络中，最大可匹配量为 ' + num(m.total - f.deficit)
+      + '，仍有 ' + num(f.deficit) + ' 单位供需无法匹配；这不是最优运输方案，也不新增虚拟线路绕过禁运。</p>'
+      + '<p>瓶颈产地集合：' + f.cutRows.map(function (i) { return rowName(m, i); }).join('、')
+      + '；其可达销地集合：' + (f.cutCols.length ? f.cutCols.map(function (j) { return colName(m, j); }).join('、') : '无')
+      + '。这些产地供应 ' + num(f.cutSupply) + '，可达需求仅 ' + num(f.cutDemand) + '。请检查禁运标记或调整供需。</p>'
+      + '<p>' + balanceNote(m) + '</p>' + table(m, m.cost, null, null, '平衡后运输表（禁运格明确排除）', true) + '</div>';
+  }
   var h = '<div class="card"><div class="verdict ' + (optimal ? 'opt' : 'no') + '"><div class="vtitle">'
     + (optimal ? m.direction === 'max' ? '最优净收益' : '最小总费用' : res.feasible ? '当前可行方案（未确认最优）' : '数值校验未通过（未确认最优）') + '</div>'
     + '<div class="sol">z = <span class="zv">' + num(res.objective) + '</span></div></div>';
@@ -9444,6 +9564,7 @@ function render(res) {
     + '<div class="card"><h2 class="sec">模型平衡与转换</h2><p>' + balanceNote(m) + '</p>'
     + table(m, m.cost, null, null, '平衡后原费用 / 收益矩阵（含虚拟行列）', true)
     + (m.direction === 'max' ? table(m, m.working, null, null, '进入最小化算法的工作费用 c′ = −原收益', true) : '')
+    + '<p>禁运格不参与分配、补基、位势检验和闭回路。存在禁运时，先用辅助最大流检查可行性；逐格尝试普通分配上限，必要时减少至可行最大量，再固定该格。最大流只作可行性保护，费用优化仍用 MODI。</p>'
     + '<p>固定规则：最小元素并列取行列下标最小者；MODI 负检验数取下标最小者入基；最小负号运量并列取下标最小者离基。Bland 规则防止退化循环；仍检测重复基及迭代上限，异常停止不报告最优。</p></div>'
     + study.group(res.steps.map(function (s, i) { return stepContent(m, s, i); }), '运输问题逐步推导') + '</section></details>';
   return h;
@@ -9467,7 +9588,7 @@ var draft = require('./draft.js');
   function invalidate() { $('tpOut').innerHTML = ''; $('tpBanners').innerHTML = ''; }
   function number(raw) { return parseNumber(raw, true); }
   function problem() {
-    return { direction: state.direction, cost: state.cells.map(function (r) { return r.map(number); }),
+    return { direction: state.direction, cost: state.cells.map(function (r) { return r.map(function (v) { return transport.isForbidden(v) ? v : number(v); }); }),
       supply: state.supply.map(number), demand: state.demand.map(number),
       surplusCost: state.surplusCost.map(number), shortageCost: state.shortageCost.map(number) };
   }
@@ -9477,6 +9598,7 @@ var draft = require('./draft.js');
     $('tpBalance').textContent = b.ok ? '总供应 ' + report.num(b.supplyTotal) + '；总需求 ' + report.num(b.demandTotal)
       + (b.difference > 0 ? ' · 供大于求，剩余 ' + report.num(b.difference) : b.difference < 0 ? ' · 供小于求，缺货 ' + report.num(-b.difference) : ' · 供需平衡')
       : state.rows && state.cols ? '请填写有效的非负供需量后检查平衡状态。' : '请设置至少 1 个产地与 1 个销地。';
+    if (m.ok && m.forbiddenCount) $('tpBalance').textContent += '；已设置 ' + m.forbiddenCount + ' 条禁运路线，总量平衡不代表路线可达，求解时检查可行性。';
     /* 虚拟线路在求解前就可检查：原输入保留，平衡表由 core 生成。 */
     $('tpVirtual').innerHTML = m.ok && (m.virtual || m.balanceAdjustment)
       ? '<p class="sens-note">' + report.balanceNote(m) + '</p>'
@@ -9485,9 +9607,10 @@ var draft = require('./draft.js');
   }
   function input(key, i, j, label) {
     var v = key === 'cells' ? state.cells[i][j] : state[key][i];
-    var valid = isFinite(number(v)) && (key === 'cells' || number(v) >= 0);
+    var blocked = key === 'cells' && transport.isForbidden(v);
+    var valid = blocked || isFinite(number(v)) && (key === 'cells' || number(v) >= 0);
     return '<input class="num" type="text" inputmode="text" placeholder="0" aria-label="' + esc(label)
-      + '" aria-invalid="' + (!valid) + '" data-key="' + key + '" data-i="' + i + '"'
+      + (key === 'cells' ? '（填 X 禁运）' : '') + '" aria-invalid="' + (!valid) + '" data-key="' + key + '" data-i="' + i + '"'
       + (j === undefined ? '' : ' data-j="' + j + '"') + ' value="' + esc(v) + '">';
   }
   function renderInput() {
@@ -9499,7 +9622,7 @@ var draft = require('./draft.js');
       h += '<th scope="col">供应量</th></tr></thead><tbody>';
       for (i = 0; i < state.rows; i++) {
         h += '<tr><th scope="row">产地' + (i + 1) + '</th>';
-        for (j = 0; j < state.cols; j++) h += '<td>' + input('cells', i, j, '产地' + (i + 1) + '至销地' + (j + 1) + (state.direction === 'max' ? '单位收益' : '单位运费')) + '</td>';
+        for (j = 0; j < state.cols; j++) h += '<td' + (transport.isForbidden(state.cells[i][j]) ? ' class="tp-blocked"' : '') + '>' + input('cells', i, j, '产地' + (i + 1) + '至销地' + (j + 1) + (state.direction === 'max' ? '单位收益' : '单位运费')) + '</td>';
         h += '<td class="tp-margin">' + input('supply', i, undefined, '产地' + (i + 1) + '供应量') + '</td></tr>';
       }
       h += '</tbody><tfoot><tr><th scope="row">需求量</th>';
@@ -9541,21 +9664,28 @@ var draft = require('./draft.js');
     addVar: 'tpAddRow', delVar: 'tpDelRow', addCon: 'tpAddCol', delCon: 'tpDelCol',
     labels: { addVar: '+ 产地', delVar: '− 产地', addCon: '+ 销地', delCon: '− 销地' } });
   var extras = document.createElement('div');
-  extras.innerHTML = '<p class="tp-balance" id="tpBalance" role="status" aria-live="polite"></p>'
+  extras.innerHTML = '<p class="sens-note">费用格填 X 表示禁运（也接受 × 或“禁运”），恢复数字即可重新允许运输。禁运格不分配、不入基；自动补出的虚拟线路仍可用。</p>'
+    + '<button type="button" class="btn" data-transport-forbidden-sample>载入禁运示例</button>'
+    + '<p class="tp-balance" id="tpBalance" role="status" aria-live="polite"></p>'
     + '<details class="tp-fee-options"><summary>剩余处理费用 / 缺货罚金</summary>'
     + '<p class="sens-note">按单位计费，须非负。默认 0 表示忽略剩余或缺货的损失；最大收益模式会扣除此费用。供需平衡时不产生虚拟费用。</p>'
     + '<div id="tpFees"></div></details><div id="tpVirtual"></div>';
   $('tpPanel').appendChild(extras);
+  function loadExample(p) {
+    load({ direction: p.direction, rows: p.supply.length, cols: p.demand.length,
+      cells: p.cost.map(function (r) { return r.map(String); }), supply: p.supply.map(String), demand: p.demand.map(String),
+      surplusCost: p.supply.map(function () { return ''; }), shortageCost: p.demand.map(function () { return ''; }) });
+  }
+  extras.querySelector('[data-transport-forbidden-sample]').addEventListener('click', function () {
+    loadExample(require('./examples.js').transportForbidden());
+  });
   Array.prototype.forEach.call($('tpDirSeg').querySelectorAll('button'), function (b) {
     b.textContent = b.dataset.dir === 'min' ? '最小运费' : '最大收益';
     b.addEventListener('click', function () { state.direction = b.dataset.dir; invalidate(); renderInput(); });
   });
   guide = require('./input-guide.js').attach($('tpPanel'), {
     resize: resize, sample: function () {
-      var p = require('./examples.js').transport();
-      load({ direction: p.direction, rows: p.supply.length, cols: p.demand.length,
-        cells: p.cost.map(function (r) { return r.map(String); }), supply: p.supply.map(String), demand: p.demand.map(String),
-        surplusCost: p.supply.map(function () { return ''; }), shortageCost: p.demand.map(function () { return ''; }) });
+      loadExample(require('./examples.js').transport());
     }
   });
   [['tpAddRow', 1, 0], ['tpDelRow', -1, 0], ['tpAddCol', 0, 1], ['tpDelCol', 0, -1]].forEach(function (a) {
@@ -9569,7 +9699,9 @@ var draft = require('./draft.js');
     var i = +inp.dataset.i;
     if (key === 'cells') state.cells[i][+inp.dataset.j] = inp.value;
     else state[key][i] = inp.value;
-    inp.setAttribute('aria-invalid', String(!isFinite(number(inp.value)) || (key !== 'cells' && number(inp.value) < 0)));
+    var blocked = key === 'cells' && transport.isForbidden(inp.value);
+    inp.setAttribute('aria-invalid', String(!blocked && (!isFinite(number(inp.value)) || (key !== 'cells' && number(inp.value) < 0))));
+    if (key === 'cells') inp.parentNode.classList.toggle('tp-blocked', blocked);
     invalidate(); syncBalance();
   }
   $('tpPanel').addEventListener('input', edit);

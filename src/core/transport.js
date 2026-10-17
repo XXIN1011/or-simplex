@@ -17,6 +17,10 @@ function transportSolve(problem, options) {
     steps.push(step);
   }
   var state = initial(model, emit), first = steps[steps.length - 1];
+  if (state.status === 'infeasible') return { ok: true, status: 'infeasible', feasible: false,
+    message: '禁运限制下无可行运输方案：可运路线无法满足全部供需。供需总量平衡并不保证路线可达。',
+    model: model, steps: steps, feasibility: state.feasibility, objective: null, allocation: null, basis: null,
+    iterations: 0, multipleOptimal: false, alternative: null };
   var result = first.invariant.valid ? modi.optimize(model, state, emit, max)
     : { status: 'numerical-error', iterations: 0, message: '初始方案未通过守恒或基校验，不能确认最优。请调整数值单位。' };
   result.ok = true; result.model = model; result.steps = steps;
@@ -34,4 +38,5 @@ function transportSolve(problem, options) {
   result.multipleOptimal = !!result.alternative;
   return result;
 }
-module.exports = { transportSolve: transportSolve, validate: common.normalize, inspect: common.inspect, balance: common.balance };
+module.exports = { transportSolve: transportSolve, validate: common.normalize, inspect: common.inspect,
+  balance: common.balance, isForbidden: common.isForbidden };

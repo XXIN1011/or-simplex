@@ -3,6 +3,7 @@
 var parseNumber = require('./number-input.js').parseNumber;
 var EPS = 1e-10;
 var ROUND_EPS = 32 * 2.220446049250313e-16;
+function isForbidden(v) { return typeof v === 'string' && /^(x|×|禁运)$/i.test(v.trim()); }
 function matrix(m, n, value) {
   var a = [], i, j;
   for (i = 0; i < m; i++) { a[i] = []; for (j = 0; j < n; j++) a[i][j] = value; }
@@ -52,13 +53,16 @@ function normalize(problem) {
     return out;
   }
   var supply = vector(p.supply, '供应量'), demand = vector(p.demand, '需求量');
-  var cost = matrix(m, n, 0);
+  var cost = matrix(m, n, 0), allowed = matrix(m, n, true), forbiddenCount = 0;
   if (!Array.isArray(p.cost) || p.cost.length !== m) errors.push('费用矩阵行数须等于供应量个数');
   else for (i = 0; i < m; i++) {
     if (!Array.isArray(p.cost[i]) || p.cost[i].length !== n) { errors.push('费用矩阵必须为完整矩形'); continue; }
     for (j = 0; j < n; j++) {
-      cost[i][j] = parseNumber(p.cost[i][j], false);
-      if (!isFinite(cost[i][j])) errors.push('产地' + (i + 1) + '至销地' + (j + 1) + '的费用或收益无效（不支持禁运）');
+      var raw = p.cost[i][j], blocked = isForbidden(raw);
+      allowed[i][j] = !blocked;
+      if (blocked) forbiddenCount++;
+      cost[i][j] = blocked ? 0 : parseNumber(raw, false);
+      if (!isFinite(cost[i][j])) errors.push('产地' + (i + 1) + '至销地' + (j + 1) + '的费用或收益无效（禁运请填 X）');
     }
   }
   function fees(v, count, name) {
@@ -80,19 +84,25 @@ function normalize(problem) {
   if (difference > 0) {
     virtual = { type: 'surplus', index: n, amount: difference, fees: surplus.slice() };
     demand.push(difference);
-    for (i = 0; i < m; i++) cost[i].push(p.direction === 'max' ? -surplus[i] : surplus[i]);
+    for (i = 0; i < m; i++) { cost[i].push(p.direction === 'max' ? -surplus[i] : surplus[i]); allowed[i].push(true); }
   } else if (difference < 0) {
     virtual = { type: 'shortage', index: m, amount: -difference, fees: shortage.slice() };
     supply.push(-difference);
     cost.push(shortage.map(function (v) { return p.direction === 'max' ? -v : v; }));
+    allowed.push(demand.map(function () { return true; }));
   }
+  /* 每个可运连通分量各用一棵基树；孤立的零供需结点也计为分量。 */
+  var f = forest(supply.length, demand.length), rank = 0;
+  for (i = 0; i < supply.length; i++) for (j = 0; j < demand.length; j++) if (allowed[i][j] && f.join(i, j)) rank++;
   var working = cost.map(function (row) { return row.map(function (v) { return p.direction === 'max' ? -v : v; }); });
   var costScale = 0;
   working.forEach(function (row) { row.forEach(function (v) { costScale = Math.max(costScale, Math.abs(v)); }); });
   return { ok: true, direction: p.direction, m: m, n: n, rows: supply.length, cols: demand.length,
     original: original, originalSupply: originalSupply, originalDemand: originalDemand,
     supply: supply, demand: demand, originalSupplyTotal: a, originalDemandTotal: b,
-    cost: cost, working: working, virtual: virtual, balanceAdjustment: adjustment,
+    cost: cost, working: working, allowed: allowed, forbiddenCount: forbiddenCount,
+    basisSize: rank, components: supply.length + demand.length - rank,
+    virtual: virtual, balanceAdjustment: adjustment,
     quantityTolerance: (scale || 1) * EPS, costTolerance: (costScale || 1) * ROUND_EPS * (supply.length + demand.length),
     costScale: costScale || 1, total: sum(supply) };
 }
@@ -103,10 +113,11 @@ function inspect(model, x, basis, partial) {
     var v = x[i][j];
     if (!isFinite(v) || v < 0) errors.push('运量非负性');
     if (v > 0 && !basis[i][j]) errors.push('正运量必须在基中');
+    if (!model.allowed[i][j] && (v !== 0 || basis[i][j])) errors.push('禁运格不能运输或入基');
     rows[i] += v; cols[j] += v;
     if (basis[i][j]) { count++; if (!f.join(i, j)) errors.push('基中有回路'); }
   }
-  if (!partial && count !== model.rows + model.cols - 1) errors.push('基变量数不是 m+n−1');
+  if (!partial && count !== model.basisSize) errors.push('基变量数不是 m+n−分量数');
   rows.forEach(function (v, k) {
     if (partial ? v - model.supply[k] > model.quantityTolerance : Math.abs(v - model.supply[k]) > model.quantityTolerance) errors.push('供应不守恒');
   });
@@ -117,4 +128,4 @@ function inspect(model, x, basis, partial) {
   return { valid: !errors.length, errors: errors, basisCount: count, rowTotals: rows, colTotals: cols };
 }
 module.exports = { normalize: normalize, matrix: matrix, copy: copy, sum: sum, total: total,
-  forest: forest, inspect: inspect, balance: balance, EPS: EPS, ROUND_EPS: ROUND_EPS };
+  forest: forest, inspect: inspect, balance: balance, isForbidden: isForbidden, EPS: EPS, ROUND_EPS: ROUND_EPS };

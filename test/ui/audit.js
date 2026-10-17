@@ -215,7 +215,7 @@ const AUDIT = `(function(){
   });
   const cdp = sess.cdp, sessionId = sess.sessionId;
   await cdp.send('Runtime.evaluate',
-    { expression: wantHash === '#/transport' ? "document.querySelector('#tpPanel [data-guide=sample]').click();document.getElementById('tpSolveBtn').click()" : wantHash === '#/sens' ? SENS_SETUP : SETUP }, sessionId);
+    { expression: wantHash === '#/transport' ? "document.querySelector('#tpPanel [data-transport-forbidden-sample]').click();document.getElementById('tpSolveBtn').click()" : wantHash === '#/sens' ? SENS_SETUP : SETUP }, sessionId);
   await sleep(isRemote ? 1400 : 900);
 
   const r = await cdp.send('Runtime.evaluate', { expression: AUDIT, returnByValue: true }, sessionId);

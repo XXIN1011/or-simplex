@@ -65,12 +65,53 @@ test('迭代限制不误报最优，初始已最优允许零轮', () => {
   assert.equal(solveTransport(base, {maxIterations:0}).status, 'optimal');
   for (const maxIterations of [-1, 1.5, Infinity, '3', 10001]) assert.equal(solveTransport(base, {maxIterations}).ok, false);
 });
-test('拒绝非法模型、分母为零、负供需、禁运与错误费率维度', () => {
+test('拒绝非法模型、分母为零、负供需与错误费率维度', () => {
   for (const p of [null, {}, Object.assign({}, base, {direction:'bad'}), Object.assign({}, base,{supply:[-1,2]}),
     Object.assign({},base,{cost:[[1],[2]]}),Object.assign({},base,{cost:[[null,1],[1,1]]}),
     Object.assign({},base,{demand:['1/0',2]}), Object.assign({},base,{surplusCost:[1]}),
-    Object.assign({},base,{shortageCost:-1}),Object.assign({},base,{cost:[['×',1],[1,1]]})]) {
+    Object.assign({},base,{shortageCost:-1}),Object.assign({},base,{cost:[['Infinity',1],[1,1]]})]) {
     assert.equal(solveTransport(p).ok, false, JSON.stringify(p));
+  }
+});
+test('禁运可行性保护避免最小元素贪心堵路，并展示被跳过或缩减的分配', () => {
+  const r = solve({direction:'min',cost:[[1,2],[3,'X']],supply:[5,5],demand:[5,5]},25);
+  assert.deepEqual(r.allocation, [[0,5],[5,0]]);
+  assert.equal(r.steps[0].quantity,0); assert.equal(r.steps[0].guarded,true);
+  assert.equal(r.basis[1][1],false);
+  const reduced = solve({direction:'min',cost:[[1,2],[3,'x']],supply:[6,4],demand:[5,5]},23);
+  assert.equal(reduced.steps[0].quantity,1); assert.equal(reduced.steps[0].proposedQuantity,5);
+  for(const s of reduced.steps) assert.ok(s.invariant.valid);
+});
+test('总量平衡但禁运无解有瓶颈见证，不能伪造最优或自动放开路线', () => {
+  const r = solveTransport({direction:'min',cost:[[1,'X'],[1,'禁运']],supply:[5,5],demand:[5,5]});
+  assert.equal(r.ok,true);assert.equal(r.status,'infeasible');assert.equal(r.feasible,false);
+  assert.equal(r.objective,null);assert.equal(r.allocation,null);assert.equal(r.feasibility.deficit,5);
+  assert.deepEqual(r.feasibility.cutRows,[0,1]);assert.deepEqual(r.feasibility.cutCols,[0]);
+  assert.equal(r.steps.length,0);
+  const tiny=solveTransport({direction:'min',cost:[[1,'X'],['X','X']],supply:[1e9,1e-12],demand:[1e9,1e-12]});
+  assert.equal(tiny.status,'infeasible','局部微小但完全无法运输的供需不能被大行容差吞掉');
+});
+test('断开可运图使用基森林和分量位势，孤立零供需不强行跨禁运补基', () => {
+  const r=solve({direction:'min',cost:[[2,'×','X'],['X',3,'X'],['X','X','X']],supply:[2,4,0],demand:[2,4,0]},16);
+  assert.equal(r.model.components,4);assert.equal(r.model.basisSize,2);
+  assert.equal(r.basis.flat().filter(Boolean).length,2);assert.equal(r.multipleOptimal,false);
+  assert.ok(r.potentials.u.concat(r.potentials.v).every(Number.isFinite));
+  solve({direction:'min',cost:[['X']],supply:[0],demand:[0]},0);
+  assert.equal(solveTransport({direction:'min',cost:[['X']],supply:[1],demand:[1]}).status,'infeasible');
+});
+test('禁运与最大收益、分数、虚拟处理费用和缺货罚金组合', () => {
+  solve({direction:'max',cost:[['1/2','X'],['X','3/2']],supply:['1/2','1/2'],demand:['1/2','1/2']},1);
+  const surplus=solve({direction:'min',cost:[['X'],[2]],supply:[3,5],demand:[4],surplusCost:[1,2]},13);
+  assert.deepEqual(surplus.surplus,[3,1]);assert.equal(surplus.model.allowed[0][1],true);
+  const shortage=solve({direction:'max',cost:[['X',10]],supply:[3],demand:[2,3],shortageCost:[4,1]},22);
+  assert.deepEqual(shortage.shortage,[2,0]);
+  assert.equal(solveTransport({direction:'min',cost:[['X',1]],supply:[3],demand:[4,1]}).status,'infeasible');
+});
+test('多重最优见证和每轮基均避开禁运格', () => {
+  const r=solve({direction:'min',cost:[[1,1,'X'],[1,1,'X'],['X','X',2]],supply:[1,1,1],demand:[1,1,1]},4);
+  assert.equal(r.multipleOptimal,true);
+  for(const s of r.steps) for(let i=0;i<3;i++) for(let j=0;j<3;j++) if(!r.model.allowed[i][j]) {
+    assert.equal(s.allocation[i][j],0);assert.equal(s.basis[i][j],false);assert.equal(r.alternative.allocation[i][j],0);
   }
 });
 test('浮点溢出明确停止而非最优', () => {

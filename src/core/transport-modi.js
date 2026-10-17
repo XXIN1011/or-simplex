@@ -5,16 +5,21 @@ function potentials(model, basis) {
   var u = [], v = [], i, j, changed = true;
   for (i = 0; i < model.rows; i++) u[i] = null;
   for (j = 0; j < model.cols; j++) v[j] = null;
-  u[0] = 0;
+  /* 禁运可能把可运图分成多个区域。每棵基树任选一个结点为零位势。 */
   while (changed) {
     changed = false;
     for (i = 0; i < model.rows; i++) for (j = 0; j < model.cols; j++) if (basis[i][j]) {
       if (u[i] !== null && v[j] === null) { v[j] = model.working[i][j] - u[i]; changed = true; }
       if (v[j] !== null && u[i] === null) { u[i] = model.working[i][j] - v[j]; changed = true; }
     }
+    if (!changed) {
+      for (i = 0; i < model.rows; i++) if (u[i] === null) { u[i] = 0; changed = true; break; }
+      if (!changed) for (j = 0; j < model.cols; j++) if (v[j] === null) { v[j] = 0; changed = true; break; }
+    }
   }
   var reduced = common.matrix(model.rows, model.cols, 0), tolerance = common.matrix(model.rows, model.cols, 0), entering = null;
   for (i = 0; i < model.rows; i++) for (j = 0; j < model.cols; j++) {
+    if (!model.allowed[i][j]) continue;
     reduced[i][j] = model.working[i][j] - u[i] - v[j];
     /* 每格按参与相减的费用和位势估计舍入界；远处一条昂贵线路不能把本格改善吞掉。 */
     tolerance[i][j] = common.ROUND_EPS * Math.abs(model.working[i][j]) + common.ROUND_EPS * Math.abs(u[i]) + common.ROUND_EPS * Math.abs(v[j]);
@@ -100,10 +105,10 @@ function alternative(model, x, basis, p) {
   /* 单个零检验数可能只允许 θ=0。用零检验数残量网络寻找可正量调整的回路，
      穿过多个退化基也能发现不同最优运输方案，且不枚举指数多个基。 */
   var i, j;
-  for (i = 0; i < model.rows; i++) for (j = 0; j < model.cols; j++) if (!basis[i][j] && Math.abs(p.reduced[i][j]) <= p.reducedTolerance[i][j]) {
+  for (i = 0; i < model.rows; i++) for (j = 0; j < model.cols; j++) if (model.allowed[i][j] && !basis[i][j] && Math.abs(p.reduced[i][j]) <= p.reducedTolerance[i][j]) {
     var row = i, col = j;
     var route = path(model, model.rows + j, i, function (a, b, forward) {
-      if (a === row && b === col) return false;
+      if (!model.allowed[a][b] || (a === row && b === col)) return false;
       return forward ? Math.abs(p.reduced[a][b]) <= p.reducedTolerance[a][b] : x[a][b] > 0;
     });
     if (!route) continue;

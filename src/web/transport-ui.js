@@ -13,7 +13,7 @@ var draft = require('./draft.js');
   function invalidate() { $('tpOut').innerHTML = ''; $('tpBanners').innerHTML = ''; }
   function number(raw) { return parseNumber(raw, true); }
   function problem() {
-    return { direction: state.direction, cost: state.cells.map(function (r) { return r.map(number); }),
+    return { direction: state.direction, cost: state.cells.map(function (r) { return r.map(function (v) { return transport.isForbidden(v) ? v : number(v); }); }),
       supply: state.supply.map(number), demand: state.demand.map(number),
       surplusCost: state.surplusCost.map(number), shortageCost: state.shortageCost.map(number) };
   }
@@ -23,6 +23,7 @@ var draft = require('./draft.js');
     $('tpBalance').textContent = b.ok ? '总供应 ' + report.num(b.supplyTotal) + '；总需求 ' + report.num(b.demandTotal)
       + (b.difference > 0 ? ' · 供大于求，剩余 ' + report.num(b.difference) : b.difference < 0 ? ' · 供小于求，缺货 ' + report.num(-b.difference) : ' · 供需平衡')
       : state.rows && state.cols ? '请填写有效的非负供需量后检查平衡状态。' : '请设置至少 1 个产地与 1 个销地。';
+    if (m.ok && m.forbiddenCount) $('tpBalance').textContent += '；已设置 ' + m.forbiddenCount + ' 条禁运路线，总量平衡不代表路线可达，求解时检查可行性。';
     /* 虚拟线路在求解前就可检查：原输入保留，平衡表由 core 生成。 */
     $('tpVirtual').innerHTML = m.ok && (m.virtual || m.balanceAdjustment)
       ? '<p class="sens-note">' + report.balanceNote(m) + '</p>'
@@ -31,9 +32,10 @@ var draft = require('./draft.js');
   }
   function input(key, i, j, label) {
     var v = key === 'cells' ? state.cells[i][j] : state[key][i];
-    var valid = isFinite(number(v)) && (key === 'cells' || number(v) >= 0);
+    var blocked = key === 'cells' && transport.isForbidden(v);
+    var valid = blocked || isFinite(number(v)) && (key === 'cells' || number(v) >= 0);
     return '<input class="num" type="text" inputmode="text" placeholder="0" aria-label="' + esc(label)
-      + '" aria-invalid="' + (!valid) + '" data-key="' + key + '" data-i="' + i + '"'
+      + (key === 'cells' ? '（填 X 禁运）' : '') + '" aria-invalid="' + (!valid) + '" data-key="' + key + '" data-i="' + i + '"'
       + (j === undefined ? '' : ' data-j="' + j + '"') + ' value="' + esc(v) + '">';
   }
   function renderInput() {
@@ -45,7 +47,7 @@ var draft = require('./draft.js');
       h += '<th scope="col">供应量</th></tr></thead><tbody>';
       for (i = 0; i < state.rows; i++) {
         h += '<tr><th scope="row">产地' + (i + 1) + '</th>';
-        for (j = 0; j < state.cols; j++) h += '<td>' + input('cells', i, j, '产地' + (i + 1) + '至销地' + (j + 1) + (state.direction === 'max' ? '单位收益' : '单位运费')) + '</td>';
+        for (j = 0; j < state.cols; j++) h += '<td' + (transport.isForbidden(state.cells[i][j]) ? ' class="tp-blocked"' : '') + '>' + input('cells', i, j, '产地' + (i + 1) + '至销地' + (j + 1) + (state.direction === 'max' ? '单位收益' : '单位运费')) + '</td>';
         h += '<td class="tp-margin">' + input('supply', i, undefined, '产地' + (i + 1) + '供应量') + '</td></tr>';
       }
       h += '</tbody><tfoot><tr><th scope="row">需求量</th>';
@@ -87,21 +89,28 @@ var draft = require('./draft.js');
     addVar: 'tpAddRow', delVar: 'tpDelRow', addCon: 'tpAddCol', delCon: 'tpDelCol',
     labels: { addVar: '+ 产地', delVar: '− 产地', addCon: '+ 销地', delCon: '− 销地' } });
   var extras = document.createElement('div');
-  extras.innerHTML = '<p class="tp-balance" id="tpBalance" role="status" aria-live="polite"></p>'
+  extras.innerHTML = '<p class="sens-note">费用格填 X 表示禁运（也接受 × 或“禁运”），恢复数字即可重新允许运输。禁运格不分配、不入基；自动补出的虚拟线路仍可用。</p>'
+    + '<button type="button" class="btn" data-transport-forbidden-sample>载入禁运示例</button>'
+    + '<p class="tp-balance" id="tpBalance" role="status" aria-live="polite"></p>'
     + '<details class="tp-fee-options"><summary>剩余处理费用 / 缺货罚金</summary>'
     + '<p class="sens-note">按单位计费，须非负。默认 0 表示忽略剩余或缺货的损失；最大收益模式会扣除此费用。供需平衡时不产生虚拟费用。</p>'
     + '<div id="tpFees"></div></details><div id="tpVirtual"></div>';
   $('tpPanel').appendChild(extras);
+  function loadExample(p) {
+    load({ direction: p.direction, rows: p.supply.length, cols: p.demand.length,
+      cells: p.cost.map(function (r) { return r.map(String); }), supply: p.supply.map(String), demand: p.demand.map(String),
+      surplusCost: p.supply.map(function () { return ''; }), shortageCost: p.demand.map(function () { return ''; }) });
+  }
+  extras.querySelector('[data-transport-forbidden-sample]').addEventListener('click', function () {
+    loadExample(require('./examples.js').transportForbidden());
+  });
   Array.prototype.forEach.call($('tpDirSeg').querySelectorAll('button'), function (b) {
     b.textContent = b.dataset.dir === 'min' ? '最小运费' : '最大收益';
     b.addEventListener('click', function () { state.direction = b.dataset.dir; invalidate(); renderInput(); });
   });
   guide = require('./input-guide.js').attach($('tpPanel'), {
     resize: resize, sample: function () {
-      var p = require('./examples.js').transport();
-      load({ direction: p.direction, rows: p.supply.length, cols: p.demand.length,
-        cells: p.cost.map(function (r) { return r.map(String); }), supply: p.supply.map(String), demand: p.demand.map(String),
-        surplusCost: p.supply.map(function () { return ''; }), shortageCost: p.demand.map(function () { return ''; }) });
+      loadExample(require('./examples.js').transport());
     }
   });
   [['tpAddRow', 1, 0], ['tpDelRow', -1, 0], ['tpAddCol', 0, 1], ['tpDelCol', 0, -1]].forEach(function (a) {
@@ -115,7 +124,9 @@ var draft = require('./draft.js');
     var i = +inp.dataset.i;
     if (key === 'cells') state.cells[i][+inp.dataset.j] = inp.value;
     else state[key][i] = inp.value;
-    inp.setAttribute('aria-invalid', String(!isFinite(number(inp.value)) || (key !== 'cells' && number(inp.value) < 0)));
+    var blocked = key === 'cells' && transport.isForbidden(inp.value);
+    inp.setAttribute('aria-invalid', String(!blocked && (!isFinite(number(inp.value)) || (key !== 'cells' && number(inp.value) < 0))));
+    if (key === 'cells') inp.parentNode.classList.toggle('tp-blocked', blocked);
     invalidate(); syncBalance();
   }
   $('tpPanel').addEventListener('input', edit);

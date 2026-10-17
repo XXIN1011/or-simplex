@@ -9,8 +9,8 @@ const { rng, resolveSeed, banner } = require('../lib/rng');
 const seed = resolveSeed(20261016), random = rng(seed);
 console.log(banner('运输问题', seed));
 const bank = [];
-let steps = 0, pivots = 0, degenerate = 0, multiple = 0;
-for (let k = 0; k < 1800; k++) {
+let steps = 0, pivots = 0, degenerate = 0, multiple = 0, infeasible = 0, guarded = 0;
+for (let k = 0; k < 3600; k++) {
   const m = random.ri(1,8), n = random.ri(1,8), divisor = random.pick([1,1,2,3,10]);
   const supply = Array.from({length:m}, () => random.ri(0,30) / divisor);
   const demand = Array.from({length:n}, () => random.ri(0,30) / divisor);
@@ -27,7 +27,19 @@ for (let k = 0; k < 1800; k++) {
     p.cost = p.cost.map(row => row.map(fraction));
     for (const name of ['supply','demand','surplusCost','shortageCost']) p[name] = p[name].map(fraction);
   }
+  if (k >= 1800) p.cost = p.cost.map(row => row.map(v => random.next() < [0.15,0.4,0.7,1][k%4] ? 'X' : v));
   const r = solveTransport(p);
+  bank.push({problem:p,status:r.status,objective:r.objective,allocation:r.allocation});
+  if (r.status === 'infeasible') {
+    infeasible++; assert.equal(r.feasible,false); assert.equal(r.objective,null);
+    const f=r.feasibility;
+    assert.ok(f.deficit>0);
+    f.cutRows.forEach(i => r.model.allowed[i].forEach((a,j) => { if(a) assert.ok(f.cutCols.includes(j),'割集合包含全部可达销地'); }));
+    const cutSupply=common.sum(f.cutRows.map(i=>r.model.supply[i])),cutDemand=common.sum(f.cutCols.map(j=>r.model.demand[j]));
+    assert.ok(cutSupply>cutDemand,'无解具有供应超过可达需求的独立割见证');
+    assert.ok(Math.abs(cutSupply-cutDemand-f.deficit)<=r.model.quantityTolerance);
+    continue;
+  }
   assert.equal(r.status, 'optimal', `case ${k}: ${r.message}`);
   assert.equal(r.feasible, true);
   let previous = null;
@@ -38,6 +50,7 @@ for (let k = 0; k < 1800; k++) {
     const tol = Math.max(1, r.model.total * r.model.costScale) * 1e-8;
     assert.ok(Math.abs(common.total(s.allocation,r.model.cost) - s.objective) <= tol);
     if (s.remainingSupply) {
+      if (s.guarded) guarded++;
       s.invariant.rowTotals.forEach((v,i) => assert.ok(Math.abs(v+s.remainingSupply[i]-r.model.supply[i]) <= r.model.quantityTolerance));
       s.invariant.colTotals.forEach((v,j) => assert.ok(Math.abs(v+s.remainingDemand[j]-r.model.demand[j]) <= r.model.quantityTolerance));
     }
@@ -61,19 +74,20 @@ for (let k = 0; k < 1800; k++) {
     }
     previous = s;
   }
-  r.potentials.reduced.forEach((row,i) => row.forEach((v,j) => { if (!r.basis[i][j]) assert.ok(v >= -r.model.costTolerance); }));
+  r.potentials.reduced.forEach((row,i) => row.forEach((v,j) => { if (r.model.allowed[i][j] && !r.basis[i][j]) assert.ok(v >= -r.model.costTolerance); }));
   if (r.multipleOptimal) {
     multiple++; assert.ok(r.alternative.theta > 0);
     const x = r.alternative.allocation, tol = Math.max(1,Math.abs(r.objective))*1e-8;
     assert.ok(Math.abs(r.alternative.objective-r.objective) <= tol);
     x.forEach((row,i) => { assert.ok(row.every(v => v >= 0)); assert.ok(Math.abs(common.sum(row)-r.model.supply[i]) <= r.model.quantityTolerance); });
+    x.forEach((row,i) => row.forEach((v,j) => { if (!r.model.allowed[i][j]) assert.equal(v,0); }));
     r.model.demand.forEach((v,j) => assert.ok(Math.abs(common.sum(x.map(row => row[j]))-v) <= r.model.quantityTolerance));
   }
   if (k < 30) assert.deepEqual(solveTransport(p),r,'确定性重算');
-  bank.push({problem:p,status:r.status,objective:r.objective,allocation:r.allocation});
 }
 assert.ok(degenerate > 0, '随机题覆盖退化零步长换基');
 assert.ok(multiple > 0, '随机题覆盖多重最优');
+assert.ok(infeasible > 0 && guarded > 0,'覆盖禁运无解与防堵路分配');
 fs.writeFileSync(path.join(__dirname,'transport-bank.json'), JSON.stringify(bank));
-console.log(`1800 题，${steps} 步逐轮校验，${pivots} 次换基（${degenerate} 次退化），${multiple} 题多重最优`);
+console.log(`3600 题（1800 题含禁运），${infeasible} 题无解，${guarded} 次可行性保护；${steps} 步逐轮校验，${pivots} 次换基（${degenerate} 次退化），${multiple} 题多重最优`);
 console.log('运输题库已生成；结论: PASS');

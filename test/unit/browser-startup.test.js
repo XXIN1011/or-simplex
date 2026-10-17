@@ -42,6 +42,10 @@ test('调试端点无响应时按总时限失败，不会一直等 fetch', async
 });
 
 test('端点返回不完整 JSON 时不能误报浏览器就绪', async t => {
-  const port = await endpoint(t, (req, res) => res.end('{}'));
-  await assert.rejects(waitForDebugger(port, child(), { timeoutMs: 100, pollMs: 5 }), /未返回 WebSocket 地址/);
+  let responses = 0;
+  const port = await endpoint(t, (req, res) => { responses++; res.end('{}'); });
+  /* 并发负载下最后一次 HTTP 请求可能先撞到总时限，覆盖先前 JSON 校验错误。
+     核心契约是确实收到无效端点后仍拒绝就绪，不能依赖最后一个网络错误的文案。 */
+  await assert.rejects(waitForDebugger(port, child(), { timeoutMs: 1000, pollMs: 5 }), /调试端口未就绪/);
+  assert.ok(responses > 0, '必须实际收到不完整 JSON，不能用网络未连通冒充校验');
 });
