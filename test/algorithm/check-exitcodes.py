@@ -49,7 +49,7 @@ with tempfile.TemporaryDirectory(prefix='or-exitcodes-') as tmp:
     impossible = next(r for r in bank if r['status'] == 'infeasible')
     false_impossible = copy.deepcopy(next(r for r in bank if r['status'] == 'optimal'))
     false_impossible.update(status='infeasible', objective=None, allocation=None)
-    illegal_flow = {'problem': {'direction':'min', 'cost':[[0,'X'],['X',0]], 'supply':[1,1], 'demand':[1,1]},
+    illegal_flow = {'problem': {'direction':'min', 'cost':[[0,'M'],['M',0]], 'supply':[1,1], 'demand':[1,1]},
                     'status':'optimal', 'objective':0, 'allocation':[[0,1],[1,0]]}
     for label, record, expected in [('正确禁运无解', impossible, 0), ('可行题误报无解', false_impossible, 1), ('禁运伪解', illegal_flow, 1)]:
         Path(tmp, 'transport-bank.json').write_text(json.dumps([record]), encoding='utf-8')

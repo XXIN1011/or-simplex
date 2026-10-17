@@ -3,7 +3,10 @@
 var parseNumber = require('./number-input.js').parseNumber;
 var EPS = 1e-10;
 var ROUND_EPS = 32 * 2.220446049250313e-16;
-function isForbidden(v) { return typeof v === 'string' && /^(x|×|禁运)$/i.test(v.trim()); }
+/* 禁运标记：教学口径用 M —— 大 M 表示这条线路的费用/收益无穷大，实际不能运输。
+   旧的 X / × /「禁运」继续识别，保证旧草稿、旧历史、外部 JSON 和对拍脚本仍读得懂；
+   新输入一律提示填 M。 */
+function isForbidden(v) { return typeof v === 'string' && /^(m|x|×|禁运)$/i.test(v.trim()); }
 function matrix(m, n, value) {
   var a = [], i, j;
   for (i = 0; i < m; i++) { a[i] = []; for (j = 0; j < n; j++) a[i][j] = value; }
@@ -62,7 +65,7 @@ function normalize(problem) {
       allowed[i][j] = !blocked;
       if (blocked) forbiddenCount++;
       cost[i][j] = blocked ? 0 : parseNumber(raw, false);
-      if (!isFinite(cost[i][j])) errors.push('产地' + (i + 1) + '至销地' + (j + 1) + '的费用或收益无效（禁运请填 X）');
+      if (!isFinite(cost[i][j])) errors.push('产地' + (i + 1) + '至销地' + (j + 1) + '的费用或收益无效（禁运请填 M）');
     }
   }
   function fees(v, count, name) {

@@ -99,7 +99,7 @@ module.exports = async function playerCases(sess, run) {
     expect(a.querySelectorAll('.tp-cut-label').length>=1 && a.querySelector('.tp-scene').textContent.indexOf('后续将有 5')>=0,'禁运保护帧突出瓶颈与无法匹配量');
     a.querySelector('[data-tp-next]').click();
     expect(a.querySelector('[data-tp-cell="0-0"] .tp-value').textContent==='0' && !a.querySelector('[data-tp-cell="0-0"] .tp-basis'),'禁运保护跳过零分配格且不伪造基身份');
-    value('cells',0,1,'X');value('cells',1,1,'X');click('tpSolveBtn');
+    value('cells',0,1,'M');value('cells',1,1,'M');click('tpSolveBtn');
     expect(q('#tpOut .tp-cut-label') && !q('#tpOut [data-transport-player]'),'无解瓶颈在原表突出且不播放伪方案');
     size(1,1);value('cells',0,0,'1/2');value('supply',0,null,'3/4');value('demand',0,null,'3/4');click('tpSolveBtn');
     a=q('[data-kind=allocation]');a.querySelector('[data-tp-next]').click();a.querySelector('[data-tp-next]').click();
@@ -114,6 +114,11 @@ module.exports = async function playerCases(sess, run) {
     var degenerate=q('[data-kind=pivot]');
     while(!degenerate.querySelector('[data-tp-next]').disabled)degenerate.querySelector('[data-tp-next]').click();
     expect(degenerate.querySelector('.tp-scene').textContent.indexOf('θ = 0')>=0 && degenerate.querySelector('[data-tp-cell="1-0"] .tp-basis') && !degenerate.querySelector('[data-tp-cell="0-0"] .tp-basis'),'退化闭回路零运量不变但基身份正确切换');
+    /* θ=0 只换基：不再单独留一帧“同步调整”，帧数应比 θ>0 的回路少 1 */
+    var degText=degenerate.querySelector('.tp-player-progress').textContent;
+    var degFrames=parseInt(String(degText).split('/')[1],10);
+    var degCycle=degenerate.querySelectorAll('.tp-cycle').length;
+    expect(degFrames===degCycle+2,'退化换基不占空帧（帧数 '+degFrames+' = 回路 '+degCycle+' 格 + 2）');
     q('#tpPanel [data-guide=sample]').click();click('tpSolveBtn');
     q('#tpOut [data-study-mode=single]').click();
     var p=q('[data-kind=pivot]'),picker=q('#tpOut [data-study-select]');

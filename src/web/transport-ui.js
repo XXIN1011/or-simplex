@@ -37,7 +37,7 @@ var draft = require('./draft.js');
     var blocked = key === 'cells' && transport.isForbidden(v);
     var valid = blocked || isFinite(number(v)) && (key === 'cells' || number(v) >= 0);
     return '<input class="num" type="text" inputmode="text" placeholder="0" aria-label="' + esc(label)
-      + (key === 'cells' ? '（填 X 禁运）' : '') + '" aria-invalid="' + (!valid) + '" data-key="' + key + '" data-i="' + i + '"'
+      + (key === 'cells' ? '（填 M 禁运）' : '') + '" aria-invalid="' + (!valid) + '" data-key="' + key + '" data-i="' + i + '"'
       + (j === undefined ? '' : ' data-j="' + j + '"') + ' value="' + esc(v) + '">';
   }
   function renderInput() {
@@ -91,7 +91,7 @@ var draft = require('./draft.js');
     addVar: 'tpAddRow', delVar: 'tpDelRow', addCon: 'tpAddCol', delCon: 'tpDelCol',
     labels: { addVar: '+ 产地', delVar: '− 产地', addCon: '+ 销地', delCon: '− 销地' } });
   var extras = document.createElement('div');
-  extras.innerHTML = '<p class="sens-note">费用格填 X 表示禁运（也接受 × 或“禁运”），恢复数字即可重新允许运输。禁运格不分配、不入基；自动补出的虚拟线路仍可用。</p>'
+  extras.innerHTML = '<p class="sens-note">费用格填 M 表示禁运（大 M：该线路费用无穷大，不能运输）；也接受 X、× 或“禁运”。恢复数字即可重新允许运输，禁运格不分配、不入基；自动补出的虚拟线路仍可用。</p>'
     + '<button type="button" class="btn" data-transport-forbidden-sample>载入禁运示例</button>'
     + '<p class="tp-balance" id="tpBalance" role="status" aria-live="polite"></p>'
     + '<details class="tp-fee-options"><summary>剩余处理费用 / 缺货罚金</summary>'

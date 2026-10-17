@@ -27,7 +27,7 @@ for (let k = 0; k < 3600; k++) {
     p.cost = p.cost.map(row => row.map(fraction));
     for (const name of ['supply','demand','surplusCost','shortageCost']) p[name] = p[name].map(fraction);
   }
-  if (k >= 1800) p.cost = p.cost.map(row => row.map(v => random.next() < [0.15,0.4,0.7,1][k%4] ? 'X' : v));
+  if (k >= 1800) p.cost = p.cost.map(row => row.map(v => random.next() < [0.15,0.4,0.7,1][k%4] ? 'M' : v));
   const r = solveTransport(p);
   bank.push({problem:p,status:r.status,objective:r.objective,allocation:r.allocation});
   if (r.status === 'infeasible') {

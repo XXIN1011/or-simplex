@@ -82,6 +82,23 @@ test('禁运可行性保护避免最小元素贪心堵路，并展示被跳过�
   assert.equal(reduced.steps[0].quantity,1); assert.equal(reduced.steps[0].proposedQuantity,5);
   for(const s of reduced.steps) assert.ok(s.invariant.valid);
 });
+test('禁运标记以 M 为准，旧标记 X / × / 禁运继续兼容', () => {
+  const markers = ['M', 'm', 'M ', 'X', 'x', '×', '禁运', ' 禁运 '];
+  for (const mark of markers) {
+    const r = solveTransport({direction:'min',cost:[[1,mark],[1,1]],supply:[1,1],demand:[1,1]});
+    assert.equal(r.ok,true,mark);
+    assert.equal(r.model.allowed[0][1],false,mark+' 应被识别为禁运');
+    assert.equal(r.model.forbiddenCount,1,mark);
+    assert.equal(r.allocation[0][1],0,mark+' 禁运格运量必须为 0');
+  }
+  for (const mark of ['N', 'M1', 'MM', '无穷']) {
+    assert.equal(transport.isForbidden(mark),false,mark+' 不是禁运标记');
+  }
+  /* M 与 X 在完整求解上必须完全等价 */
+  const a = solve({direction:'min',cost:[[2,'M'],[3,4]],supply:[4,6],demand:[5,5]},31);
+  const b = solve({direction:'min',cost:[[2,'X'],[3,4]],supply:[4,6],demand:[5,5]},31);
+  assert.equal(a.objective,b.objective);assert.deepEqual(a.allocation,b.allocation);
+});
 test('总量平衡但禁运无解有瓶颈见证，不能伪造最优或自动放开路线', () => {
   const r = solveTransport({direction:'min',cost:[[1,'X'],[1,'禁运']],supply:[5,5],demand:[5,5]});
   assert.equal(r.ok,true);assert.equal(r.status,'infeasible');assert.equal(r.feasible,false);

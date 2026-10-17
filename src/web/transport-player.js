@@ -4,7 +4,18 @@ var view = require('./transport-table.js'), num = view.num, table = view.table, 
 var esc = require('./dom.js').esc;
 var addScrollHints = require('./input-panel.js').addScrollHints;
 var NS = 'http://www.w3.org/2000/svg';
-function count(s) { return s.type === 'allocation' ? 3 : s.cycle.length + 3; }
+/* 帧数：分配三步；回路按「整条回路 → θ → 同步调整」三段。
+   长回路（超过 6 格）不再逐格揭示：手机上每帧都要横向滚动去找下一格，
+   读者跟着滚会丢掉上下文，正负号一次性标全反而更清楚。
+   退化换基 θ=0 运量一个都不变、末帧没有可视变化，与 θ 帧合并成一帧，
+   免得空转一帧还让人以为运量动了。 */
+var LONG_LOOP = 6;
+function longLoop(s) { return s.type === 'pivot' && s.cycle.length > LONG_LOOP; }
+function count(s) {
+  if (s.type === 'allocation') return 3;
+  var n = longLoop(s) ? 3 : s.cycle.length + 3;
+  return s.theta === 0 ? n - 1 : n;
+}
 /* 末帧真正改变的格：用来闪一下，证明「同步调整」落在哪些格上。 */
 function changedCells(s) {
   var out = [];
@@ -24,9 +35,16 @@ function routeList(s, frame) {
 }
 function scene(m, s, frame) {
   var allocation = s.type === 'allocation', last = count(s) - 1, done = frame === last;
+  var long = !allocation && longLoop(s);
   var values = done ? s.allocation : s.beforeAllocation, basis = done ? s.basis : s.beforeBasis;
-  var loop = allocation ? [] : s.cycle.slice(0, Math.min(frame, s.cycle.length));
-  var active = allocation ? s.cell : frame === 0 ? s.entering : frame <= s.cycle.length ? s.cycle[frame - 1] : s.leaving;
+  var loop, active;
+  if (allocation) { loop = []; active = s.cell; }
+  else if (long) { loop = s.cycle; active = frame === 0 ? s.entering : s.leaving; }
+  else {
+    loop = s.cycle.slice(0, Math.min(frame, s.cycle.length));
+    active = frame === 0 ? s.entering : frame <= s.cycle.length ? s.cycle[frame - 1] : s.leaving;
+  }
+  /* θ 帧在下面的回路分支里算：分配步骤没有 cycle，不能在这里碰 s.cycle */
   var costName = m.direction === 'max' ? '原收益' : '原费用';
   var title, note, h = '', options = { active: active, selected: allocation ? s.cell : s.entering,
     selectedLabel: allocation ? '本次选择' : '入基格' };
@@ -41,17 +59,32 @@ function scene(m, s, frame) {
         + (s.guarded ? '若按上限分配，后续将有 ' + num(s.feasibilityDeficit) + ' 单位无法匹配。高亮瓶颈针对试分配后的剩余网络，已固定格不再使用。' : '本次可按上限分配；下一帧更新所选格及对应供需。')
       : (s.quantity === 0 ? '为保持可行，本格跳过，运量和基身份不变。' : '已分配 ' + num(s.quantity) + '，所选格与右侧剩余供应、底部剩余需求同步更新。');
   } else {
-    if (frame >= s.cycle.length + 1) options.leaving = s.leaving;
+    /* θ 帧：短回路由逐格标记推进到这里，长回路则是第二帧 */
+    var thetaFrame = long ? 1 : s.cycle.length + 1;
+    if (frame >= thetaFrame) options.leaving = s.leaving;
     options.dim = loop.length > 0;
-    options.theta = frame === s.cycle.length + 1;
+    options.theta = frame === thetaFrame;
     options.updated = done ? changedCells(s) : [];
-    title = frame === 0 ? '从入基格开始' : frame <= s.cycle.length ? '标记回路第 ' + frame + ' 格' : done ? '同步调整运量与基身份' : '从负号格确定调整量';
-    note = frame === 0 ? '入基格 ' + cellName(s.entering) + ' 运量暂不改变。下一帧沿基树路径交替标记 + / −。'
-      : frame <= s.cycle.length ? cellName(active) + (active.sign > 0 ? ' 标 +，调整时增加 θ。' : ' 标 −，调整时减少 θ。')
-        + (frame === s.cycle.length ? '路径已闭合，下一帧比较所有负号格的运量。' : '此时仅标记路径，尚未改变运输量。')
-      : done ? (s.theta === 0 ? 'θ = 0：退化换基，运量不变，入基格与离基格的基身份已更新。' : 'θ = ' + num(s.theta) + '：所有正负号格同步更新，显示的是算法记录的调整后方案。')
-      : 'θ = 负号格的最小运量 = ' + num(s.theta) + '；' + cellName(s.leaving) + ' 离基，并列时取下标最小者。';
-    h += routeList(s, frame);
+    if (frame === 0) {
+      title = long ? '整条闭回路' : '从入基格开始';
+      note = long
+        ? '回路共 ' + s.cycle.length + ' 格，正负号按 + / − 交替一次标全；长回路不逐格揭示，避免在窄屏上反复滚动。下一帧确定 θ。'
+        : '入基格 ' + cellName(s.entering) + ' 运量暂不改变。下一帧沿基树路径交替标记 + / −。';
+    } else if (frame < thetaFrame) {
+      title = '标记回路第 ' + frame + ' 格';
+      note = cellName(active) + (active.sign > 0 ? ' 标 +，调整时增加 θ。' : ' 标 −，调整时减少 θ。')
+        + (frame === s.cycle.length ? '路径已闭合，下一帧比较所有负号格的运量。' : '此时仅标记路径，尚未改变运输量。');
+    } else if (!done) {
+      title = '从负号格确定调整量';
+      note = 'θ = 负号格的最小运量 = ' + num(s.theta) + '；' + cellName(s.leaving) + ' 离基，并列时取下标最小者。';
+    } else if (s.theta === 0) {
+      title = '退化换基：只换基，运量不变';
+      note = 'θ = 0：所有正负号格运量不变，只有入基格与离基格的基身份互换。';
+    } else {
+      title = '同步调整运量与基身份';
+      note = 'θ = ' + num(s.theta) + '：所有正负号格同步更新，显示的是算法记录的调整后方案。';
+    }
+    h += routeList(s, long ? s.cycle.length : frame);
   }
   var objective = done ? s.objective : s.objectiveBefore;
   return { html: '<h4 class="tp-scene-title">' + title + '</h4><p>' + note + '</p>' + h
@@ -154,7 +187,7 @@ function wire(root, result) {
         var max = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
         viewport.scrollLeft = Math.max(0, Math.min(max, offset - (leading - vr.left)));
       }
-      draw(box, rendered.loop, s.type === 'pivot' && frame >= s.cycle.length, playing && !media.matches);
+      draw(box, rendered.loop, s.type === 'pivot' && (longLoop(s) || frame >= s.cycle.length), playing && !media.matches);
     }
     function schedule() {
       timer = setTimeout(function () {
@@ -207,4 +240,6 @@ function wire(root, result) {
   });
   return function () { disposed = true; pauseAll(); listeners.forEach(function (remove) { remove(); }); if (observer) observer.disconnect(); };
 }
-module.exports = { render: render, wire: wire };
+/* frames / scene 导出给单测：帧结构（长回路合并、退化换基少一帧）是被断言的行为，
+   不靠浏览器才能验证。产品代码只用 render / wire。 */
+module.exports = { render: render, wire: wire, frames: count, scene: scene };

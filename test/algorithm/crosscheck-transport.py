@@ -26,7 +26,8 @@ bad = []
 for k, case in enumerate(bank):
     p = case['problem']
     s, d = list(map(number, p['supply'])), list(map(number, p['demand']))
-    allowed = [[not (isinstance(v, str) and v.strip().lower() in ('x','×','禁运')) for v in row] for row in p['cost']]
+    # 禁运标记以 M 为准（大 M），X / × / 禁运 作为旧标记继续兼容
+    allowed = [[not (isinstance(v, str) and v.strip().lower() in ('m','x','×','禁运')) for v in row] for row in p['cost']]
     c = [[number(v) if allowed[i][j] else 0 for j,v in enumerate(row)] for i,row in enumerate(p['cost'])]
     sign = -1 if p['direction'] == 'max' else 1
     diff = sum(s) - sum(d)

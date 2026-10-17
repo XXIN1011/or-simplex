@@ -70,7 +70,12 @@ module.exports = async function transportCases(sess, check, url) {
   `);
   await run(`
     q('#tpPanel [data-transport-forbidden-sample]').click();
-    expect(q('#tpPanel [data-key=cells][data-i="1"][data-j="1"]').value==='X','禁运示例可直接载入');
+    expect(q('#tpPanel [data-key=cells][data-i="1"][data-j="1"]').value==='M','禁运示例可直接载入');
+    expect(q('#tpPanel [data-key=cells][data-i="1"][data-j="1"]').getAttribute('aria-invalid')==='false'
+      && q('#tpPanel [data-key=cells][data-i="1"][data-j="1"]').parentNode.classList.contains('tp-blocked'),'M 标记被识别为禁运格');
+    value('cells',0,0,'X');
+    expect(q('#tpBalance').textContent.indexOf('2 条禁运路线')>=0,'旧的 X 标记仍算禁运');
+    value('cells',0,0,1);
     expect(q('#tpBalance').textContent.indexOf('总量平衡不代表路线可达')>=0,'平衡提示说明禁运可行性另行检查');
     click('tpSolveBtn');
     expect(q('#tpOut .zv').textContent==='25','禁运示例最优费用25');
@@ -78,7 +83,7 @@ module.exports = async function transportCases(sess, check, url) {
     expect(q('#tpOut .tp-blocked').textContent.indexOf('禁运')>=0 && q('#tpOut').textContent.indexOf('不参与检验')>=0,'结果、检验数及过程明确标记禁运');
     value('cells',1,1,1);expect(!q('#tpOut').textContent && !q('#tpPanel [data-key=cells][data-i="1"][data-j="1"]').parentNode.classList.contains('tp-blocked'),'数字恢复线路并立即清除旧结果');
     click('tpSolveBtn');expect(q('#tpOut .zv').textContent==='10','放开线路后重新优化');
-    value('cells',0,1,'X');value('cells',1,1,'禁运');click('tpSolveBtn');
+    value('cells',0,1,'M');value('cells',1,1,'禁运');click('tpSolveBtn');
     expect(q('#tpOut').textContent.indexOf('禁运限制下无可行方案')>=0 && !q('#tpOut .zv'),'禁运无解不显示伪目标值');
     expect(q('#tpOut').textContent.indexOf('仍有 5')>=0 && q('#tpOut').textContent.indexOf('瓶颈产地集合')>=0,'无解展示缺额及路线瓶颈');
     value('cells',1,1,3);value('cells',1,0,'×');click('tpSolveBtn');
@@ -94,10 +99,10 @@ module.exports = async function transportCases(sess, check, url) {
     expect(q('#tpPanel [data-key=cells][data-i="1"][data-j="0"]').value==='×' && !q('#tpOut').textContent,'历史恢复禁运题目');
     q('#tpPanel [data-transport-forbidden-sample]').click();value('supply',0,null,6);value('supply',1,null,4);click('tpSolveBtn');
     expect(q('#tpOut .zv').textContent==='23' && q('#tpOut').textContent.indexOf('实际分配')>=0,'分配量受可行性约束缩减后求最优');
-    q('#tpDirSeg [data-dir=max]').click();value('cells',0,0,'X');value('cells',0,1,10);value('supply',0,null,3);
+    q('#tpDirSeg [data-dir=max]').click();value('cells',0,0,'M');value('cells',0,1,10);value('supply',0,null,3);
     size(1,2);value('demand',0,null,2);value('demand',1,null,3);value('shortageCost',0,null,4);click('tpSolveBtn');
     expect(q('#tpOut .zv').textContent==='22' && q('#tpOut').textContent.indexOf('缺货量：销地1：2；销地2：0')>=0,'禁运最大净收益及虚拟缺货线路');
-    value('cells',0,1,'X');value('supply',0,null,0);value('demand',0,null,0);value('demand',1,null,0);click('tpSolveBtn');
+    value('cells',0,1,'M');value('supply',0,null,0);value('demand',0,null,0);value('demand',1,null,0);click('tpSolveBtn');
     expect(q('#tpOut .zv').textContent==='0','全禁运零供需仍可行');
     q('#tpPanel [data-transport-forbidden-sample]').click();click('tpSolveBtn');
   `);
