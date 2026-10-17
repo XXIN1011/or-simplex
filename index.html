@@ -452,8 +452,8 @@ a.back:active{opacity:.6}
 .hero .feats{display:flex;flex-wrap:wrap;gap:16px;margin:18px 0 0;padding:0;list-style:none}
 .hero .feats li{font-size:12px;font-weight:500;color:var(--fg2)}
 a.modcard{display:flex;align-items:center;gap:16px;text-decoration:none;background:var(--card);border:0;border-bottom:1px solid var(--line);border-radius:0;padding:20px 16px;margin:0;transition:background var(--duration-fast)}
-a.modcard:first-of-type{border-radius:var(--r-lg) var(--r-lg) 0 0}
-a.modcard.m-assign{border-radius:0 0 var(--r-lg) var(--r-lg);border-bottom-color:transparent}
+.module-list>a.modcard:first-child{border-radius:var(--r-lg) var(--r-lg) 0 0}
+.module-list>a.modcard:last-child{border-radius:0 0 var(--r-lg) var(--r-lg);border-bottom-color:transparent}
 a.modcard .mb{display:block;flex:1;min-width:0}
 a.modcard .mt{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:18px;font-weight:650;color:var(--fg);line-height:1.4}
 a.modcard .md{display:block;max-width:65ch;margin-top:7px;font-size:13px;color:var(--fg2);line-height:1.8}
@@ -858,6 +858,38 @@ button.btn.primary:disabled{filter:none}
 .transport-table tfoot,.transport-input tfoot{font-weight:650}
 #tpOut h3{margin:0 0 12px;font-size:18px;line-height:1.5}
 #tpOut p{overflow-wrap:anywhere}
+.tp-stage{display:inline-block;position:relative;min-width:100%;vertical-align:top}
+.tp-stage>table{width:100%}
+.tp-player{margin:18px 0 12px;padding:16px 0;border-top:1px solid var(--line)}
+.tp-player-controls{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px}
+.tp-player-controls .btn{min-height:44px}
+.tp-speed{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--fg2)}
+.tp-speed select{min-height:44px;font:inherit;font-size:13px;color:var(--fg);background:var(--input);border:1px solid var(--control-line);border-radius:var(--r-sm);padding:6px 10px}
+.tp-player-progress{font-size:13px;font-weight:650;color:var(--accent-text);line-height:1.7}
+.tp-scene-title{font-size:16px;line-height:1.5;margin:16px 0 8px}
+.tp-player .transport-table td{min-width:112px;height:136px}
+.tp-player .tp-stage{isolation:isolate}
+.tp-player .transport-table tr>th:first-child{position:sticky;left:0;z-index:2;background:var(--soft);width:72px;min-width:72px;max-width:72px;white-space:normal}
+.tp-player .transport-table tr>:last-child{width:64px;min-width:64px}
+.tp-player .transport-table tbody td:last-child{position:sticky;right:0;z-index:2;background:var(--soft)}
+.tp-player .transport-table thead th:last-child,.tp-player .transport-table tfoot td:last-child{position:sticky;right:0;z-index:3;background:var(--soft)}
+.tp-player .transport-table tbody td.tp-margin-active:last-child{background:var(--accent-soft);color:var(--accent-text)}
+.tp-player .transport-table tr>th.tp-cut-label:first-child{background:var(--warn-soft);color:var(--warn)}
+.tp-player .tp-active{outline:3px solid var(--accent);outline-offset:-3px}
+.transport-table td.tp-selected,.transport-table td.tp-margin-active{background:var(--accent-soft);color:var(--accent-text)}
+.transport-table td.tp-cycle{background:var(--accent-soft)}
+.transport-table td.tp-tie{outline:1px dashed var(--accent);outline-offset:-4px}
+.transport-table th.tp-cut-label{background:var(--warn-soft);color:var(--warn)}
+.tp-cut-label .tp-cost{color:inherit}
+.tp-route{display:flex;flex-wrap:wrap;gap:6px;padding:0;margin:12px 0;list-style:none;font-size:13px}
+.tp-route li{padding:6px 8px;border:1px solid var(--line);border-radius:var(--r-sm);color:var(--fg2)}
+.tp-route li.tp-route-visited{background:var(--accent-soft);color:var(--accent-text);border-color:var(--accent)}
+.tp-route li[aria-current]{outline:2px solid var(--accent);outline-offset:1px}
+.tp-path{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.tp-path polyline{fill:none;stroke:var(--accent-text);stroke-width:2;stroke-dasharray:5 5;stroke-linejoin:round;animation:tp-trace 200ms cubic-bezier(.16,1,.3,1)}
+@keyframes tp-trace{from{stroke-opacity:.15}to{stroke-opacity:1}}
+@media(prefers-reduced-motion:reduce){.tp-path polyline{animation:none}}
+.tp-motion-note[hidden]{display:none}
 
 </style>
 </head>
@@ -879,7 +911,7 @@ button.btn.primary:disabled{filter:none}
         </svg>
       </span>
       <h1>运筹学计算器</h1>
-      <p>线性规划 · 灵敏度分析 · 整数规划 · 指派问题</p>
+      <p>线性规划 · 灵敏度分析 · 整数规划 · 指派问题 · 运输问题</p>
       <ul class="feats">
         <li>单文件</li>
         <li>零依赖</li>
@@ -887,6 +919,7 @@ button.btn.primary:disabled{filter:none}
       </ul>
     </header>
 
+    <nav class="module-list" aria-label="算法模块">
     <a class="modcard m-simplex" href="#/simplex">
       <span class="mb">
         <span class="mt">单纯形法<span class="go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></span>
@@ -921,6 +954,7 @@ button.btn.primary:disabled{filter:none}
         <span class="md">填写运输表，用最小元素法与位势法逐步求最优运输方案。</span>
       </span>
     </a>
+    </nav>
 
     <div class="foottip">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -5578,6 +5612,8 @@ function initial(model, emit) {
     }
     if (!best) break;
     for (i = 0; i < m; i++) for (j = 0; j < n; j++) if (active(i, j) && model.working[i][j] === best.cost) ties.push({ i: i, j: j });
+    var beforeAllocation = common.copy(x), beforeBasis = common.copy(basis);
+    var beforeSupply = s.slice(), beforeDemand = d.slice();
     i = best.i; j = best.j; quantity = Math.min(s[i], d[j]);
     var proposed = quantity, trial = null;
     available[i][j] = false;
@@ -5596,6 +5632,9 @@ function initial(model, emit) {
     emit('allocation', x, basis, { cell: { i: i, j: j }, cost: best.cost, quantity: quantity,
       proposedQuantity: proposed, guarded: quantity < proposed,
       feasibilityDeficit: trial ? trial.deficit : 0,
+      beforeAllocation: beforeAllocation, beforeBasis: beforeBasis,
+      objectiveBefore: common.total(beforeAllocation, model.cost),
+      beforeRemainingSupply: beforeSupply, beforeRemainingDemand: beforeDemand,
       blockedCutRows: trial ? trial.cutRows : [], blockedCutCols: trial ? trial.cutCols : [],
       ties: ties, remainingSupply: s.slice(), remainingDemand: d.slice() });
   }
@@ -5845,7 +5884,7 @@ function optimize(model, state, emit, maxIterations) {
     }
     iteration++;
     emit('pivot', x, basis, { iteration: iteration, entering: p.entering, leaving: change.leaving,
-      cycle: loop, theta: change.theta, beforeAllocation: beforeAllocation,
+      cycle: loop, theta: change.theta, beforeAllocation: beforeAllocation, beforeBasis: beforeBasis,
       objectiveBefore: before, objectiveAfter: after, delta: after - before,
       workingDelta: workingAfter - workingBefore, reducedEntering: p.reduced[p.entering.i][p.entering.j] });
   }
@@ -9453,40 +9492,175 @@ module.exports = {
 };
 });
 
+__define__("src/web/transport-player.js", function (module, exports, require) {
+/* 快照驱动的分配/回路演示；播放只改变显示阶段，绝不重新求解或插值运量。 */
+'use strict';
+var view = require('./transport-table.js'), num = view.num, table = view.table, cellName = view.cellName;
+var esc = require('./dom.js').esc;
+var addScrollHints = require('./input-panel.js').addScrollHints;
+function count(s) { return s.type === 'allocation' ? 3 : s.cycle.length + 3; }
+function scene(m, s, frame) {
+  var allocation = s.type === 'allocation', last = count(s) - 1, done = frame === last;
+  var values = done ? s.allocation : s.beforeAllocation, basis = done ? s.basis : s.beforeBasis;
+  var loop = allocation ? [] : s.cycle.slice(0, Math.min(frame, s.cycle.length));
+  var active = allocation ? s.cell : frame === 0 ? s.entering : frame <= s.cycle.length ? s.cycle[frame - 1] : s.leaving;
+  var title, note, h = '', options = { active: active, selected: allocation ? s.cell : s.entering,
+    selectedLabel: allocation ? '本次选择' : '入基格' };
+  if (allocation) {
+    options.supply = done ? s.remainingSupply : s.beforeRemainingSupply;
+    options.demand = done ? s.remainingDemand : s.beforeRemainingDemand;
+    options.ties = s.ties;
+    if (frame === 1 && s.guarded) { options.cutRows = s.blockedCutRows; options.cutCols = s.blockedCutCols; }
+    title = frame === 0 ? '选择最小费用格' : frame === 1 ? '确定可行分配量' : '分配完成，更新剩余供需';
+    note = frame === 0 ? '选中 ' + cellName(s.cell) + '，工作费用 ' + num(s.cost) + '；并列时按行、列下标选择。右侧和底部显示本轮分配前的剩余量。'
+      : frame === 1 ? '普通分配上限 ' + num(s.proposedQuantity) + '；实际分配量 ' + num(s.quantity) + '。'
+        + (s.guarded ? '若按上限分配，后续将有 ' + num(s.feasibilityDeficit) + ' 单位无法匹配。高亮瓶颈针对试分配后的剩余网络，已固定格不再使用。' : '本次可按上限分配；下一帧更新所选格及对应供需。')
+      : (s.quantity === 0 ? '为保持可行，本格跳过，运量和基身份不变。' : '已分配 ' + num(s.quantity) + '，所选格与右侧剩余供应、底部剩余需求同步更新。');
+  } else {
+    if (frame >= s.cycle.length + 1) options.leaving = s.leaving;
+    title = frame === 0 ? '从入基格开始' : frame <= s.cycle.length ? '标记回路第 ' + frame + ' 格' : done ? '同步调整运量与基身份' : '从负号格确定调整量';
+    note = frame === 0 ? '入基格 ' + cellName(s.entering) + ' 运量暂不改变。下一帧沿基树路径交替标记 + / −。'
+      : frame <= s.cycle.length ? cellName(active) + (active.sign > 0 ? ' 标 +，调整时增加 θ。' : ' 标 −，调整时减少 θ。')
+        + (frame === s.cycle.length ? '路径已闭合，下一帧比较所有负号格的运量。' : '此时仅标记路径，尚未改变运输量。')
+      : done ? (s.theta === 0 ? 'θ = 0：退化换基，运量不变，入基格与离基格的基身份已更新。' : 'θ = ' + num(s.theta) + '：所有正负号格同步更新，显示的是算法记录的调整后方案。')
+      : 'θ = 负号格的最小运量 = ' + num(s.theta) + '；' + cellName(s.leaving) + ' 离基，并列时取下标最小者。';
+    h += '<ol class="tp-route" aria-label="闭回路顺序">' + s.cycle.map(function (c, k) {
+      return '<li class="' + (k < frame ? 'tp-route-visited' : '') + '"' + (frame === k + 1 ? ' aria-current="step"' : '') + '>'
+        + (k + 1) + '. ' + cellName(c) + (c.sign > 0 ? ' +' : ' −') + '</li>';
+    }).join('') + '</ol>';
+  }
+  var objective = done ? s.objective : s.objectiveBefore;
+  return { html: '<h4 class="tp-scene-title">' + title + '</h4><p>' + note + '</p>' + h
+    + '<p class="sens-note">宽表可左右滑动；当前格会自动定位，行名与供应列保持可见。</p>'
+    + table(m, values, basis, loop, allocation ? '分配联动表（右侧 / 底部为剩余量）' : '闭回路演示表（+ 增加，− 减少）', false, options)
+    + '<p class="tp-player-objective">当前原目标值 <b>' + num(objective) + '</b>'
+    + (!allocation && done ? '；' + num(s.objectiveBefore) + ' → ' + num(s.objectiveAfter) + '（变化 ' + num(s.delta) + '）' : '') + '。</p>', loop: loop };
+}
+function render(m, s, index) {
+  return '<section class="tp-player" data-transport-player="' + index + '" data-kind="' + s.type + '" data-frame="0" aria-label="' + (s.type === 'allocation' ? '最小元素分配演示' : '闭回路动画') + '">'
+    + '<div class="tp-player-controls" role="group" aria-label="演示播放控制">'
+    + '<button type="button" class="btn" data-tp-prev disabled>上一帧</button><button type="button" class="btn" data-tp-play aria-pressed="false">播放</button>'
+    + '<button type="button" class="btn" data-tp-next>下一帧</button><button type="button" class="btn" data-tp-reset>重播</button>'
+    + '<label class="tp-speed">帧间隔<select data-tp-speed aria-label="演示帧间隔"><option value="1000">1 秒</option><option value="1800">1.8 秒</option><option value="600">0.6 秒</option></select></label></div>'
+    + '<p class="sens-note tp-motion-note" hidden>已启用减少动态效果，请用上一帧 / 下一帧查看；阶段内容完整保留。</p>'
+    + '<p class="tp-player-progress" role="status" aria-live="polite">第 1 / ' + count(s) + ' 帧 · 等待播放</p>'
+    + '<div class="tp-scene">' + scene(m, s, 0).html + '</div></section>';
+}
+function wire(root, result) {
+  var players = [], disposed = false, listeners = [];
+  var media = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+  function on(target, event, fn) { target.addEventListener(event, fn); listeners.push(function () { target.removeEventListener(event, fn); }); }
+  function visible(box) {
+    if (document.hidden || !root.parentNode || !document.getElementById('mod-transport').classList.contains('on')) return false;
+    for (var p = box; p && p !== root; p = p.parentNode) if (p.hidden || (p.tagName === 'DETAILS' && !p.open)) return false;
+    return true;
+  }
+  function pauseAll() { players.forEach(function (p) { p.pause(); }); }
+  function draw(box, loop, closed) {
+    if (!loop.length || !visible(box)) return;
+    var stage = box.querySelector('.tp-stage'), rect = stage.getBoundingClientRect(), points = [];
+    if (!rect.width || !rect.height) return;
+    loop.forEach(function (c) {
+      var cell = stage.querySelector('[data-tp-cell="' + c.i + '-' + c.j + '"]'), r = cell.getBoundingClientRect();
+      /* 路径走格内边缘，避免穿过居中的运量、费用和正负号文字。 */
+      points.push((r.left - rect.left + 10) + ',' + (r.top - rect.top + 9));
+    });
+    if (closed && points.length) points.push(points[0]);
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'tp-path'); svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('viewBox', '0 0 ' + rect.width + ' ' + rect.height);
+    var line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    line.setAttribute('points', points.join(' ')); svg.appendChild(line); stage.appendChild(svg);
+  }
+  Array.prototype.forEach.call(root.querySelectorAll('[data-transport-player]'), function (box) {
+    var s = result.steps[+box.getAttribute('data-transport-player')], frame = 0, timer = null, playing = false;
+    var body = box.querySelector('.tp-scene'), play = box.querySelector('[data-tp-play]'), prev = box.querySelector('[data-tp-prev]');
+    var next = box.querySelector('[data-tp-next]'), progress = box.querySelector('.tp-player-progress'), speed = box.querySelector('[data-tp-speed]');
+    function pause() {
+      clearTimeout(timer); timer = null; playing = false;
+      play.textContent = '播放'; play.setAttribute('aria-pressed', 'false'); box.setAttribute('data-playing', 'false');
+      progress.textContent = '第 ' + (frame + 1) + ' / ' + count(s) + ' 帧 · ' + (frame === count(s) - 1 ? '演示完成' : '已暂停');
+    }
+    function paint() {
+      var rendered = scene(result.model, s, frame), scroll = body.querySelector('.scroll'), left = scroll ? scroll.scrollLeft : 0;
+      body.innerHTML = rendered.html; box.setAttribute('data-frame', String(frame));
+      prev.disabled = frame === 0; next.disabled = frame === count(s) - 1;
+      play.disabled = media.matches;
+      box.querySelector('.tp-motion-note').hidden = !media.matches;
+      progress.textContent = '第 ' + (frame + 1) + ' / ' + count(s) + ' 帧 · ' + (playing ? '播放中' : frame === count(s) - 1 ? '演示完成' : '已暂停');
+      addScrollHints(body); body.querySelector('.scroll').scrollLeft = left;
+      /* 只移动表内横向滚动，手机上不能把正在标记的格留在屏幕外，也不抢页面焦点。 */
+      var viewport = body.querySelector('.scroll'), current = body.querySelector('.tp-active');
+      var cr = current.getBoundingClientRect();
+      var leading = body.querySelector('tbody th').getBoundingClientRect().right;
+      var trailing = body.querySelector('tbody td:last-child').getBoundingClientRect().left;
+      if (cr.left < leading) viewport.scrollLeft -= leading - cr.left;
+      else if (cr.right > trailing) viewport.scrollLeft += cr.right - trailing;
+      draw(box, rendered.loop, s.type === 'pivot' && frame >= s.cycle.length);
+    }
+    function schedule() {
+      timer = setTimeout(function () {
+        if (disposed || !visible(box) || media.matches) { pause(); paint(); return; }
+        if (frame < count(s) - 1) frame++;
+        if (frame === count(s) - 1) pause();
+        paint(); if (playing) schedule();
+      }, +speed.value);
+    }
+    on(play, 'click', function () {
+      if (playing) { pause(); paint(); return; }
+      if (media.matches || !visible(box)) return;
+      pauseAll(); if (frame === count(s) - 1) frame = 0;
+      playing = true; play.textContent = '暂停'; play.setAttribute('aria-pressed', 'true'); box.setAttribute('data-playing', 'true'); paint(); schedule();
+    });
+    on(prev, 'click', function () { pause(); if (frame > 0) frame--; paint(); });
+    on(next, 'click', function () { pause(); if (frame < count(s) - 1) frame++; paint(); });
+    on(box.querySelector('[data-tp-reset]'), 'click', function () { pause(); frame = 0; paint(); });
+    on(speed, 'change', function () { if (playing) { clearTimeout(timer); schedule(); } });
+    players.push({ box: box, pause: pause, refresh: paint, wasVisible: visible(box), isPlaying: function () { return playing; } });
+    pause();
+    paint();
+  });
+  function sync() {
+    players.forEach(function (p) {
+      var shown = visible(p.box);
+      if (!shown) p.pause();
+      if (shown && !p.wasVisible) p.refresh();
+      p.wasVisible = shown;
+    });
+  }
+  on(root, 'click', sync); on(root, 'change', sync);
+  on(document, 'visibilitychange', sync); on(window, 'hashchange', sync);
+  Array.prototype.forEach.call(root.querySelectorAll('details'), function (d) { on(d, 'toggle', sync); });
+  function redraw() { players.forEach(function (p) { if (visible(p.box)) p.refresh(); }); }
+  on(window, 'resize', redraw);
+  function preference() { pauseAll(); redraw(); }
+  if (media.addEventListener) { media.addEventListener('change', preference); listeners.push(function () { media.removeEventListener('change', preference); }); }
+  else if (media.addListener) { media.addListener(preference); listeners.push(function () { media.removeListener(preference); }); }
+  var observer = window.IntersectionObserver ? new window.IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) { if (!entry.isIntersecting) players.forEach(function (p) { if (p.box === entry.target && p.isPlaying()) p.pause(); }); });
+  }) : null;
+  if (observer) players.forEach(function (p) { observer.observe(p.box); });
+  else on(window, 'scroll', function () {
+    players.forEach(function (p) {
+      if (!p.isPlaying()) return;
+      var r = p.box.getBoundingClientRect();
+      if (r.bottom <= 0 || r.top >= window.innerHeight) p.pause();
+    });
+  });
+  return function () { disposed = true; pauseAll(); listeners.forEach(function (remove) { remove(); }); if (observer) observer.disconnect(); };
+}
+module.exports = { render: render, wire: wire };
+});
+
 __define__("src/web/transport-report.js", function (module, exports, require) {
 /* 只渲染运输算法快照；数值、守恒与最优性结论来自 core。 */
 'use strict';
 var esc = require('./dom.js').esc;
-var fmtNum = require('../core/format.js').fmtNum;
+var view = require('./transport-table.js');
+var num = view.num, rowName = view.rowName, colName = view.colName, cellName = view.cellName, table = view.table;
 var study = require('./study-view.js');
 var layout = require('./result-layout.js');
-/* 共享 formatter 会将极小数归零；运输量不能因此在视觉上消失。 */
-function num(v) { return v !== 0 && Math.abs(v) < 1e-7 ? esc(String(v)) : fmtNum(v); }
-function rowName(m, i) { return i < m.m ? '产地' + (i + 1) : '虚拟产地（缺货）'; }
-function colName(m, j) { return j < m.n ? '销地' + (j + 1) : '虚拟销地（剩余）'; }
-function cellName(c) { return '(' + (c.i + 1) + ', ' + (c.j + 1) + ')'; }
-function table(m, values, basis, loop, caption, costs) {
-  var h = '<div class="scroll"><table class="tb transport-table"><caption>' + esc(caption) + '</caption><thead><tr><th scope="col">产地 / 销地</th>', i, j;
-  for (j = 0; j < m.cols; j++) h += '<th scope="col"' + (j >= m.n ? ' class="tp-virtual"' : '') + '>' + colName(m, j) + '</th>';
-  h += '<th scope="col">供应量</th></tr></thead><tbody>';
-  for (i = 0; i < m.rows; i++) {
-    h += '<tr' + (i >= m.m ? ' class="tp-virtual"' : '') + '><th scope="row">' + rowName(m, i) + '</th>';
-    for (j = 0; j < m.cols; j++) {
-      if (!m.allowed[i][j]) { h += '<td class="tp-blocked">禁运<small class="tp-cost">x = 0，不参与计算</small></td>'; continue; }
-      var mark = '', at = -1;
-      (loop || []).forEach(function (c, k) { if (c.i === i && c.j === j) { mark = c.sign > 0 ? '+' : '−'; at = k; } });
-      h += '<td class="' + (j >= m.n || i >= m.m ? 'tp-virtual ' : '') + (mark ? 'tp-cycle' : '') + '">'
-        + (mark ? '<b class="tp-sign">' + mark + ' <small>回路' + (at + 1) + '</small></b>' : '')
-        + '<span class="mono">' + (costs ? '' : 'x = ') + num(values[i][j]) + '</span>'
-        + (basis && basis[i][j] ? '<span class="tp-basis">' + (values[i][j] === 0 ? '零值基' : '基') + '</span>' : '')
-        + (!costs ? '<small class="tp-cost">原' + (m.direction === 'max' ? '收益' : '费用') + ' ' + num(m.cost[i][j]) + '</small>' : '') + '</td>';
-    }
-    h += '<td class="mono">' + num(m.supply[i]) + '</td></tr>';
-  }
-  h += '</tbody><tfoot><tr><th scope="row">需求量</th>';
-  for (j = 0; j < m.cols; j++) h += '<td class="mono">' + num(m.demand[j]) + '</td>';
-  return h + '<td class="mono">' + num(m.total) + '</td></tr></tfoot></table></div>';
-}
+var player = require('./transport-player.js');
 function balanceNote(m) {
   var h = '总供应 ' + num(m.originalSupplyTotal) + '，总需求 ' + num(m.originalDemandTotal) + '。';
   if (m.balanceAdjustment) h += '供需差属于浮点求和误差；已将需求校正 ' + num(m.balanceAdjustment) + '（原输入保留）。';
@@ -9529,8 +9703,8 @@ function stepContent(m, s, index) {
       + '<p>工作目标变化 θΔ = ' + num(s.workingDelta) + '；原目标 ' + num(s.objectiveBefore) + ' → ' + num(s.objectiveAfter)
       + '（变化 ' + num(s.delta) + '）。</p>';
   }
-  h += table(m, values, s.type === 'pivot' ? null : s.basis, loop, s.type === 'pivot' ? '调整前运量与回路正负标记' : title, false);
-  if (s.type === 'pivot') h += table(m, s.allocation, s.basis, null, '调整后运输方案与新基', false);
+  h += s.type === 'allocation' || s.type === 'pivot' ? player.render(m, s, index)
+    : table(m, values, s.basis, loop, title, false);
   h += '<p class="sens-note">当前原目标值 ' + num(s.objective) + '。本步' + (s.type === 'allocation' ? '部分分配与无环基' : '非负、供需守恒与基结构')
     + '校验：' + (s.invariant.valid ? '通过' : esc(s.invariant.errors.join('、'))) + '。</p>';
   return { title: title, html: '<article class="card"><h3>' + (index + 1) + '. ' + esc(title) + '</h3>' + h + '</article>' };
@@ -9545,7 +9719,9 @@ function render(res) {
       + '<p>瓶颈产地集合：' + f.cutRows.map(function (i) { return rowName(m, i); }).join('、')
       + '；其可达销地集合：' + (f.cutCols.length ? f.cutCols.map(function (j) { return colName(m, j); }).join('、') : '无')
       + '。这些产地供应 ' + num(f.cutSupply) + '，可达需求仅 ' + num(f.cutDemand) + '。请检查禁运标记或调整供需。</p>'
-      + '<p>' + balanceNote(m) + '</p>' + table(m, m.cost, null, null, '平衡后运输表（禁运格明确排除）', true) + '</div>';
+      + '<p>下表标出瓶颈产地及其可达销地；禁运格保持关闭，不会通过额外增加虚拟供需绕过限制。</p>'
+      + '<p>' + balanceNote(m) + '</p>' + table(m, m.cost, null, null, '平衡后运输表与禁运瓶颈', true,
+        { cutRows: f.cutRows, cutCols: f.cutCols }) + '</div>';
   }
   var h = '<div class="card"><div class="verdict ' + (optimal ? 'opt' : 'no') + '"><div class="vtitle">'
     + (optimal ? m.direction === 'max' ? '最优净收益' : '最小总费用' : res.feasible ? '当前可行方案（未确认最优）' : '数值校验未通过（未确认最优）') + '</div>'
@@ -9572,6 +9748,52 @@ function render(res) {
 module.exports = { render: render, table: table, balanceNote: balanceNote, num: num };
 });
 
+__define__("src/web/transport-table.js", function (module, exports, require) {
+/* 运输表的统一呈现；所有量值来自求解快照，选中/瓶颈/回路仅作视觉标记。 */
+'use strict';
+var esc = require('./dom.js').esc;
+var fmtNum = require('../core/format.js').fmtNum;
+function num(v) { return v !== 0 && Math.abs(v) < 1e-7 ? esc(String(v)) : fmtNum(v); }
+function rowName(m, i) { return i < m.m ? '产地' + (i + 1) : '虚拟产地（缺货）'; }
+function colName(m, j) { return j < m.n ? '销地' + (j + 1) : '虚拟销地（剩余）'; }
+function cellName(c) { return '(' + (c.i + 1) + ', ' + (c.j + 1) + ')'; }
+function same(a, i, j) { return a && a.i === i && a.j === j; }
+function table(m, values, basis, loop, caption, costs, options) {
+  var o = options || {}, supply = o.supply || m.supply, demand = o.demand || m.demand;
+  var h = '<div class="scroll"><div class="tp-stage"><table class="tb transport-table"><caption>' + esc(caption) + '</caption><thead><tr><th scope="col">产地 / 销地</th>', i, j;
+  for (j = 0; j < m.cols; j++) h += '<th scope="col" class="' + (j >= m.n ? 'tp-virtual ' : '')
+    + ((o.cutCols || []).indexOf(j) >= 0 ? 'tp-cut-label' : '') + '">' + colName(m, j)
+    + ((o.cutCols || []).indexOf(j) >= 0 ? '<small class="tp-cost">可达销地</small>' : '') + '</th>';
+  h += '<th scope="col">' + (o.supply ? '剩余供应' : '供应量') + '</th></tr></thead><tbody>';
+  for (i = 0; i < m.rows; i++) {
+    var cut = (o.cutRows || []).indexOf(i) >= 0;
+    h += '<tr' + (i >= m.m ? ' class="tp-virtual"' : '') + '><th scope="row" class="' + (cut ? 'tp-cut-label' : '') + '">' + rowName(m, i)
+      + (cut ? '<small class="tp-cost">瓶颈产地</small>' : '') + '</th>';
+    for (j = 0; j < m.cols; j++) {
+      var selected = same(o.selected, i, j), active = same(o.active, i, j), tie = false, mark = '', at = -1;
+      (o.ties || []).forEach(function (c) { if (same(c, i, j)) tie = true; });
+      (loop || []).forEach(function (c, k) { if (same(c, i, j)) { mark = c.sign > 0 ? '+' : '−'; at = k; } });
+      h += '<td data-tp-cell="' + i + '-' + j + '" class="' + (!m.allowed[i][j] ? 'tp-blocked ' : '')
+        + (j >= m.n || i >= m.m ? 'tp-virtual ' : '') + (mark ? 'tp-cycle ' : '')
+        + (selected ? 'tp-selected ' : '') + (active ? 'tp-active ' : '') + (tie && !selected ? 'tp-tie' : '') + '">';
+      if (!m.allowed[i][j]) { h += '禁运<small class="tp-cost">x = 0，不参与计算</small></td>'; continue; }
+      h += (mark ? '<b class="tp-sign">' + mark + ' <small>回路' + (at + 1) + '</small></b>' : '')
+        + '<span class="mono tp-value">' + (costs ? '' : 'x = ') + num(values[i][j]) + '</span>'
+        + (selected ? '<small class="tp-cost">' + esc(o.selectedLabel || '本次选择') + '</small>' : tie ? '<small class="tp-cost">并列候选</small>' : '')
+        + (active ? '<small class="tp-cost">当前格</small>' : '')
+        + (same(o.leaving, i, j) ? '<small class="tp-cost">离基格</small>' : '')
+        + (basis && basis[i][j] ? '<span class="tp-basis">' + (values[i][j] === 0 ? '零值基' : '基') + '</span>' : '')
+        + (!costs ? '<small class="tp-cost">原' + (m.direction === 'max' ? '收益' : '费用') + ' ' + num(m.cost[i][j]) + '</small>' : '') + '</td>';
+    }
+    h += '<td data-tp-supply="' + i + '" class="mono ' + (o.selected && o.selected.i === i ? 'tp-margin-active' : '') + '">' + num(supply[i]) + '</td></tr>';
+  }
+  h += '</tbody><tfoot><tr><th scope="row">' + (o.demand ? '剩余需求' : '需求量') + '</th>';
+  for (j = 0; j < m.cols; j++) h += '<td data-tp-demand="' + j + '" class="mono ' + (o.selected && o.selected.j === j ? 'tp-margin-active' : '') + '">' + num(demand[j]) + '</td>';
+  return h + '<td>' + (o.supply ? '逐步更新' : num(m.total)) + '</td></tr></tfoot></table></div></div>';
+}
+module.exports = { table: table, num: num, rowName: rowName, colName: colName, cellName: cellName };
+});
+
 __define__("src/web/transport-ui.js", function (module, exports, require) {
 /* 运输表输入与事件；只调用核心公开 API，求解过程由 report 渲染。 */
 'use strict';
@@ -9579,13 +9801,15 @@ var dom = require('./dom.js'), $ = dom.$, esc = dom.esc;
 var parseNumber = require('../core/number-input.js').parseNumber;
 var transport = require('../core/transport.js');
 var report = require('./transport-report.js');
+var player = require('./transport-player.js');
 var panels = require('./input-panel.js');
 var layout = require('./result-layout.js');
 var draft = require('./draft.js');
 (function () {
   var MAX = 8, guide, saved;
   var state = { direction: 'min', rows: 0, cols: 0, cells: [], supply: [], demand: [], surplusCost: [], shortageCost: [] };
-  function invalidate() { $('tpOut').innerHTML = ''; $('tpBanners').innerHTML = ''; }
+  var disposePlayer = function () {};
+  function invalidate() { disposePlayer(); disposePlayer = function () {}; $('tpOut').innerHTML = ''; $('tpBanners').innerHTML = ''; }
   function number(raw) { return parseNumber(raw, true); }
   function problem() {
     return { direction: state.direction, cost: state.cells.map(function (r) { return r.map(function (v) { return transport.isForbidden(v) ? v : number(v); }); }),
@@ -9711,7 +9935,7 @@ var draft = require('./draft.js');
     var res = transport.transportSolve(problem());
     if (!res.ok) { $('tpBanners').innerHTML = '<div class="banner err">' + esc(res.message) + '</div>'; return; }
     $('tpOut').innerHTML = report.render(res);
-    panels.addScrollHints($('tpOut')); layout.wire($('tpOut')); saved.record();
+    panels.addScrollHints($('tpOut')); layout.wire($('tpOut')); disposePlayer = player.wire($('tpOut'), res); saved.record();
   });
   renderInput();
   saved = draft.attach({ key: 'transport', mount: 'tpPanel', valid: draft.validTransport,

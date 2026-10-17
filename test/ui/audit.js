@@ -150,7 +150,7 @@ const AUDIT = `(function(){
               /* 灵敏度分析模块与首页新增的部分 */
               '.judge','.sens-note','.sens-warn','.sens-h','a.modcard .md','a.back','.fl','.fe','.fx',
               /* 通用 */
-              '.muted','.verdict .vtitle',
+              '.muted','.verdict .vtitle','.tp-player-progress','.tp-scene-title','.tp-route-visited','.tp-cut-label','.tp-player-objective',
               /* 玻璃主题新增：主按钮（玻璃描边）与底部导航标签 */
               'button.btn.primary','.tabbar a','.tabbar a.on','.foottip'];
   var lows = [], seen = {};
@@ -214,8 +214,11 @@ const AUDIT = `(function(){
     captureErrors: true, media: dark ? 'dark' : null
   });
   const cdp = sess.cdp, sessionId = sess.sessionId;
+  const transportSetup = process.argv.includes('--player')
+    ? "document.querySelector('#tpPanel [data-guide=sample]').click();document.getElementById('tpSolveBtn').click();document.querySelector('#tpOut [data-study-mode=single]').click();var p=document.querySelector('[data-kind=pivot]'),sel=document.querySelector('#tpOut [data-study-select]');sel.value=p.getAttribute('data-transport-player');sel.dispatchEvent(new Event('change',{bubbles:true}));for(var k=0;k<5;k++)p.querySelector('[data-tp-next]').click();"
+    : "document.querySelector('#tpPanel [data-transport-forbidden-sample]').click();document.getElementById('tpSolveBtn').click();document.querySelector('[data-kind=allocation] [data-tp-next]').click();";
   await cdp.send('Runtime.evaluate',
-    { expression: wantHash === '#/transport' ? "document.querySelector('#tpPanel [data-transport-forbidden-sample]').click();document.getElementById('tpSolveBtn').click()" : wantHash === '#/sens' ? SENS_SETUP : SETUP }, sessionId);
+    { expression: wantHash === '#/transport' ? transportSetup : wantHash === '#/sens' ? SENS_SETUP : SETUP }, sessionId);
   await sleep(isRemote ? 1400 : 900);
 
   const r = await cdp.send('Runtime.evaluate', { expression: AUDIT, returnByValue: true }, sessionId);

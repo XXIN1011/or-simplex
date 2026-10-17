@@ -130,6 +130,25 @@ test('步骤快照独立，费用与基不被后续调用修改', () => {
   assert.equal(JSON.stringify(r.steps), original);
   assert.equal(JSON.stringify(solveTransport(examples.transport()).steps), original);
 });
+test('演示前后快照完整、守恒且互不别名，退化换基保留基身份差异', () => {
+  const r=solveTransport(examples.transport());
+  for (const s of r.steps) if(s.type==='allocation') {
+    assert.notEqual(s.beforeAllocation,s.allocation); assert.notEqual(s.beforeBasis,s.basis);
+    assert.equal(s.beforeRemainingSupply[s.cell.i]-s.remainingSupply[s.cell.i],s.quantity);
+    assert.equal(s.beforeRemainingDemand[s.cell.j]-s.remainingDemand[s.cell.j],s.quantity);
+    assert.equal(s.allocation[s.cell.i][s.cell.j]-s.beforeAllocation[s.cell.i][s.cell.j],s.quantity);
+    assert.equal(transport.inspect(r.model,s.beforeAllocation,s.beforeBasis,true).valid,true);
+  }
+  for(const s of r.steps) if(s.type==='pivot') {
+    assert.equal(transport.inspect(r.model,s.beforeAllocation,s.beforeBasis,false).valid,true);
+    assert.equal(s.beforeBasis[s.entering.i][s.entering.j],false);
+    assert.equal(s.basis[s.entering.i][s.entering.j],true);
+    assert.equal(s.beforeBasis[s.leaving.i][s.leaving.j],true);
+    assert.equal(s.basis[s.leaving.i][s.leaving.j],false);
+  }
+  const s=r.steps[0],after=JSON.stringify(s.allocation);s.beforeAllocation[0][0]=999;
+  assert.equal(JSON.stringify(s.allocation),after);
+});
 test('运输草稿保留未完成分数、供需及罚金原文并校验形状', () => {
   const p = {direction:'min',rows:1,cols:1,cells:[['1/']],supply:['2/3'],demand:['1'],surplusCost:['0'],shortageCost:['1/2']};
   assert.equal(validTransport(p), true);

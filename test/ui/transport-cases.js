@@ -24,7 +24,7 @@ module.exports = async function transportCases(sess, check, url) {
     expect(q('#tpOut .zv').textContent==='360','示例最小费用360');
     expect(q('#tpOut').textContent.indexOf('初始可行方案')>=0 && q('#tpOut').textContent.indexOf('430')>=0,'初始费用430与最终360明确分开');
     expect(q('#tpInTbl tfoot [data-key=demand]') && q('#tpInTbl tbody [data-key=supply]'),'运输表右侧供应、底部需求');
-    expect(q('#tpOut').textContent.indexOf('行位势')>=0 && q('#tpOut').textContent.indexOf('检验数')>=0 && q('#tpOut .tp-cycle'),'展示位势、检验数与回路');
+    expect(q('#tpOut').textContent.indexOf('行位势')>=0 && q('#tpOut').textContent.indexOf('检验数')>=0 && q('#tpOut [data-kind=pivot]'),'展示位势、检验数与回路');
     var box=q('#tpOut [data-study]'),count=box.querySelectorAll('[data-study-step]').length;
     box.querySelector('[data-study-mode=single]').click();
     expect(count>3 && box.querySelectorAll('[data-study-step]:not([hidden])').length===1,'单步学习只显示当前步骤');
@@ -101,6 +101,7 @@ module.exports = async function transportCases(sess, check, url) {
     expect(q('#tpOut .zv').textContent==='0','全禁运零供需仍可行');
     q('#tpPanel [data-transport-forbidden-sample]').click();click('tpSolveBtn');
   `);
+  await require('./transport-player-cases')(sess,run);
   for (const width of [320,390,1280]) {
     await sess.cdp.send('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:width<600},sess.sessionId);
     await run(`

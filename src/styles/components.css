@@ -360,8 +360,8 @@ a.back:active{opacity:.6}
 .hero .feats{display:flex;flex-wrap:wrap;gap:16px;margin:18px 0 0;padding:0;list-style:none}
 .hero .feats li{font-size:12px;font-weight:500;color:var(--fg2)}
 a.modcard{display:flex;align-items:center;gap:16px;text-decoration:none;background:var(--card);border:0;border-bottom:1px solid var(--line);border-radius:0;padding:20px 16px;margin:0;transition:background var(--duration-fast)}
-a.modcard:first-of-type{border-radius:var(--r-lg) var(--r-lg) 0 0}
-a.modcard.m-assign{border-radius:0 0 var(--r-lg) var(--r-lg);border-bottom-color:transparent}
+.module-list>a.modcard:first-child{border-radius:var(--r-lg) var(--r-lg) 0 0}
+.module-list>a.modcard:last-child{border-radius:0 0 var(--r-lg) var(--r-lg);border-bottom-color:transparent}
 a.modcard .mb{display:block;flex:1;min-width:0}
 a.modcard .mt{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:18px;font-weight:650;color:var(--fg);line-height:1.4}
 a.modcard .md{display:block;max-width:65ch;margin-top:7px;font-size:13px;color:var(--fg2);line-height:1.8}

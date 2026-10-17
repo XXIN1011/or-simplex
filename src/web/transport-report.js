@@ -1,36 +1,11 @@
 /* 只渲染运输算法快照；数值、守恒与最优性结论来自 core。 */
 'use strict';
 var esc = require('./dom.js').esc;
-var fmtNum = require('../core/format.js').fmtNum;
+var view = require('./transport-table.js');
+var num = view.num, rowName = view.rowName, colName = view.colName, cellName = view.cellName, table = view.table;
 var study = require('./study-view.js');
 var layout = require('./result-layout.js');
-/* 共享 formatter 会将极小数归零；运输量不能因此在视觉上消失。 */
-function num(v) { return v !== 0 && Math.abs(v) < 1e-7 ? esc(String(v)) : fmtNum(v); }
-function rowName(m, i) { return i < m.m ? '产地' + (i + 1) : '虚拟产地（缺货）'; }
-function colName(m, j) { return j < m.n ? '销地' + (j + 1) : '虚拟销地（剩余）'; }
-function cellName(c) { return '(' + (c.i + 1) + ', ' + (c.j + 1) + ')'; }
-function table(m, values, basis, loop, caption, costs) {
-  var h = '<div class="scroll"><table class="tb transport-table"><caption>' + esc(caption) + '</caption><thead><tr><th scope="col">产地 / 销地</th>', i, j;
-  for (j = 0; j < m.cols; j++) h += '<th scope="col"' + (j >= m.n ? ' class="tp-virtual"' : '') + '>' + colName(m, j) + '</th>';
-  h += '<th scope="col">供应量</th></tr></thead><tbody>';
-  for (i = 0; i < m.rows; i++) {
-    h += '<tr' + (i >= m.m ? ' class="tp-virtual"' : '') + '><th scope="row">' + rowName(m, i) + '</th>';
-    for (j = 0; j < m.cols; j++) {
-      if (!m.allowed[i][j]) { h += '<td class="tp-blocked">禁运<small class="tp-cost">x = 0，不参与计算</small></td>'; continue; }
-      var mark = '', at = -1;
-      (loop || []).forEach(function (c, k) { if (c.i === i && c.j === j) { mark = c.sign > 0 ? '+' : '−'; at = k; } });
-      h += '<td class="' + (j >= m.n || i >= m.m ? 'tp-virtual ' : '') + (mark ? 'tp-cycle' : '') + '">'
-        + (mark ? '<b class="tp-sign">' + mark + ' <small>回路' + (at + 1) + '</small></b>' : '')
-        + '<span class="mono">' + (costs ? '' : 'x = ') + num(values[i][j]) + '</span>'
-        + (basis && basis[i][j] ? '<span class="tp-basis">' + (values[i][j] === 0 ? '零值基' : '基') + '</span>' : '')
-        + (!costs ? '<small class="tp-cost">原' + (m.direction === 'max' ? '收益' : '费用') + ' ' + num(m.cost[i][j]) + '</small>' : '') + '</td>';
-    }
-    h += '<td class="mono">' + num(m.supply[i]) + '</td></tr>';
-  }
-  h += '</tbody><tfoot><tr><th scope="row">需求量</th>';
-  for (j = 0; j < m.cols; j++) h += '<td class="mono">' + num(m.demand[j]) + '</td>';
-  return h + '<td class="mono">' + num(m.total) + '</td></tr></tfoot></table></div>';
-}
+var player = require('./transport-player.js');
 function balanceNote(m) {
   var h = '总供应 ' + num(m.originalSupplyTotal) + '，总需求 ' + num(m.originalDemandTotal) + '。';
   if (m.balanceAdjustment) h += '供需差属于浮点求和误差；已将需求校正 ' + num(m.balanceAdjustment) + '（原输入保留）。';
@@ -73,8 +48,8 @@ function stepContent(m, s, index) {
       + '<p>工作目标变化 θΔ = ' + num(s.workingDelta) + '；原目标 ' + num(s.objectiveBefore) + ' → ' + num(s.objectiveAfter)
       + '（变化 ' + num(s.delta) + '）。</p>';
   }
-  h += table(m, values, s.type === 'pivot' ? null : s.basis, loop, s.type === 'pivot' ? '调整前运量与回路正负标记' : title, false);
-  if (s.type === 'pivot') h += table(m, s.allocation, s.basis, null, '调整后运输方案与新基', false);
+  h += s.type === 'allocation' || s.type === 'pivot' ? player.render(m, s, index)
+    : table(m, values, s.basis, loop, title, false);
   h += '<p class="sens-note">当前原目标值 ' + num(s.objective) + '。本步' + (s.type === 'allocation' ? '部分分配与无环基' : '非负、供需守恒与基结构')
     + '校验：' + (s.invariant.valid ? '通过' : esc(s.invariant.errors.join('、'))) + '。</p>';
   return { title: title, html: '<article class="card"><h3>' + (index + 1) + '. ' + esc(title) + '</h3>' + h + '</article>' };
@@ -89,7 +64,9 @@ function render(res) {
       + '<p>瓶颈产地集合：' + f.cutRows.map(function (i) { return rowName(m, i); }).join('、')
       + '；其可达销地集合：' + (f.cutCols.length ? f.cutCols.map(function (j) { return colName(m, j); }).join('、') : '无')
       + '。这些产地供应 ' + num(f.cutSupply) + '，可达需求仅 ' + num(f.cutDemand) + '。请检查禁运标记或调整供需。</p>'
-      + '<p>' + balanceNote(m) + '</p>' + table(m, m.cost, null, null, '平衡后运输表（禁运格明确排除）', true) + '</div>';
+      + '<p>下表标出瓶颈产地及其可达销地；禁运格保持关闭，不会通过额外增加虚拟供需绕过限制。</p>'
+      + '<p>' + balanceNote(m) + '</p>' + table(m, m.cost, null, null, '平衡后运输表与禁运瓶颈', true,
+        { cutRows: f.cutRows, cutCols: f.cutCols }) + '</div>';
   }
   var h = '<div class="card"><div class="verdict ' + (optimal ? 'opt' : 'no') + '"><div class="vtitle">'
     + (optimal ? m.direction === 'max' ? '最优净收益' : '最小总费用' : res.feasible ? '当前可行方案（未确认最优）' : '数值校验未通过（未确认最优）') + '</div>'

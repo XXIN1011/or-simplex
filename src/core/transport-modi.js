@@ -96,7 +96,7 @@ function optimize(model, state, emit, maxIterations) {
     }
     iteration++;
     emit('pivot', x, basis, { iteration: iteration, entering: p.entering, leaving: change.leaving,
-      cycle: loop, theta: change.theta, beforeAllocation: beforeAllocation,
+      cycle: loop, theta: change.theta, beforeAllocation: beforeAllocation, beforeBasis: beforeBasis,
       objectiveBefore: before, objectiveAfter: after, delta: after - before,
       workingDelta: workingAfter - workingBefore, reducedEntering: p.reduced[p.entering.i][p.entering.j] });
   }

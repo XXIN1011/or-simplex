@@ -4,13 +4,15 @@ var dom = require('./dom.js'), $ = dom.$, esc = dom.esc;
 var parseNumber = require('../core/number-input.js').parseNumber;
 var transport = require('../core/transport.js');
 var report = require('./transport-report.js');
+var player = require('./transport-player.js');
 var panels = require('./input-panel.js');
 var layout = require('./result-layout.js');
 var draft = require('./draft.js');
 (function () {
   var MAX = 8, guide, saved;
   var state = { direction: 'min', rows: 0, cols: 0, cells: [], supply: [], demand: [], surplusCost: [], shortageCost: [] };
-  function invalidate() { $('tpOut').innerHTML = ''; $('tpBanners').innerHTML = ''; }
+  var disposePlayer = function () {};
+  function invalidate() { disposePlayer(); disposePlayer = function () {}; $('tpOut').innerHTML = ''; $('tpBanners').innerHTML = ''; }
   function number(raw) { return parseNumber(raw, true); }
   function problem() {
     return { direction: state.direction, cost: state.cells.map(function (r) { return r.map(function (v) { return transport.isForbidden(v) ? v : number(v); }); }),
@@ -136,7 +138,7 @@ var draft = require('./draft.js');
     var res = transport.transportSolve(problem());
     if (!res.ok) { $('tpBanners').innerHTML = '<div class="banner err">' + esc(res.message) + '</div>'; return; }
     $('tpOut').innerHTML = report.render(res);
-    panels.addScrollHints($('tpOut')); layout.wire($('tpOut')); saved.record();
+    panels.addScrollHints($('tpOut')); layout.wire($('tpOut')); disposePlayer = player.wire($('tpOut'), res); saved.record();
   });
   renderInput();
   saved = draft.attach({ key: 'transport', mount: 'tpPanel', valid: draft.validTransport,

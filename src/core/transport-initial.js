@@ -21,6 +21,8 @@ function initial(model, emit) {
     }
     if (!best) break;
     for (i = 0; i < m; i++) for (j = 0; j < n; j++) if (active(i, j) && model.working[i][j] === best.cost) ties.push({ i: i, j: j });
+    var beforeAllocation = common.copy(x), beforeBasis = common.copy(basis);
+    var beforeSupply = s.slice(), beforeDemand = d.slice();
     i = best.i; j = best.j; quantity = Math.min(s[i], d[j]);
     var proposed = quantity, trial = null;
     available[i][j] = false;
@@ -39,6 +41,9 @@ function initial(model, emit) {
     emit('allocation', x, basis, { cell: { i: i, j: j }, cost: best.cost, quantity: quantity,
       proposedQuantity: proposed, guarded: quantity < proposed,
       feasibilityDeficit: trial ? trial.deficit : 0,
+      beforeAllocation: beforeAllocation, beforeBasis: beforeBasis,
+      objectiveBefore: common.total(beforeAllocation, model.cost),
+      beforeRemainingSupply: beforeSupply, beforeRemainingDemand: beforeDemand,
       blockedCutRows: trial ? trial.cutRows : [], blockedCutCols: trial ? trial.cutCols : [],
       ties: ties, remainingSupply: s.slice(), remainingDemand: d.slice() });
   }
