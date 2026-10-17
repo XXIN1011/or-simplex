@@ -25,7 +25,7 @@ var draft = require('./draft.js');
     $('tpBalance').textContent = b.ok ? '总供应 ' + report.num(b.supplyTotal) + '；总需求 ' + report.num(b.demandTotal)
       + (b.difference > 0 ? ' · 供大于求，剩余 ' + report.num(b.difference) : b.difference < 0 ? ' · 供小于求，缺货 ' + report.num(-b.difference) : ' · 供需平衡')
       : state.rows && state.cols ? '请填写有效的非负供需量后检查平衡状态。' : '请设置至少 1 个产地与 1 个销地。';
-    if (m.ok && m.forbiddenCount) $('tpBalance').textContent += '；已设置 ' + m.forbiddenCount + ' 条禁运路线，总量平衡不代表路线可达，求解时检查可行性。';
+    if (m.ok && m.forbiddenCount) $('tpBalance').textContent += '；已设置 ' + m.forbiddenCount + ' 条禁运路线，总量平衡不代表路线可达。';
     /* 虚拟线路在求解前就可检查：原输入保留，平衡表由 core 生成。 */
     $('tpVirtual').innerHTML = m.ok && (m.virtual || m.balanceAdjustment)
       ? '<p class="sens-note">' + report.balanceNote(m) + '</p>'
@@ -44,7 +44,7 @@ var draft = require('./draft.js');
     var h = '', i, j;
     if (!state.rows || !state.cols) h = '<tbody><tr><td class="empty-tip">载入示例，或增加产地与销地建立运输表。</td></tr></tbody>';
     else {
-      h = '<caption>中间为单位' + (state.direction === 'max' ? '收益' : '运费') + '，右侧供应，底部需求</caption><thead><tr><th scope="col">产地 / 销地</th>';
+      h = '<caption>中间为单位' + (state.direction === 'max' ? '收益' : '运费') + ' · 右侧供应 · 底部需求</caption><thead><tr><th scope="col">产地 / 销地</th>';
       for (j = 0; j < state.cols; j++) h += '<th scope="col">销地' + (j + 1) + '</th>';
       h += '<th scope="col">供应量</th></tr></thead><tbody>';
       for (i = 0; i < state.rows; i++) {
@@ -54,7 +54,7 @@ var draft = require('./draft.js');
       }
       h += '</tbody><tfoot><tr><th scope="row">需求量</th>';
       for (j = 0; j < state.cols; j++) h += '<td class="tp-margin">' + input('demand', j, undefined, '销地' + (j + 1) + '需求量') + '</td>';
-      h += '<td>供需合计见下方</td></tr></tfoot>';
+      h += '<td>合计↓</td></tr></tfoot>';
     }
     $('tpInTbl').innerHTML = h;
     var fees = '<div class="tp-fee-fields">';
@@ -91,11 +91,11 @@ var draft = require('./draft.js');
     addVar: 'tpAddRow', delVar: 'tpDelRow', addCon: 'tpAddCol', delCon: 'tpDelCol',
     labels: { addVar: '+ 产地', delVar: '− 产地', addCon: '+ 销地', delCon: '− 销地' } });
   var extras = document.createElement('div');
-  extras.innerHTML = '<p class="sens-note">费用格填 M 表示禁运（大 M：该线路费用无穷大，不能运输）；也接受 X、× 或“禁运”。恢复数字即可重新允许运输，禁运格不分配、不入基；自动补出的虚拟线路仍可用。</p>'
+  extras.innerHTML = '<p class="sens-note">费用格填 M 表示禁运（也接受 X、×、“禁运”）；改回数字即可恢复运输。</p>'
     + '<button type="button" class="btn" data-transport-forbidden-sample>载入禁运示例</button>'
     + '<p class="tp-balance" id="tpBalance" role="status" aria-live="polite"></p>'
     + '<details class="tp-fee-options"><summary>剩余处理费用 / 缺货罚金</summary>'
-    + '<p class="sens-note">按单位计费，须非负。默认 0 表示忽略剩余或缺货的损失；最大收益模式会扣除此费用。供需平衡时不产生虚拟费用。</p>'
+    + '<p class="sens-note">按单位计费，默认 0；最大收益会从总收益中扣除。</p>'
     + '<div id="tpFees"></div></details><div id="tpVirtual"></div>';
   $('tpPanel').appendChild(extras);
   function loadExample(p) {

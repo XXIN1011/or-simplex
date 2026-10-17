@@ -5,8 +5,8 @@
 var esc = require('./dom.js').esc;
 var fmtNum = require('../core/format.js').fmtNum;
 function num(v) { return v !== 0 && Math.abs(v) < 1e-7 ? esc(String(v)) : fmtNum(v); }
-function rowName(m, i) { return i < m.m ? '产地' + (i + 1) : '虚拟产地（缺货）'; }
-function colName(m, j) { return j < m.n ? '销地' + (j + 1) : '虚拟销地（剩余）'; }
+function rowName(m, i) { return i < m.m ? '产地' + (i + 1) : '虚拟产地'; }
+function colName(m, j) { return j < m.n ? '销地' + (j + 1) : '虚拟销地'; }
 function cellName(c) { return '(' + (c.i + 1) + ', ' + (c.j + 1) + ')'; }
 function same(a, i, j) { return a && a.i === i && a.j === j; }
 function table(m, values, basis, loop, caption, costs, options) {
@@ -14,16 +14,19 @@ function table(m, values, basis, loop, caption, costs, options) {
   var at = {}, changed = {};
   (loop || []).forEach(function (c, k) { at[c.i + '-' + c.j] = { sign: c.sign > 0 ? '+' : '−' }; });
   (o.updated || []).forEach(function (c) { changed[c.i + '-' + c.j] = 1; });
-  var h = '<div class="scroll"><div class="tp-stage"><table class="tb transport-table' + (costs ? ' tp-plain' : '')
-    + '"><caption>' + esc(caption) + '</caption><thead><tr>'
+  var h = '<p class="tp-caption">' + esc(caption) + '</p>'
+    + '<div class="scroll"><div class="tp-stage"><table class="tb transport-table' + (costs ? ' tp-plain' : '')
+    + '" aria-label="' + esc(caption) + '"><thead><tr>'
     + '<th scope="col" class="tp-corner"><span class="tp-corner-x">销地</span><span class="tp-corner-y">产地</span></th>', i, j;
   for (j = 0; j < m.cols; j++) h += '<th scope="col" class="' + (j >= m.n ? 'tp-virtual ' : '')
     + ((o.cutCols || []).indexOf(j) >= 0 ? 'tp-cut-label' : '') + '">' + colName(m, j)
+    + (j >= m.n ? '<small class="tp-sub">剩余</small>' : '')
     + ((o.cutCols || []).indexOf(j) >= 0 ? '<small class="tp-sub">可达销地</small>' : '') + '</th>';
   h += '<th scope="col">' + (o.supply ? '剩余供应' : '供应量') + '</th></tr></thead><tbody>';
   for (i = 0; i < m.rows; i++) {
     var cut = (o.cutRows || []).indexOf(i) >= 0;
     h += '<tr' + (i >= m.m ? ' class="tp-virtual"' : '') + '><th scope="row" class="' + (cut ? 'tp-cut-label' : '') + '">' + rowName(m, i)
+      + (i >= m.m ? '<small class="tp-sub">缺货</small>' : '')
       + (cut ? '<small class="tp-sub">瓶颈产地</small>' : '') + '</th>';
     for (j = 0; j < m.cols; j++) {
       var key = i + '-' + j, hit = at[key], selected = same(o.selected, i, j), active = same(o.active, i, j), tie = false;
@@ -42,7 +45,7 @@ function table(m, values, basis, loop, caption, costs, options) {
       if (changed[key]) cls += ' tp-updated';
       if (tie && !selected) cls += ' tp-tie';
       h += '<td data-tp-cell="' + key + '" class="' + cls + '">';
-      if (!m.allowed[i][j]) { h += '禁运<small class="tp-tag">不参与计算</small></td>'; continue; }
+      if (!m.allowed[i][j]) { h += '禁运</td>'; continue; }
       /* 左上角费用角标：只有运量表才写，纯费用/检验数表里中间那个数就是主体。 */
       if (!costs) h += '<b class="tp-cost">' + num(m.cost[i][j]) + '</b>';
       if (hit) h += '<i class="tp-anchor"></i>';

@@ -45,7 +45,6 @@ function scene(m, s, frame) {
     active = frame === 0 ? s.entering : frame <= s.cycle.length ? s.cycle[frame - 1] : s.leaving;
   }
   /* θ 帧在下面的回路分支里算：分配步骤没有 cycle，不能在这里碰 s.cycle */
-  var costName = m.direction === 'max' ? '原收益' : '原费用';
   var title, note, h = '', options = { active: active, selected: allocation ? s.cell : s.entering,
     selectedLabel: allocation ? '本次选择' : '入基格' };
   if (allocation) {
@@ -54,10 +53,10 @@ function scene(m, s, frame) {
     options.ties = s.ties;
     if (frame === 1 && s.guarded) { options.cutRows = s.blockedCutRows; options.cutCols = s.blockedCutCols; }
     title = frame === 0 ? '选择最小费用格' : frame === 1 ? '确定可行分配量' : '分配完成，更新剩余供需';
-    note = frame === 0 ? '选中 ' + cellName(s.cell) + '，工作费用 ' + num(s.cost) + '；并列时按行、列下标选择。右侧和底部显示本轮分配前的剩余量。'
-      : frame === 1 ? '普通分配上限 ' + num(s.proposedQuantity) + '；实际分配量 ' + num(s.quantity) + '。'
-        + (s.guarded ? '若按上限分配，后续将有 ' + num(s.feasibilityDeficit) + ' 单位无法匹配。高亮瓶颈针对试分配后的剩余网络，已固定格不再使用。' : '本次可按上限分配；下一帧更新所选格及对应供需。')
-      : (s.quantity === 0 ? '为保持可行，本格跳过，运量和基身份不变。' : '已分配 ' + num(s.quantity) + '，所选格与右侧剩余供应、底部剩余需求同步更新。');
+    note = frame === 0 ? '选中 ' + cellName(s.cell) + '，费用 ' + num(s.cost) + '；右侧 / 底部为分配前的剩余量。'
+      : frame === 1 ? '分配上限 ' + num(s.proposedQuantity) + '；实际分配量 ' + num(s.quantity) + '。'
+        + (s.guarded ? '若按上限分配，后续将有 ' + num(s.feasibilityDeficit) + ' 单位无法匹配；高亮的是试分配后的瓶颈。' : '')
+      : (s.quantity === 0 ? '为保持可行，本格跳过，运量和基身份不变。' : '已分配 ' + num(s.quantity) + '，右侧 / 底部剩余量同步更新。');
   } else {
     /* θ 帧：短回路由逐格标记推进到这里，长回路则是第二帧 */
     var thetaFrame = long ? 1 : s.cycle.length + 1;
@@ -68,30 +67,30 @@ function scene(m, s, frame) {
     if (frame === 0) {
       title = long ? '整条闭回路' : '从入基格开始';
       note = long
-        ? '回路共 ' + s.cycle.length + ' 格，正负号按 + / − 交替一次标全；长回路不逐格揭示，避免在窄屏上反复滚动。下一帧确定 θ。'
-        : '入基格 ' + cellName(s.entering) + ' 运量暂不改变。下一帧沿基树路径交替标记 + / −。';
+        ? '回路共 ' + s.cycle.length + ' 格，一次标全 + / −；下一帧确定 θ。'
+        : '入基格 ' + cellName(s.entering) + ' 运量不变；下一帧沿基树交替标记 + / −。';
     } else if (frame < thetaFrame) {
       title = '标记回路第 ' + frame + ' 格';
-      note = cellName(active) + (active.sign > 0 ? ' 标 +，调整时增加 θ。' : ' 标 −，调整时减少 θ。')
-        + (frame === s.cycle.length ? '路径已闭合，下一帧比较所有负号格的运量。' : '此时仅标记路径，尚未改变运输量。');
+      note = cellName(active) + (active.sign > 0 ? ' 标 +，调整时加 θ。' : ' 标 −，调整时减 θ。')
+        + (frame === s.cycle.length ? '路径已闭合，下一帧比较负号格运量。' : '此时只标记路径。');
     } else if (!done) {
       title = '从负号格确定调整量';
-      note = 'θ = 负号格的最小运量 = ' + num(s.theta) + '；' + cellName(s.leaving) + ' 离基，并列时取下标最小者。';
+      note = 'θ = 负号格的最小运量 = ' + num(s.theta) + '；离基格 ' + cellName(s.leaving) + '，并列时取下标最小者。';
     } else if (s.theta === 0) {
       title = '退化换基：只换基，运量不变';
-      note = 'θ = 0：所有正负号格运量不变，只有入基格与离基格的基身份互换。';
+      note = 'θ = 0：运量不变，只交换入基格与离基格的基身份。';
     } else {
       title = '同步调整运量与基身份';
-      note = 'θ = ' + num(s.theta) + '：所有正负号格同步更新，显示的是算法记录的调整后方案。';
+      note = 'θ = ' + num(s.theta) + '：正负号格同步调整，显示算法记录的调整后方案。';
     }
     h += routeList(s, long ? s.cycle.length : frame);
   }
   var objective = done ? s.objective : s.objectiveBefore;
   return { html: '<h4 class="tp-scene-title">' + title + '</h4><p>' + note + '</p>' + h
     + table(m, values, basis, loop, allocation
-      ? '最小元素分配表（左上角 ' + costName + '；右侧 / 底部为剩余量）'
-      : '闭回路演示表（左上角 ' + costName + '，＋ 加 θ / − 减 θ）', false, options)
-    + '<p class="tp-player-objective">当前原目标值 <b>' + num(objective) + '</b>'
+      ? '分配表（左上角费用；右侧 / 底部为剩余量）'
+      : '回路表（左上角费用；＋ 加 θ / − 减 θ）', false, options)
+    + '<p class="tp-player-objective">原目标值 <b>' + num(objective) + '</b>'
     + (!allocation && done ? '；' + num(s.objectiveBefore) + ' → ' + num(s.objectiveAfter) + '（变化 ' + num(s.delta) + '）' : '') + '。</p>', loop: loop };
 }
 function render(m, s, index) {
@@ -100,7 +99,7 @@ function render(m, s, index) {
     + '<button type="button" class="btn" data-tp-prev disabled>上一帧</button><button type="button" class="btn" data-tp-play aria-pressed="false">播放</button>'
     + '<button type="button" class="btn" data-tp-next>下一帧</button><button type="button" class="btn" data-tp-reset>重播</button>'
     + '<label class="tp-speed">帧间隔<select data-tp-speed aria-label="演示帧间隔"><option value="1000">1 秒</option><option value="1800">1.8 秒</option><option value="600">0.6 秒</option></select></label></div>'
-    + '<p class="sens-note tp-motion-note" hidden>已启用减少动态效果，请用上一帧 / 下一帧查看；阶段内容完整保留。</p>'
+    + '<p class="sens-note tp-motion-note" hidden>已启用减少动态效果：请用上一帧 / 下一帧查看。</p>'
     + '<p class="tp-player-progress" role="status" aria-live="polite">第 1 / ' + count(s) + ' 帧 · 等待播放</p>'
     + '<div class="tp-scene">' + scene(m, s, 0).html + '</div></section>';
 }

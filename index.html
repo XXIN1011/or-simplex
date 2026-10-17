@@ -848,7 +848,8 @@ button.btn.primary:disabled{filter:none}
    闭回路的正负号写在运量前，连线从费用角标下方的节点穿过。
    ========================================================================= */
 #mod-transport{max-width:1000px;margin:0 auto}
-.transport-table caption,.transport-input caption{text-align:left;color:var(--fg2);font-size:13px;padding:12px 0;white-space:normal}
+.transport-table caption,.transport-input caption,.tp-caption{text-align:left;color:var(--fg2);font-size:13px;padding:12px 0;white-space:normal}
+.tp-caption{margin:0;line-height:1.6}
 /* 单元格网格：每格只画右边和下边，相邻格各画一遍也不会叠成 4px；整张表再补上边
    和左边收口。线宽 2px —— 1px 在手机和高分屏上会被压成一条淡线，手机上分不清
    格子；2px 才稳定呈现为实线（Chrome 会把 1.5px 舍入回 1px，所以不要用小数）。
@@ -983,6 +984,55 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
 @keyframes tp-arrow-in{from{opacity:0}to{opacity:1}}
 @media(prefers-reduced-motion:reduce){.tp-path .tp-line,.tp-path .tp-arrow-live,.tp-flow,.tp-player .tp-updated{animation:none}}
 .tp-motion-note[hidden]{display:none}
+/* ---------- 手机：把运输表压回一屏能读的密度 ----------
+   桌面按教材版式留足费用角标和运量，98px 起的格宽在手机上要滑三四屏才能看完
+   一行。窄屏只收紧尺寸，不改版式：格宽与行高一起降档，费用角标和运量仍分居
+   左上与中央；固定行名列、固定供应列和回路连线的位置都保留。
+   输入框宽度降到 44px 的触摸目标下限，5 列以内的产销平衡表可以整表放下。 */
+@media(max-width:600px){
+  /* 输入表：每格省 12px 左右，44px 高度不变，仍好点中 */
+  #tpPanel .scroll{padding-left:2px;padding-right:2px}
+  .transport-input td{padding:1px}
+  .transport-input th{padding:0 1px 6px;white-space:normal}
+  .transport-input th:first-child{padding-left:2px;min-width:46px}
+  .transport-input input.num{width:44px}
+  /* 结果表：98×108 -> 50×64，费用角标 26px -> 16px。
+     滚动容器在窄屏收窄内边距，7 列（含虚拟列与供应列）刚好放得下 390px 屏。 */
+  #tpOut .scroll{padding-left:2px;padding-right:2px}
+  #tpOut .tp-player .scroll{padding:0}
+  .transport-table td,.transport-table th{min-width:50px}
+  .transport-table tr>th:first-child,.transport-table tr>:last-child{min-width:46px}
+  .transport-table th.tp-virtual{min-width:56px}
+  .transport-table td{height:64px;padding:24px 0 8px}
+  .transport-table thead th,.transport-table tbody th{white-space:normal;padding:5px 1px 6px}
+  .transport-table .tp-cost{font-size:16px;padding:1px 5px 3px}
+  .transport-table .tp-value{font-size:15px}
+  .transport-table .tp-sgn{font-size:14px;line-height:16px;margin-right:2px}
+  .transport-table th.tp-corner{height:38px}
+  .transport-table th.tp-corner .tp-corner-x{top:1px;right:4px}
+  .transport-table th.tp-corner .tp-corner-y{left:4px;bottom:1px}
+  .transport-table .tp-sub{font-size:12px;margin-top:2px}
+  .transport-table .tp-tag{font-size:12px;bottom:1px}
+  .transport-table.tp-plain td{height:56px;padding:0}
+  .transport-table.tp-plain .tp-value{font-size:15px}
+  .transport-table .tp-anchor{left:16px;top:30px}
+  .transport-table caption,.transport-input caption,.tp-caption{font-size:12px;padding:6px 0}
+  /* 演示表：数据格 50px，行名列与供应列各收一档，给窄屏留出更多完整列 */
+  .tp-player{margin:12px 0 8px;padding:10px 0}
+  .tp-player .transport-table td{min-width:50px;height:72px;padding:26px 0 10px}
+  .tp-player .transport-table .tp-cost{font-size:16px;padding:1px 4px 3px}
+  .tp-player .transport-table .tp-value{font-size:15px}
+  .tp-player .transport-table .tp-anchor{left:16px;top:32px}
+  .tp-player .transport-table tr>th:first-child{width:54px;min-width:54px;max-width:54px;font-size:12px}
+  .tp-player .transport-table tr>:last-child{width:50px;min-width:50px}
+  .tp-player-controls{gap:6px}
+  .tp-player-controls [data-tp-play]{min-width:84px}
+  .tp-player-progress{font-size:12px;margin:6px 0}
+  .tp-scene-title{font-size:15px;margin:10px 0 6px}
+  .tp-route{margin:8px 0;gap:4px}
+  .tp-route-item{padding:3px 7px 3px 4px}
+  .tp-balance{font-size:13px;margin:10px 0}
+}
 
 </style>
 </head>
@@ -9636,7 +9686,6 @@ function scene(m, s, frame) {
     active = frame === 0 ? s.entering : frame <= s.cycle.length ? s.cycle[frame - 1] : s.leaving;
   }
   /* θ 帧在下面的回路分支里算：分配步骤没有 cycle，不能在这里碰 s.cycle */
-  var costName = m.direction === 'max' ? '原收益' : '原费用';
   var title, note, h = '', options = { active: active, selected: allocation ? s.cell : s.entering,
     selectedLabel: allocation ? '本次选择' : '入基格' };
   if (allocation) {
@@ -9645,10 +9694,10 @@ function scene(m, s, frame) {
     options.ties = s.ties;
     if (frame === 1 && s.guarded) { options.cutRows = s.blockedCutRows; options.cutCols = s.blockedCutCols; }
     title = frame === 0 ? '选择最小费用格' : frame === 1 ? '确定可行分配量' : '分配完成，更新剩余供需';
-    note = frame === 0 ? '选中 ' + cellName(s.cell) + '，工作费用 ' + num(s.cost) + '；并列时按行、列下标选择。右侧和底部显示本轮分配前的剩余量。'
-      : frame === 1 ? '普通分配上限 ' + num(s.proposedQuantity) + '；实际分配量 ' + num(s.quantity) + '。'
-        + (s.guarded ? '若按上限分配，后续将有 ' + num(s.feasibilityDeficit) + ' 单位无法匹配。高亮瓶颈针对试分配后的剩余网络，已固定格不再使用。' : '本次可按上限分配；下一帧更新所选格及对应供需。')
-      : (s.quantity === 0 ? '为保持可行，本格跳过，运量和基身份不变。' : '已分配 ' + num(s.quantity) + '，所选格与右侧剩余供应、底部剩余需求同步更新。');
+    note = frame === 0 ? '选中 ' + cellName(s.cell) + '，费用 ' + num(s.cost) + '；右侧 / 底部为分配前的剩余量。'
+      : frame === 1 ? '分配上限 ' + num(s.proposedQuantity) + '；实际分配量 ' + num(s.quantity) + '。'
+        + (s.guarded ? '若按上限分配，后续将有 ' + num(s.feasibilityDeficit) + ' 单位无法匹配；高亮的是试分配后的瓶颈。' : '')
+      : (s.quantity === 0 ? '为保持可行，本格跳过，运量和基身份不变。' : '已分配 ' + num(s.quantity) + '，右侧 / 底部剩余量同步更新。');
   } else {
     /* θ 帧：短回路由逐格标记推进到这里，长回路则是第二帧 */
     var thetaFrame = long ? 1 : s.cycle.length + 1;
@@ -9659,30 +9708,30 @@ function scene(m, s, frame) {
     if (frame === 0) {
       title = long ? '整条闭回路' : '从入基格开始';
       note = long
-        ? '回路共 ' + s.cycle.length + ' 格，正负号按 + / − 交替一次标全；长回路不逐格揭示，避免在窄屏上反复滚动。下一帧确定 θ。'
-        : '入基格 ' + cellName(s.entering) + ' 运量暂不改变。下一帧沿基树路径交替标记 + / −。';
+        ? '回路共 ' + s.cycle.length + ' 格，一次标全 + / −；下一帧确定 θ。'
+        : '入基格 ' + cellName(s.entering) + ' 运量不变；下一帧沿基树交替标记 + / −。';
     } else if (frame < thetaFrame) {
       title = '标记回路第 ' + frame + ' 格';
-      note = cellName(active) + (active.sign > 0 ? ' 标 +，调整时增加 θ。' : ' 标 −，调整时减少 θ。')
-        + (frame === s.cycle.length ? '路径已闭合，下一帧比较所有负号格的运量。' : '此时仅标记路径，尚未改变运输量。');
+      note = cellName(active) + (active.sign > 0 ? ' 标 +，调整时加 θ。' : ' 标 −，调整时减 θ。')
+        + (frame === s.cycle.length ? '路径已闭合，下一帧比较负号格运量。' : '此时只标记路径。');
     } else if (!done) {
       title = '从负号格确定调整量';
-      note = 'θ = 负号格的最小运量 = ' + num(s.theta) + '；' + cellName(s.leaving) + ' 离基，并列时取下标最小者。';
+      note = 'θ = 负号格的最小运量 = ' + num(s.theta) + '；离基格 ' + cellName(s.leaving) + '，并列时取下标最小者。';
     } else if (s.theta === 0) {
       title = '退化换基：只换基，运量不变';
-      note = 'θ = 0：所有正负号格运量不变，只有入基格与离基格的基身份互换。';
+      note = 'θ = 0：运量不变，只交换入基格与离基格的基身份。';
     } else {
       title = '同步调整运量与基身份';
-      note = 'θ = ' + num(s.theta) + '：所有正负号格同步更新，显示的是算法记录的调整后方案。';
+      note = 'θ = ' + num(s.theta) + '：正负号格同步调整，显示算法记录的调整后方案。';
     }
     h += routeList(s, long ? s.cycle.length : frame);
   }
   var objective = done ? s.objective : s.objectiveBefore;
   return { html: '<h4 class="tp-scene-title">' + title + '</h4><p>' + note + '</p>' + h
     + table(m, values, basis, loop, allocation
-      ? '最小元素分配表（左上角 ' + costName + '；右侧 / 底部为剩余量）'
-      : '闭回路演示表（左上角 ' + costName + '，＋ 加 θ / − 减 θ）', false, options)
-    + '<p class="tp-player-objective">当前原目标值 <b>' + num(objective) + '</b>'
+      ? '分配表（左上角费用；右侧 / 底部为剩余量）'
+      : '回路表（左上角费用；＋ 加 θ / − 减 θ）', false, options)
+    + '<p class="tp-player-objective">原目标值 <b>' + num(objective) + '</b>'
     + (!allocation && done ? '；' + num(s.objectiveBefore) + ' → ' + num(s.objectiveAfter) + '（变化 ' + num(s.delta) + '）' : '') + '。</p>', loop: loop };
 }
 function render(m, s, index) {
@@ -9691,7 +9740,7 @@ function render(m, s, index) {
     + '<button type="button" class="btn" data-tp-prev disabled>上一帧</button><button type="button" class="btn" data-tp-play aria-pressed="false">播放</button>'
     + '<button type="button" class="btn" data-tp-next>下一帧</button><button type="button" class="btn" data-tp-reset>重播</button>'
     + '<label class="tp-speed">帧间隔<select data-tp-speed aria-label="演示帧间隔"><option value="1000">1 秒</option><option value="1800">1.8 秒</option><option value="600">0.6 秒</option></select></label></div>'
-    + '<p class="sens-note tp-motion-note" hidden>已启用减少动态效果，请用上一帧 / 下一帧查看；阶段内容完整保留。</p>'
+    + '<p class="sens-note tp-motion-note" hidden>已启用减少动态效果：请用上一帧 / 下一帧查看。</p>'
     + '<p class="tp-player-progress" role="status" aria-live="polite">第 1 / ' + count(s) + ' 帧 · 等待播放</p>'
     + '<div class="tp-scene">' + scene(m, s, 0).html + '</div></section>';
 }
@@ -9847,50 +9896,49 @@ var layout = require('./result-layout.js');
 var player = require('./transport-player.js');
 function balanceNote(m) {
   var h = '总供应 ' + num(m.originalSupplyTotal) + '，总需求 ' + num(m.originalDemandTotal) + '。';
-  if (m.balanceAdjustment) h += '供需差属于浮点求和误差；已将需求校正 ' + num(m.balanceAdjustment) + '（原输入保留）。';
+  if (m.balanceAdjustment) h += '已按求和误差校正需求 ' + num(m.balanceAdjustment) + '（原输入保留）。';
   if (!m.virtual) return h + '供需平衡。';
   h += m.virtual.type === 'surplus' ? '补虚拟销地，需求 ' : '补虚拟产地，供应 ';
-  h += num(m.virtual.amount) + '。虚拟运输量表示' + (m.virtual.type === 'surplus' ? '各产地剩余供应' : '各销地缺货') + '，不代表实际运输。';
-  return h + '默认零费用表示不计剩余处理损失或缺货损失；不会产生真实收益。可在输入区配置逐产地处理费或逐销地罚金。最大收益时这些费用从总收益中扣除，虚拟格原收益为费用的负数。';
+  h += num(m.virtual.amount) + '；虚拟运量表示' + (m.virtual.type === 'surplus' ? '各产地剩余供应' : '各销地缺货') + '，不代表实际运输。';
+  return h + '默认零费用，不计损失也不产生收益；可在输入区逐产地 / 逐销地设置处理费或罚金'
+    + (m.direction === 'max' ? '，最大收益时扣除' : '') + '。';
 }
 function vector(a) { return a.map(num).join('，'); }
 function stepContent(m, s, index) {
   var title, h = '', values = s.allocation, loop = null;
   if (s.type === 'allocation') {
     title = '最小元素分配 ' + cellName(s.cell);
-    h += '<p>在尚未固定且剩余供需均为正的可运格中，选择最小工作费用 ' + num(s.cost) + '，格 ' + cellName(s.cell)
-      + '；并列候选 ' + s.ties.map(cellName).join('、') + '，取行列下标最小者。</p>'
-      + '<p>普通分配上限 min(剩余供应, 剩余需求) = ' + num(s.proposedQuantity) + '。'
+    h += '<p>可运格中工作费用最小：' + cellName(s.cell) + '，费用 ' + num(s.cost)
+      + (s.ties.length > 1 ? '；并列候选 ' + s.ties.map(cellName).join('、') + '，取下标最小者' : '') + '。</p>'
+      + '<p>分配上限 ' + num(s.proposedQuantity) + '。'
       + (s.guarded ? '可行性检查发现按上限分配会堵住后续路线，剩余网络将有 ' + num(s.feasibilityDeficit)
         + ' 单位无法匹配；瓶颈产地：' + s.blockedCutRows.map(function (i) { return rowName(m, i); }).join('、')
-        + '。本格改取保持剩余供需可满足的最大量。' : '')
-      + '实际分配 <b>' + num(s.quantity) + '</b>。' + (s.quantity === 0 ? '本格跳过，不作为基变量。' : '') + '剩余供应 [' + vector(s.remainingSupply)
-      + ']；剩余需求 [' + vector(s.remainingDemand) + ']。</p>';
+        + '。' : '')
+      + '实际分配 <b>' + num(s.quantity) + '</b>' + (s.quantity === 0 ? '（跳过，不设为基变量）' : '')
+      + '。剩余供应 [' + vector(s.remainingSupply) + ']；剩余需求 [' + vector(s.remainingDemand) + ']。</p>';
   } else if (s.type === 'initial') {
     title = '初始可行方案（尚未检验最优）';
-    h += '<p>最小元素分配结束。按行列下标补入不形成回路的零值基变量：'
-      + (s.zeroBasics.length ? s.zeroBasics.map(cellName).join('、') : '无需补基')
-      + '。可运图有 ' + m.components + ' 个连通分量（含孤立结点），基格构成 m+n−分量数 = ' + m.basisSize + ' 条边的森林；只用可运格补基。零值基仍是基变量，实际运量为 0。</p>';
+    h += '<p>按行列下标补入不形成回路的零值基变量：'
+      + (s.zeroBasics.length ? s.zeroBasics.map(cellName).join('、') : '无需补入')
+      + '。可运图 ' + m.components + ' 个连通分量，基格构成 m+n−k = ' + m.basisSize + ' 条边的森林；零值基运量为 0。</p>';
   } else if (s.type === 'potentials') {
     title = s.entering ? 'MODI 位势与检验：选择入基格' : 'MODI 最优性检验';
-    h += '<p>每个连通分量独立选一个结点令位势为 0，对每个基格解 uᵢ + vⱼ = c′ᵢⱼ。行位势 u = [' + vector(s.u) + ']；列位势 v = [' + vector(s.v) + ']。</p>'
-      + '<p>检验数 Δᵢⱼ = c′ᵢⱼ − uᵢ − vⱼ；负检验数表示工作目标可下降。逐格按费用与位势的大小估计浮点舍入容差，参考上界 ' + num(m.costTolerance) + '。</p>'
-      + table(m, s.reduced, null, null, '检验数 Δ（基格应为 0；数值在本格容差内视为 0）', true)
-      + '<p>' + (s.entering ? '按 Bland 规则取行列下标最小的负检验数可运非基格 ' + cellName(s.entering) + ' 入基。' : '所有可运非基检验数 ≥ −容差，当前方案在数值容差内最优；禁运格不参与检验。') + '</p>';
+    h += '<p>每个连通分量取一个零位势结点，按基格解 uᵢ + vⱼ = c′ᵢⱼ。行位势 u = [' + vector(s.u) + ']；列位势 v = [' + vector(s.v) + ']。</p>'
+      + '<p>检验数 Δᵢⱼ = c′ᵢⱼ − uᵢ − vⱼ，负值可改进；舍入容差上界 ' + num(m.costTolerance) + '。</p>'
+      + table(m, s.reduced, null, null, '检验数 Δ（基格应为 0）', true)
+      + '<p>' + (s.entering ? '取下标最小的负检验数格 ' + cellName(s.entering) + ' 入基。' : '可运非基检验数均 ≥ −容差，当前方案最优；禁运格不参与检验。') + '</p>';
   } else {
     title = '闭回路调整 · 第 ' + s.iteration + ' 轮';
     values = s.beforeAllocation; loop = s.cycle;
-    h += '<p>入基 ' + cellName(s.entering) + '，沿基树的唯一闭回路依次标 + / −：'
-      + s.cycle.map(function (c) { return cellName(c) + (c.sign > 0 ? '+' : '−'); }).join(' → ') + ' → 起点。</p>'
-      + '<p>θ = 所有负号格的最小运量 = <b>' + num(s.theta) + '</b>。正号格加 θ，负号格减 θ；同量离基候选取下标最小者 '
-      + cellName(s.leaving) + ' 离基。' + (s.theta === 0 ? '本轮为退化换基，运量与目标值不变，基身份改变。' : '') + '</p>'
-      + '<p>工作目标变化 θΔ = ' + num(s.workingDelta) + '；原目标 ' + num(s.objectiveBefore) + ' → ' + num(s.objectiveAfter)
-      + '（变化 ' + num(s.delta) + '）。</p>';
+    h += '<p>θ = 负号格最小运量 = <b>' + num(s.theta) + '</b>；正负格同步加减，同量时下标最小的 '
+      + cellName(s.leaving) + ' 离基。' + (s.theta === 0 ? '退化换基：运量不变，只换基。' : '') + '</p>'
+      + '<p>原目标 ' + num(s.objectiveBefore) + ' → ' + num(s.objectiveAfter)
+      + '（θΔ = ' + num(s.workingDelta) + '，变化 ' + num(s.delta) + '）。</p>';
   }
   h += s.type === 'allocation' || s.type === 'pivot' ? player.render(m, s, index)
     : table(m, values, s.basis, loop, title, false);
-  h += '<p class="sens-note">当前原目标值 ' + num(s.objective) + '。本步' + (s.type === 'allocation' ? '部分分配与无环基' : '非负、供需守恒与基结构')
-    + '校验：' + (s.invariant.valid ? '通过' : esc(s.invariant.errors.join('、'))) + '。</p>';
+  if (!s.invariant.valid) h += '<p class="sens-note">校验失败：' + esc(s.invariant.errors.join('、')) + '</p>';
+  else if (s.type === 'initial' || s.type === 'potentials') h += '<p class="sens-note">原目标值 ' + num(s.objective) + '</p>';
   return { title: title, html: '<article class="card"><h3>' + (index + 1) + '. ' + esc(title) + '</h3>' + h + '</article>' };
 }
 function render(res) {
@@ -9898,12 +9946,11 @@ function render(res) {
   if (res.status === 'infeasible') {
     var f = res.feasibility;
     return '<div class="card"><div class="verdict no"><div class="vtitle">禁运限制下无可行方案</div></div>'
-      + '<p>' + esc(res.message) + '</p><p>在辅助网络中，最大可匹配量为 ' + num(m.total - f.deficit)
-      + '，仍有 ' + num(f.deficit) + ' 单位供需无法匹配；这不是最优运输方案，也不新增虚拟线路绕过禁运。</p>'
+      + '<p>' + esc(res.message) + '</p><p>最大可匹配 ' + num(m.total - f.deficit)
+      + '，仍有 ' + num(f.deficit) + ' 单位无法匹配；不会用虚拟线路绕过禁运。</p>'
       + '<p>瓶颈产地集合：' + f.cutRows.map(function (i) { return rowName(m, i); }).join('、')
-      + '；其可达销地集合：' + (f.cutCols.length ? f.cutCols.map(function (j) { return colName(m, j); }).join('、') : '无')
+      + '；可达销地：' + (f.cutCols.length ? f.cutCols.map(function (j) { return colName(m, j); }).join('、') : '无')
       + '。这些产地供应 ' + num(f.cutSupply) + '，可达需求仅 ' + num(f.cutDemand) + '。请检查禁运标记或调整供需。</p>'
-      + '<p>下表标出瓶颈产地及其可达销地；禁运格保持关闭，不会通过额外增加虚拟供需绕过限制。</p>'
       + '<p>' + balanceNote(m) + '</p>' + table(m, m.cost, null, null, '平衡后运输表与禁运瓶颈', true,
         { cutRows: f.cutRows, cutCols: f.cutCols }) + '</div>';
   }
@@ -9912,20 +9959,19 @@ function render(res) {
     + '<div class="sol">z = <span class="zv">' + num(res.objective) + '</span></div></div>';
   if (!optimal) h += '<p>' + esc(res.message) + '</p>';
   h += '<p>真实线路' + (m.direction === 'max' ? '总收益' : '总费用') + ' ' + num(res.realObjective) + '；剩余处理费 / 缺货罚金 ' + num(res.penalty) + '。</p>';
-  if (m.direction === 'max') h += '<p>转换 c′ = −原收益（虚拟格为正罚金）。最小工作目标 ' + num(res.workingObjective) + '，还原 z = −工作目标 = ' + num(res.objective) + '。</p>';
+  if (m.direction === 'max') h += '<p>c′ = −原收益，工作目标 ' + num(res.workingObjective) + '，还原 z = −工作目标 = ' + num(res.objective) + '。</p>';
   if (res.surplus) h += '<p class="tp-balance">剩余供应：' + res.surplus.map(function (v, i) { return '产地' + (i + 1) + '：' + num(v); }).join('；') + '。</p>';
   if (res.shortage) h += '<p class="tp-balance">缺货量：' + res.shortage.map(function (v, j) { return '销地' + (j + 1) + '：' + num(v); }).join('；') + '。</p>';
   h += table(m, res.allocation, res.basis, null, optimal ? '最终最优运输方案' : '当前运输方案', false)
-    + '<p class="sens-note">格内左上角是原费用（最大收益题为原收益），中间是运量；运量外套方框的格是基变量，零值基同样套框并在格内标注。零值基格也参与位势与回路计算。虚拟行列以文字标识。</p>';
-  if (optimal) h += '<p>' + (res.multipleOptimal ? '存在多重最优：已找到可正量调整的零检验数回路（θ = ' + num(res.alternative.theta) + '），下方可查看另一方案。' : '未发现不同的最优运输方案；零检验数仅允许零步长换基时不算多重最优。') + '</p>';
+    + '<p class="sens-note">左上角原费用，中间运量；方框为基变量（含零值基）。</p>';
+  if (optimal && res.multipleOptimal) h += '<p>存在多重最优（θ = ' + num(res.alternative.theta) + '），下方可查看另一方案。</p>';
   if (res.alternative) h += '<details><summary>查看另一个最优方案</summary>' + table(m, res.alternative.allocation, null, res.alternative.cycle, '另一最优运输方案（原目标 ' + num(res.alternative.objective) + '）', false) + '</details>';
   h += '</div>' + layout.navigation([['transport-derivation', '查看完整推导 / 单步学习']]);
   h += '<details class="result-work" open><summary>计算过程：初始可行方案 → MODI 最优方案</summary><section data-section="transport-derivation">'
     + '<div class="card"><h2 class="sec">模型平衡与转换</h2><p>' + balanceNote(m) + '</p>'
     + table(m, m.cost, null, null, '平衡后原费用 / 收益矩阵（含虚拟行列）', true)
     + (m.direction === 'max' ? table(m, m.working, null, null, '进入最小化算法的工作费用 c′ = −原收益', true) : '')
-    + '<p>禁运格不参与分配、补基、位势检验和闭回路。存在禁运时，先用辅助最大流检查可行性；逐格尝试普通分配上限，必要时减少至可行最大量，再固定该格。最大流只作可行性保护，费用优化仍用 MODI。</p>'
-    + '<p>固定规则：最小元素并列取行列下标最小者；MODI 负检验数取下标最小者入基；最小负号运量并列取下标最小者离基。Bland 规则防止退化循环；仍检测重复基及迭代上限，异常停止不报告最优。</p></div>'
+    + '<p>禁运格不参与分配、补基、检验和回路。有禁运时先做辅助最大流可行性检查，再按最小元素分配、MODI 优化。</p></div>'
     + study.group(res.steps.map(function (s, i) { return stepContent(m, s, i); }), '运输问题逐步推导') + '</section></details>';
   return h;
 }
@@ -9940,8 +9986,8 @@ __define__("src/web/transport-table.js", function (module, exports, require) {
 var esc = require('./dom.js').esc;
 var fmtNum = require('../core/format.js').fmtNum;
 function num(v) { return v !== 0 && Math.abs(v) < 1e-7 ? esc(String(v)) : fmtNum(v); }
-function rowName(m, i) { return i < m.m ? '产地' + (i + 1) : '虚拟产地（缺货）'; }
-function colName(m, j) { return j < m.n ? '销地' + (j + 1) : '虚拟销地（剩余）'; }
+function rowName(m, i) { return i < m.m ? '产地' + (i + 1) : '虚拟产地'; }
+function colName(m, j) { return j < m.n ? '销地' + (j + 1) : '虚拟销地'; }
 function cellName(c) { return '(' + (c.i + 1) + ', ' + (c.j + 1) + ')'; }
 function same(a, i, j) { return a && a.i === i && a.j === j; }
 function table(m, values, basis, loop, caption, costs, options) {
@@ -9949,16 +9995,19 @@ function table(m, values, basis, loop, caption, costs, options) {
   var at = {}, changed = {};
   (loop || []).forEach(function (c, k) { at[c.i + '-' + c.j] = { sign: c.sign > 0 ? '+' : '−' }; });
   (o.updated || []).forEach(function (c) { changed[c.i + '-' + c.j] = 1; });
-  var h = '<div class="scroll"><div class="tp-stage"><table class="tb transport-table' + (costs ? ' tp-plain' : '')
-    + '"><caption>' + esc(caption) + '</caption><thead><tr>'
+  var h = '<p class="tp-caption">' + esc(caption) + '</p>'
+    + '<div class="scroll"><div class="tp-stage"><table class="tb transport-table' + (costs ? ' tp-plain' : '')
+    + '" aria-label="' + esc(caption) + '"><thead><tr>'
     + '<th scope="col" class="tp-corner"><span class="tp-corner-x">销地</span><span class="tp-corner-y">产地</span></th>', i, j;
   for (j = 0; j < m.cols; j++) h += '<th scope="col" class="' + (j >= m.n ? 'tp-virtual ' : '')
     + ((o.cutCols || []).indexOf(j) >= 0 ? 'tp-cut-label' : '') + '">' + colName(m, j)
+    + (j >= m.n ? '<small class="tp-sub">剩余</small>' : '')
     + ((o.cutCols || []).indexOf(j) >= 0 ? '<small class="tp-sub">可达销地</small>' : '') + '</th>';
   h += '<th scope="col">' + (o.supply ? '剩余供应' : '供应量') + '</th></tr></thead><tbody>';
   for (i = 0; i < m.rows; i++) {
     var cut = (o.cutRows || []).indexOf(i) >= 0;
     h += '<tr' + (i >= m.m ? ' class="tp-virtual"' : '') + '><th scope="row" class="' + (cut ? 'tp-cut-label' : '') + '">' + rowName(m, i)
+      + (i >= m.m ? '<small class="tp-sub">缺货</small>' : '')
       + (cut ? '<small class="tp-sub">瓶颈产地</small>' : '') + '</th>';
     for (j = 0; j < m.cols; j++) {
       var key = i + '-' + j, hit = at[key], selected = same(o.selected, i, j), active = same(o.active, i, j), tie = false;
@@ -9977,7 +10026,7 @@ function table(m, values, basis, loop, caption, costs, options) {
       if (changed[key]) cls += ' tp-updated';
       if (tie && !selected) cls += ' tp-tie';
       h += '<td data-tp-cell="' + key + '" class="' + cls + '">';
-      if (!m.allowed[i][j]) { h += '禁运<small class="tp-tag">不参与计算</small></td>'; continue; }
+      if (!m.allowed[i][j]) { h += '禁运</td>'; continue; }
       /* 左上角费用角标：只有运量表才写，纯费用/检验数表里中间那个数就是主体。 */
       if (!costs) h += '<b class="tp-cost">' + num(m.cost[i][j]) + '</b>';
       if (hit) h += '<i class="tp-anchor"></i>';
@@ -10030,7 +10079,7 @@ var draft = require('./draft.js');
     $('tpBalance').textContent = b.ok ? '总供应 ' + report.num(b.supplyTotal) + '；总需求 ' + report.num(b.demandTotal)
       + (b.difference > 0 ? ' · 供大于求，剩余 ' + report.num(b.difference) : b.difference < 0 ? ' · 供小于求，缺货 ' + report.num(-b.difference) : ' · 供需平衡')
       : state.rows && state.cols ? '请填写有效的非负供需量后检查平衡状态。' : '请设置至少 1 个产地与 1 个销地。';
-    if (m.ok && m.forbiddenCount) $('tpBalance').textContent += '；已设置 ' + m.forbiddenCount + ' 条禁运路线，总量平衡不代表路线可达，求解时检查可行性。';
+    if (m.ok && m.forbiddenCount) $('tpBalance').textContent += '；已设置 ' + m.forbiddenCount + ' 条禁运路线，总量平衡不代表路线可达。';
     /* 虚拟线路在求解前就可检查：原输入保留，平衡表由 core 生成。 */
     $('tpVirtual').innerHTML = m.ok && (m.virtual || m.balanceAdjustment)
       ? '<p class="sens-note">' + report.balanceNote(m) + '</p>'
@@ -10049,7 +10098,7 @@ var draft = require('./draft.js');
     var h = '', i, j;
     if (!state.rows || !state.cols) h = '<tbody><tr><td class="empty-tip">载入示例，或增加产地与销地建立运输表。</td></tr></tbody>';
     else {
-      h = '<caption>中间为单位' + (state.direction === 'max' ? '收益' : '运费') + '，右侧供应，底部需求</caption><thead><tr><th scope="col">产地 / 销地</th>';
+      h = '<caption>中间为单位' + (state.direction === 'max' ? '收益' : '运费') + ' · 右侧供应 · 底部需求</caption><thead><tr><th scope="col">产地 / 销地</th>';
       for (j = 0; j < state.cols; j++) h += '<th scope="col">销地' + (j + 1) + '</th>';
       h += '<th scope="col">供应量</th></tr></thead><tbody>';
       for (i = 0; i < state.rows; i++) {
@@ -10059,7 +10108,7 @@ var draft = require('./draft.js');
       }
       h += '</tbody><tfoot><tr><th scope="row">需求量</th>';
       for (j = 0; j < state.cols; j++) h += '<td class="tp-margin">' + input('demand', j, undefined, '销地' + (j + 1) + '需求量') + '</td>';
-      h += '<td>供需合计见下方</td></tr></tfoot>';
+      h += '<td>合计↓</td></tr></tfoot>';
     }
     $('tpInTbl').innerHTML = h;
     var fees = '<div class="tp-fee-fields">';
@@ -10096,11 +10145,11 @@ var draft = require('./draft.js');
     addVar: 'tpAddRow', delVar: 'tpDelRow', addCon: 'tpAddCol', delCon: 'tpDelCol',
     labels: { addVar: '+ 产地', delVar: '− 产地', addCon: '+ 销地', delCon: '− 销地' } });
   var extras = document.createElement('div');
-  extras.innerHTML = '<p class="sens-note">费用格填 M 表示禁运（大 M：该线路费用无穷大，不能运输）；也接受 X、× 或“禁运”。恢复数字即可重新允许运输，禁运格不分配、不入基；自动补出的虚拟线路仍可用。</p>'
+  extras.innerHTML = '<p class="sens-note">费用格填 M 表示禁运（也接受 X、×、“禁运”）；改回数字即可恢复运输。</p>'
     + '<button type="button" class="btn" data-transport-forbidden-sample>载入禁运示例</button>'
     + '<p class="tp-balance" id="tpBalance" role="status" aria-live="polite"></p>'
     + '<details class="tp-fee-options"><summary>剩余处理费用 / 缺货罚金</summary>'
-    + '<p class="sens-note">按单位计费，须非负。默认 0 表示忽略剩余或缺货的损失；最大收益模式会扣除此费用。供需平衡时不产生虚拟费用。</p>'
+    + '<p class="sens-note">按单位计费，默认 0；最大收益会从总收益中扣除。</p>'
     + '<div id="tpFees"></div></details><div id="tpVirtual"></div>';
   $('tpPanel').appendChild(extras);
   function loadExample(p) {
