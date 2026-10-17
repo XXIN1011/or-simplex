@@ -117,6 +117,7 @@ module.exports = async function transportCases(sess, check, url) {
       expect(document.documentElement.scrollWidth<=window.innerWidth+1,'无页面横向溢出 ${width}px');
       expect(q('#tpSolveBtn').getBoundingClientRect().height>=44,'求解按钮可触摸 ${width}px');
       expect(q('#tpInTbl').parentNode.classList.contains('scroll'),'宽表独立滚动 ${width}px');
+      expect(q('#mod-transport').querySelectorAll('.scroll-hint').length<=1,'运输页最多保留一组滑动提示 ${width}px');
     `);
     if (width===390 && process.env.OR_TRANSPORT_SHOTS) {
       for (const mode of ['light','dark']) {

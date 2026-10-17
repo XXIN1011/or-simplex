@@ -13,16 +13,56 @@ var parseNumber = require('../core/number-input.js').parseNumber;
 var inputGuide = require('./input-guide.js');
 
 /* 表格横向溢出时给一句提示：手机上看不见滚动条，不说一声用户不知道右边还有内容。
-   只在真的溢出（scrollWidth > clientWidth）时才插入，且不重复插入。 */
+   只在真的溢出（scrollWidth > clientWidth）时才插入，且不重复插入。
+   标了 data-scroll-hint="single" 的容器（运输模块）只保留一条提示：所有子表共用它，
+   避免每一步的过程表下面都重复一句。 */
+function hintFor(scope) {
+  var target = null, boxes = scope.querySelectorAll('.scroll');
+  for (var i = 0; i < boxes.length; i++) {
+    var box = boxes[i];
+    if (!box.clientWidth) continue;
+    if (box.scrollWidth > box.clientWidth + 1) { target = box; break; }
+  }
+  var hints = scope.querySelectorAll('.scroll-hint'), keep = null;
+  for (var j = 0; j < hints.length; j++) {
+    var hint = hints[j];
+    if (target && hint.getAttribute('data-scroll-hint-single') === '1' && hint.previousElementSibling === target) keep = hint;
+    else hint.parentNode.removeChild(hint);
+  }
+  if (!target) return;
+  if (!keep) {
+    keep = document.createElement('div');
+    keep.className = 'scroll-hint';
+    keep.setAttribute('data-scroll-hint-single', '1');
+    keep.textContent = '← 左右滑动查看完整表格 →';
+    target.parentNode.insertBefore(keep, target.nextSibling);
+  }
+  keep.classList.toggle('hide', target.scrollLeft > 6);
+  if (!target.__scrollHintBound) {
+    target.__scrollHintBound = true;
+    target.addEventListener('scroll', function () {
+      var next = target.nextElementSibling;
+      if (next && next.classList.contains('scroll-hint')) next.classList.toggle('hide', target.scrollLeft > 6);
+    }, { passive: true });
+  }
+}
+
 function addScrollHints(root) {
+  var scope = root && root.nodeType === 1 && root.closest ? root.closest('[data-scroll-hint="single"]') : null;
+  if (scope) { hintFor(scope); return; }
+  if (root && root.querySelectorAll) {
+    var scopes = root.querySelectorAll('[data-scroll-hint="single"]');
+    for (var s = 0; s < scopes.length; s++) hintFor(scopes[s]);
+  }
   Array.prototype.forEach.call(root.querySelectorAll('.scroll'), function (box) {
+    if (box.closest && box.closest('[data-scroll-hint="single"]')) return;
     var next = box.nextElementSibling;
     if (!box.clientWidth) return; // 隐藏模块暂时无法测量，等切页后再判断。
     if (box.scrollWidth <= box.clientWidth + 1) {
-      if (next && next.className === 'scroll-hint') next.parentNode.removeChild(next);
+      if (next && next.classList.contains('scroll-hint')) next.parentNode.removeChild(next);
       return;
     }
-    if (next && next.className === 'scroll-hint') return;
+    if (next && next.classList.contains('scroll-hint')) return;
     var hint = document.createElement('div');
     hint.className = 'scroll-hint';
     hint.textContent = '← 左右滑动查看完整表格 →';

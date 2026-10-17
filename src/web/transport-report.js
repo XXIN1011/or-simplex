@@ -37,7 +37,7 @@ function stepContent(m, s, index) {
   } else if (s.type === 'potentials') {
     title = s.entering ? '位势法：选择入基格' : '位势法：最优性检验';
     h += '<p>每个连通分量取一个零位势结点，按基格解 uᵢ + vⱼ = c′ᵢⱼ；行位势写在表最右列，列位势写在表底行。</p>'
-      + '<p>检验数 Δᵢⱼ = c′ᵢⱼ − uᵢ − vⱼ，负值可改进；舍入容差上界 ' + num(m.costTolerance) + '。</p>'
+      + '<p>检验数 Δᵢⱼ = c′ᵢⱼ − uᵢ − vⱼ，负值可改进。</p>'
       + table(m, s.reduced, null, null, '位势与检验数 Δ（基格 Δ = 0）', true,
         { rowMargins: s.u, colMargins: s.v, rowLabel: '行位势 u', colLabel: '列位势 v', cornerLabel: '—',
           rowMarginAttr: 'data-tp-u', colMarginAttr: 'data-tp-v', rowMarginClass: 'tp-u', colMarginClass: 'tp-v' })
