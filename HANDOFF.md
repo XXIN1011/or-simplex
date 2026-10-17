@@ -1,197 +1,90 @@
-# 交接文档 · 交给接手的 Agent
+# 项目维护指南
 
-> 目标：读完之后**第一时间找到文件、改对地方、把验证跑绿、顺利推上 GitHub**。
-> 细节不再堆在这一个文件里 —— 按主题拆到了 `docs/`（见文末索引），这里只留「必须知道的」。
+本文说明项目结构、开发约定和发布验证流程。所有命令均在仓库根目录执行。
 
----
+## 1. 项目概况
 
-## 0. 一句话指令（可直接复制给其他 agent）
+运筹学计算器提供单纯形法、灵敏度分析、整数规划、指派问题和运输问题，并展示可核查的计算过程。
 
-```
-项目「运筹学计算器」在本机路径：C:\Users\Lenovo\.hermes\workspace\or-solver
-（Git Bash / MSYS 写法：/c/Users/Lenovo/.hermes/workspace/or-solver）
+- 网页构建为仓库根目录的单文件 `index.html`，支持离线使用。
+- `src/core/` 为可在 Node.js 中调用的算法库，不依赖 DOM 或文件系统。
+- `src/web/` 负责输入、结果展示、主题、草稿和历史记录。
+- GitHub Pages 发布仓库根目录；构建入口为 `src/build.js`。
+- 验证算例用于检查正确性，功能范围和展示方式按算法含义组织。
 
-目录：index.html 在**仓库根**（GitHub Pages 入口，不能挪，且是构建产物、不要手改）；
-     算法层 src/core/（纯 Node，零 DOM）；表现层 src/web/（只碰 DOM）；
-     构建 src/build.js；命令行 src/cli.js；库出口 src/index.js；
-     开发工具 lib/（无头浏览器 / 安静模式）；验证 test/{unit,algorithm,ui}/；工具 tools/。
+## 2. 项目状态
 
-先读 HANDOFF.md（本文件）→ 按需读 docs/。分支 main，
-远程 https://github.com/XXIN1011/or-simplex.git，线上 https://xxin1011.github.io/or-simplex/
-
-硬性要求：
-1) 只改 src/ 下的源文件，改完必须 `npm run build` 重新生成根目录的 index.html。
-2) 改完必须跑 `npm run verify`（构建 + 静态检查 + 单元 + 9 套算法回归 + UI 回归）。
-   涉及算法层再加跑 scipy 对拍与 deep-snapshot（见 docs/验证手册.md）。
-3) 推送前先探代理：`git ls-remote origin main`，不通先试直连重试，再让用户开 Clash。
-4) git 身份是「仓库级」的（XiaoXin / 2624962001@qq.com），全局是空的，换机器克隆后要重设。
-5) CI（.github/workflows/verify.yml）会在 push/PR 时跑同一套门禁 —— 本地绿了不代表 CI 绿，
-   但它能抓住「忘了 npm run build」这类问题。
-```
-
----
-
-## 1. 现状（自动生成，勿手改）
+运行 `node tools/status.js` 查看当前构建、模块、单元测试和静态检查结果。
+完整验证使用 `npm run verify`；测试数量以命令输出为准。
 
 <!-- STATUS:BEGIN（本区块由 node tools/status.js --write 生成，不要手改） -->
-| 项 | 值 |
-|---|---|
-| 分支 / HEAD | `main` · `6555c13` （**有 37 个文件未提交**） |
-| 构建产物 | `index.html` 452.6 KB，已是最新（重建无差异） |
-| 算法层 | `src/core/` 22 个模块 / 4794 行 |
-| 表现层 | `src/web/` 22 个模块 / 3712 行 |
-| 模块（读自模板） | `#/` · `#/simplex` · `#/sens` · `#/ip` · `#/assign` · `#/transport` · `#/settings` |
-| 单元测试 | 17 个文件 / 127 条，当前 127 通过 |
-| 算法回归 | 9 套 + 单元测试，见 `npm test` |
-| 静态检查 | 注册一致性 ✓ · 无历史模块残留 ✓ |
+如需生成状态快照，运行 `node tools/status.js --write`。
 <!-- STATUS:END -->
 
----
+## 3. 目录结构
 
-## 2. 项目速览
-
-2026-10-16 新增运输模块 `#/transport`：最小元素法初始解 → MODI 与闭回路，统一 API 为 `solveTransport`。核心 / UI 拆分及输入、数值、测试边界见 `docs/运输问题.md`；首页现在为五个算法入口，算法回归 9 套，SciPy 对拍 7 个脚本。不要将退化零值基变量和运输量混为一谈，也不要把迭代限制写成最优。
-
-2026-10-17 补充运输禁运计算：费用格支持 `X / × / 禁运`。`transport-flow` 提供辅助最大流可行性检查、分配保护及最小割无解见证；`allowed` 独立于费用数值，基按可运图分量形成森林，MODI 与多重最优回路均避开禁运格。随机运输题库扩至 3600 题（1800 题禁运），SciPy 同时独立验证无解和最优目标。`infeasible` 时不能读取运输方案或目标值，两者返回 null；自动虚拟行列不额外绕过禁运。
-
-| 项 | 值 |
+| 路径 | 职责 |
 |---|---|
-| 是什么 | 面向**教学**的运筹学求解器：把算法的每一步中间过程完整摊开，而不是只给答案 |
-| 仓库 / 线上 | https://github.com/XXIN1011/or-simplex.git · https://xxin1011.github.io/or-simplex/ |
-| 形态 | **单文件、零依赖、可离线**的 `index.html`（源码构建时打包进去），同时是标准 Node 工程 |
-| 手机端 | 浏览器打开 → 「添加至桌面」当 App 用（用户是华为纯血鸿蒙，**装不了 APK**，只能走网页 / 后续 HAP） |
-| 模块 | `#/simplex` 单纯形法（大 M 法逐步迭代 + 对偶解 + 图解）· `#/sens` 灵敏度分析（场景式 + 参数 LP）· `#/ip` 整数规划（四方法）· `#/assign` 指派问题（匈牙利法）· `#/settings` 设置 · `#/` 首页 |
+| `index.html` | 构建产物及 GitHub Pages 入口，不直接编辑或移动 |
+| `src/core/` | 领域模型、算法、数值处理及格式化 |
+| `src/web/` | 浏览器界面、交互和本地存储 |
+| `src/styles/` | 语义令牌、组件、主题与工作区样式 |
+| `src/template.html` | HTML 骨架 |
+| `src/build.js` | 将样式和脚本内联到单文件页面 |
+| `src/index.js`、`src/cli.js` | 库接口与命令行入口 |
+| `lib/` | 无头浏览器、启动诊断和日志工具 |
+| `test/` | 单元、算法、交叉对拍和浏览器回归 |
+| `tools/` | 静态检查、快照、截图和视觉量测 |
+| `docs/` | 架构、验证、排错、部署与算法说明 |
 
-产品定位：通用运筹学求解工具，功能、术语和展示按算法含义组织；验证算例仅用于检查正确性，不作为功能范围或展示方式的依据。
+依赖方向为 `web → core`。核心模块通过公开接口复用数值工具和迭代内核，不允许循环依赖。
 
-**用户明确要求过、别改回去的东西**：
+## 4. 开发约定
 
-1. **2026-10-16 用户确认整体换风格**：参考 Apple 设置与系统工具，使用实色分组面板、蓝色主操作和系统字体；旧全玻璃与极光约定已被替代。当前视觉规范见 `DESIGN.md`；
-2. 底部标签栏切换要有**滑动指示器**（不能「旧的消失 + 新的出现」）；
-3. 底栏**只留「首页 + 设置」**，五个算法模块从首页卡片进；进模块页时指示器整个隐去（有意为之）；
-4. 显示模式**三档**（跟随系统 / 浅色 / 深色），走 `html[data-theme]` 属性驱动；
-5. 工具页**空白默认状态**：不预填任何例题，0 变量 / 0 约束也是合法输入。
+1. `src/core/` 和 `src/web/` 使用 ES5 语法；开发与测试工具可以使用项目支持的现代 Node.js 语法。
+2. 网页保持零运行时依赖，不引入 CDN、远程字体或外部脚本。
+3. 优先复用现有算法部件，避免复制枢轴和迭代逻辑。
+4. 核心层不访问 DOM 或文件；表现层不内联求解算法。
+5. 修改源码后运行 `npm run build`，提交对应的 `index.html`。
+6. DOM id、模块路由和事件是界面契约；修改后执行注册一致性检查。
+7. 注释说明边界条件和实现原因；提交信息清楚描述改动及原因。
+8. 不得为通过测试而删除断言或放宽判定。确认测试有误后，修正测试并说明原因。
+9. 迭代或规模限制必须明确报告，不能将未完成求解的结果标为全局最优。
 
-## 3. 目录地图（哪些能改、哪些别碰）
+## 5. 界面与模型约定
 
-```
-index.html          ← 构建产物，GitHub Pages 入口。**不要手改、不要挪走**
-package.json        ← 库入口(main)、CLI(bin)、npm 脚本（含 verify 一条龙）
-README.md           面向使用者的说明（功能 / 用法 / 算法说明）
-HANDOFF.md          本文件：给 agent 的动手须知
-docs/               主题文档（见文末索引）
-src/
-  index.js cli.js build.js template.html
-  core/             ── 领域层：零 DOM、零 IO，Node 里直接可测
-    errors.js util.js model.js parse.js simplex.js sensitivity.js
-    scenario.js integer.js assignment.js format.js
-  web/              ── 表现层：只碰 DOM，算数一律调 core/
-    boot.js（唯一入口，按顺序 require 各界面）  router.js（hash 路由，模块清单读自模板）
-    dom.js（共用 esc/$/subs）  input-panel.js（输入表 + 外壳生成）  table-render.js
-    graph.js（图解法 SVG）  settings-ui.js
-    ui.js sens-ui.js ip-ui.js assign-ui.js（四个模块的界面）
-lib/                开发工具（不进单文件产物）
-  chrome.js         无头 Chrome / CDP 启动器（**所有 UI 脚本共用这一份**）
-  quiet.js          --quiet：只打一行结论，明细落 preview/logs/
-test/
-  run-all.js        一键全量回归汇总（npm test）
-  unit/*.test.js    单元测试（node:test）
-  lib/rng.js        可复现随机数（固定种子，--seed=N 覆盖）
-  algorithm/        算法回归 + scipy 对拍（题库 JSON 是生成物，已 gitignore）
-  ui/               无头浏览器回归与无障碍审查
-tools/
-  status.js         现状卡（--card / --write / --remote）
-  check-registry.js 注册一致性静态检查（id / 路由 / 接线）
-  check-no-dp.js    历史模块残留核查
-  dom-snapshot.js   DOM 结构快照与对比（改界面结构前后用）
-  screenshots/ visual/ setup/ + verify-visual.sh
-```
+- 视觉规范见 [DESIGN.md](DESIGN.md)：系统字体、实色分组面板和语义颜色，兼顾手机与桌面。
+- 底栏为首页与设置；五个算法模块从首页进入。
+- 主题提供跟随系统、浅色和深色三档，通过 `html[data-theme]` 驱动。
+- 初始输入保持空白；零维输入可用于搭建模型，求解前按各算法要求校验。
+- 触摸目标至少为 44 × 44px，正文对比度至少为 4.5:1，宽表格独立横向滚动。
+- 草稿、历史和显示偏好保存在当前浏览器中；本地存储不可用时仍须支持正常求解。
+- 运输模型将禁运状态与费用分开保存。基按可运图分量形成森林；退化零值基变量与正运量分开处理。
+- 运输问题返回 `infeasible` 时，方案和目标值为 `null`；虚拟行列不得绕过禁运限制。详见 [运输问题](docs/运输问题.md)。
 
-**依赖方向单向**：`web → core`；`core` 内部 `simplex/parse/scenario/integer/assignment → format/util/model → errors`，
-`model.js` 谁都不依赖。**不允许环，也不允许靠全局变量互相调用**。
-
-## 4. 改完必须跑的验证（定义「做完」）
+## 6. 验证与发布
 
 ```bash
-npm run verify      # 一条命令：构建 + 静态检查 + 单元 + 9 套算法回归 + UI 回归
-npm test            # 只跑单元 + 算法回归（末尾给汇总表）
-npm run check       # 只跑静态检查（注册一致性 + 残留核查，几十毫秒）
-node tools/status.js   # 现状自查：产物是否最新、模块清单、单测条数
+npm run build
+npm run check
+npm run verify
 ```
 
-期望值（详细版与逐套件命令见 `docs/验证手册.md`）：
+算法逻辑改动须补充相关 SciPy 对拍和计算快照；界面改动须检查手机视口，颜色及材质改动须运行视觉量测。具体命令见 [验证手册](docs/验证手册.md)。
 
-| 套件 | 期望 |
+推送前检查提交范围，确认不包含凭据、个人信息、本机配置或临时文件。推送后核对远程提交，并分别确认 Actions 检查与 Pages 部署结果；本地验证通过不能代替远程检查。
+
+文档使用仓库相对路径和通用环境说明，不记录维护者身份、私人设备、网络配置或对话记录。认证通过受支持的凭据管理工具完成，文档和日志中不输出认证材料。
+
+## 7. 文档索引
+
+| 主题 | 文档 |
 |---|---|
-| 单元测试 | 全部通过，当前条数见自动现状卡 |
-| 算法回归 | 9 套全 PASS（含运输问题） |
-| UI 回归 | 全部通过、0 失败，当前条数以命令输出为准 |
-| 静态检查 | 注册一致性 ✓ / DP 残留 0 处 |
-
-**按改动范围加跑**：
-
-- 动了 `src/core/` 下的算法逻辑 → 跑 scipy 对拍 + `deep-snapshot.js` 前后 diff（`docs/验证手册.md` 第 2、3 节）；
-- 动了颜色 / 透明度 / 背景 → 必跑 `bash tools/verify-visual.sh`（第 4 节）；
-- 动了界面结构 → 可用 `tools/dom-snapshot.js` 前后 diff（第 4.1 节）；
-- 任何 UI 改动 → 手机视口截图**并用视觉能力真的看一眼**（第 5 节）。
-
-## 5. 推送与上线（要点）
-
-```bash
-git ls-remote origin main      # 探针：不通先试纯直连重试，再让用户开 Clash（别硬重试）
-npm run verify                 # 推之前必须全绿
-git add -A && git commit -m "中文说明：改了什么 + 为什么"
-git push origin main
-git ls-remote origin main      # 核实远程 SHA == 本地 HEAD，不要只看 push 返回码
-sleep 60                       # Pages 有 50~65 秒 CDN 延迟，然后对线上地址再跑一遍 UI 回归
-```
-
-细节（代理 / 凭据 / git 身份 / Pages 延迟 / CI 两个 job 的判读）见 `docs/推送与部署.md`。
-**不要往 Netlify 推**（已解绑；免费额度会拖垮整个团队的所有站）。
-
-## 6. 硬性约定
-
-1. **`core/` 与 `web/` 统一 ES5**（`var`、不用箭头函数 / `let` / `const` / 模板串）：这些文件原样进单文件页面，ES5 才不怕老 WebView。`test/` `tools/` `lib/` 可以用现代语法。
-2. **零依赖**：不引 CDN、不装 npm 包。算法全部自己实现（教学工具的意义，也为将来翻成 ArkTS 留路）。
-3. **算法只有一份实现**：迭代内核只有 `core/simplex.js`；加算法先找现成部件，别再造一份枢轴。
-4. **分层不许越界**：`core/` 不碰 DOM 与文件；`web/` 不内联算法公式。
-5. **模块间只走公开接口**：`require` 导出的函数，不要再挂 `window.xxx`。
-6. **界面元素 id 是模板与 JS 的契约**：改完跑 `node tools/check-registry.js`；输入区外壳由 `input-panel.js` 的 `buildChrome()` 生成，模板里只留挂载点。
-7. **中文注释，解释「为什么」**；提交信息中文，写清「改了什么 + 为什么」，修缺陷写根因。
-8. **手机优先**：触摸目标 ≥ 44×44、正文对比度 ≥ 4.5:1、宽表格要有左右滑动提示。
-9. **不要把「没跑完」说成「最优」**：分枝定界有结点上限、隐枚举有规模上限，触顶必须写明「目前最好，不保证全局最优」。这是本项目的底线。
-10. **不要为了「让验证通过」而放宽验证标准**：验证脚本是质量的唯一保障，历史上的真缺陷全是它抓出来的。失败时先怀疑代码、再怀疑测试；确认测试写错才改测试，并在注释里写原因。
-
-## 7. 绝对不要做的事
-
-1. 🚫 手改 `index.html`（构建产物），或把它挪出仓库根。
-2. 🚫 把 `token.txt` / `device.json` / 任何 token 提交进仓库（都在 `.gitignore` 里）。
-3. 🚫 往 Netlify 推（已解绑删除）。
-4. 🚫 引入任何外部依赖（CDN、npm 包、字体文件）——项目要能离线单文件运行。
-5. 🚫 把显示模式写回 `@media (prefers-color-scheme: dark)`（三档设置表达不了，且深色配色会被迫写两份）。
-6. 🚫 绕过语义颜色令牌写死页面背景；基质色继续放在 `html` 上，主题断言读取 `documentElement`。
-7. 🚫 未经用户要求恢复极光、玻璃叠层或持续背景动画；当前采用稳定实色承载面，并验证浅深两套对比度。
-8. 🚫 在 `core/` 里碰 DOM，或在 `web/` 里写算法。
-9. 🚫 声称「已完成 / 已推送 / 已生效」而不核实（推送用 `git ls-remote` 对 SHA，线上效果用 HTTP 或截图核实）。
-10. 🚫 重新引入历史上按用户要求清零的模块（`tools/check-no-dp.js` 就是守护这件事的）。
-
-## 8. 已知待办 / 可做的方向
-
-1. 整数规划：根据用户反馈优化计算过程的可读性（分枝定界的树画法、割平面的表格排法）。
-2. 可选算法扩展：对偶单纯形独立入口、两阶段法（内核的 4 个扩展点已经为它们准备好）。
-3. 长期：打包成鸿蒙 HAP 上架华为应用市场（需软著 + 审查 + APP 备案，用户已决定暂缓）。
-4. `core/scenario.js` 里那份「对偶单纯形一步 + 读解」是唯一一处未与内核合并的重复实现，
-   将来若要动场景分析，可以先把 `sensTableau / sensReadOut` 往 `core/simplex.js` 下沉
-   （目前由 `scenario-test` 的建表一致性自检兜底，deep-snapshot 覆盖不到它）。
-
----
-
-## 9. 文档索引
-
-| 想知道什么 | 看哪 |
-|---|---|
-| 结构、分层、构建机制、加模块/加算法要动几处、代码约定、视觉主题注意 | `docs/架构与约定.md` |
-| 完整验证清单、逐套件命令与期望值、scipy 对拍、deep-snapshot、偶发失败怎么查 | `docs/验证手册.md` |
-| 环境表、已知坑（按频率排序）、调试通用姿势 | `docs/踩坑与排错.md` |
-| 推送流程、代理、凭据、Pages 延迟、CI 两个 job 怎么判读 | `docs/推送与部署.md` |
-| 产品功能、用法与算法说明 | `README.md` |
+| 功能与使用 | [README.md](README.md) |
+| 产品范围 | [PRODUCT.md](PRODUCT.md) |
+| 视觉规范 | [DESIGN.md](DESIGN.md) |
+| 分层、构建与扩展 | [架构与约定](docs/架构与约定.md) |
+| 验证命令与判据 | [验证手册](docs/验证手册.md) |
+| 环境要求与常见问题 | [踩坑与排错](docs/踩坑与排错.md) |
+| 提交、认证与发布 | [推送与部署](docs/推送与部署.md) |
+| 运输模型与测试 | [运输问题](docs/运输问题.md) |
