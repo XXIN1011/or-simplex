@@ -190,7 +190,7 @@ node src/cli.js 题目.json --integer       # 按整数规划求解（四种方�
 index.html      成品（单文件，构建产物）—— 必须留在根，它是 GitHub Pages 的入口
 src/core/       领域层：errors util model parse simplex sensitivity scenario integer assignment format
 src/web/        表现层：boot（唯一入口） router dom input-panel table-render graph settings-ui
-                以及四个模块界面 ui / sens-ui / ip-ui / assign-ui
+                以及四个模块界面 ui / sens-ui / ip-ui / assign-ui，和底栏让位 tabbar-hide
 src/build.js    构建：迷你打包器，把 core/ + web/ 打成单文件 index.html
 src/template.html  HTML 骨架，构建时内联样式与脚本
 src/styles/     tokens / components / theme / workspace 四层 CSS

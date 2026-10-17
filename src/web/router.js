@@ -10,6 +10,7 @@
 
 var inputPanel = require('./input-panel.js');
 var addScrollHints = inputPanel.addScrollHints;
+var tabbar = require('./tabbar-hide.js');
 (function () {
   'use strict';
 
@@ -85,6 +86,9 @@ var addScrollHints = inputPanel.addScrollHints;
     });
     movePill();
     window.scrollTo(0, 0);
+    /* 切页回到顶部，底栏必须露出来：上一页可能是在页面底部读表时被滑走的，
+       到了新页面还藏着一整条导航，会让人以为入口没了。 */
+    tabbar.reveal();
     /* 表格是否溢出要等它可见之后才量得准，所以切页后再补一次「左右滑动」提示 */
     if (typeof addScrollHints === 'function') {
       setTimeout(function () { addScrollHints(document); }, 0);

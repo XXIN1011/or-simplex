@@ -6,7 +6,7 @@
    5) 横向滚动提示
    6) 深色模式（跟随系统）
    7) 0 变量 0 约束求解 + 极限尺寸
-   8) 底部标签栏（只剩首页/设置 + 滑动指示器）
+   8) 底部标签栏（只剩首页/设置 + 滑动指示器 + 上滑收起/下滑出现）
    9) 显示模式三档：跟随系统 / 浅色 / 深色
 */
 'use strict';
@@ -924,6 +924,131 @@ const PROBE = `JSON.stringify({
   const n4 = await navTo('#/');
   check(n4.label === '首页' && n4.armed === true && n4.pl < n2.pl,
     '切回首页后指示器滑回去并重新高亮', `left ${n2.pl} → ${n4.pl}`);
+
+  /* ---------- 底栏随滚动让位（上滑收起 / 下滑出现） ---------- */
+  console.log('\n--- 底栏随滚动让位 ---');
+  /* 期望：往下滚（看后面的内容）时底栏滑出屏幕；往回滚超过阈值才滑回来；
+     顶部附近永远露着；切页一定回来。
+     ★ 顺带断言过渡挂在 transform 上 —— 如果哪天改成动 bottom，滚动时会
+       每帧重排，手机上的手感会立刻变差，而且这条断言能把它拦下来。
+     ★ 两处测试准备：① 页面开了 `scroll-behavior:smooth`，这里临时改成 auto，
+       否则 scrollTo 会自己跑一段平滑动画，量到的是动画中途的位置；
+       ② 首页在手机视口下未必够长，补一块临时高度保证「有得滚」——
+       验的是底栏怎么让位，不是首页排版，这块高度在切页前就卸掉。 */
+  await evl(`(function(){
+    document.documentElement.style.scrollBehavior = 'auto';
+    var pad = document.createElement('div');
+    pad.id = 'tabbarPad';
+    pad.style.height = '1200px';
+    pad.setAttribute('aria-hidden', 'true');
+    document.getElementById('mod-home').appendChild(pad);
+    window.scrollTo(0, 0);
+  })()`);
+  await sleep(120);
+
+  const barState = async () => JSON.parse(await evl(`JSON.stringify((function(){
+    var bar = document.querySelector('.tabbar');
+    var cs = getComputedStyle(bar);
+    var r = bar.getBoundingClientRect();
+    return {
+      hide: bar.classList.contains('hide'),
+      op: cs.opacity,
+      vis: cs.visibility,
+      tp: cs.transitionProperty,
+      tf: cs.transform,
+      bottom: Math.round(r.bottom),
+      vh: innerHeight,
+      top: Math.round(scrollY),
+      max: Math.max(0, document.documentElement.scrollHeight - innerHeight),
+      errors: window.__errors.length
+    };
+  })())`));
+  /* computed transform 是 matrix(a,b,c,d,e,f)，f 就是 translateY */
+  const barTy = (tf) => {
+    const m = /matrix\(([^)]+)\)/.exec(tf);
+    return m ? parseFloat(m[1].split(',')[5]) : 0;
+  };
+  const scrollToY = async (y) => { await evl(`window.scrollTo(0, ${y})`); await sleep(420); };
+
+  const h0 = await barState();
+  /* 首页自己够不够长不该卡住这条用例 —— 高度是测试补的，这里只顺手确认补上了 */
+  check(h0.max > 600, '（测试准备）页面有足够的可滚动高度，才能验滚动让位',
+    `可滚动 ${h0.max}px`);
+  check(h0.hide === false && parseFloat(h0.op) === 1 && barTy(h0.tf) === 0,
+    '没滚动时底栏在原位（隐藏类不会在加载时被误加）',
+    `hide=${h0.hide} opacity=${h0.op} translateY=${barTy(h0.tf)}px`);
+  check(/transform/.test(h0.tp),
+    '底栏的过渡挂在 transform 上（上下移动走合成层，不触发布局）',
+    `transitionProperty=${h0.tp}`);
+
+  const deep = Math.round(h0.max * 0.65);
+  await scrollToY(deep);
+  const h1 = await barState();
+  check(h1.hide === true && parseFloat(h1.op) === 0 && h1.vis === 'hidden',
+    '往下滚（内容往上走）时底栏收起并淡出',
+    `hide=${h1.hide} opacity=${h1.op} visibility=${h1.vis}`);
+  check(barTy(h1.tf) > 0 && h1.bottom > h1.vh - 1,
+    '收起时底栏整个移出视口，不会在底边露出一截',
+    `translateY=${barTy(h1.tf)}px 底边=${h1.bottom} 视口=${h1.vh}`);
+
+  await scrollToY(Math.min(h0.max, deep + 80));
+  const h1b = await barState();
+  check(h1b.hide === true, '继续往下滚时保持收起（不会来回闪）');
+
+  await scrollToY(Math.min(h0.max, deep + 74));
+  const h1c = await barState();
+  check(h1c.hide === true,
+    '只往回滚 6px 还不够（阈值内先攒着，避免手一抖就弹出来）');
+
+  await scrollToY(deep);
+  const h2 = await barState();
+  check(h2.hide === false && parseFloat(h2.op) === 1 && h2.vis === 'visible',
+    '往回滚够阈值后底栏滑回来',
+    `hide=${h2.hide} opacity=${h2.op} visibility=${h2.vis}`);
+  check(barTy(h2.tf) === 0 && h2.bottom <= h2.vh,
+    '回来时完整落在视口里（transform 复位，而不是只把透明度改回来）',
+    `translateY=${barTy(h2.tf)}px 底边=${h2.bottom} 视口=${h2.vh}`);
+
+  await scrollToY(8);
+  const h3 = await barState();
+  check(h3.hide === false, '靠近页面顶部时始终露着（不让人找不到入口）',
+    `scrollY=${h3.top}`);
+
+  await scrollToY(deep);
+  const h4 = await barState();
+  check(h4.hide === true, '再次往下滚又重新收起（状态可反复）');
+
+  /* 卸掉临时高度、放开平滑滚动，再切页：切页要验的是「上一页滚到底时
+     导航被滑走」，新页面不能跟着少一条导航。 */
+  await evl(`(function(){
+    var pad = document.getElementById('tabbarPad');
+    if (pad && pad.parentNode) pad.parentNode.removeChild(pad);
+    document.documentElement.style.scrollBehavior = '';
+  })()`);
+  await sleep(120);
+  /* 切页必须回来：上一页可能是在页面底部读表时被滑走的，新页面不能缺导航 */
+  await cdp.send('Runtime.evaluate', { expression: `location.hash='#/settings'` }, sessionId);
+  await sleep(600);
+  const h5 = await barState();
+  check(h5.hide === false && parseFloat(h5.op) === 1,
+    '切页（首页 → 设置）自动把底栏请回来，新页面不会开局就少一条导航',
+    `hide=${h5.hide} opacity=${h5.op}`);
+  check(h5.errors === 0, '滚动让位全过程无 JS 错误', `页面错误数=${h5.errors}`);
+
+  /* 「减少动态效果」同样要管到底栏：全局兜底规则会把过渡整个关掉 */
+  await cdp.send('Emulation.setEmulatedMedia',
+    { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] }, sessionId);
+  await sleep(250);
+  const hRm = JSON.parse(await evl(`JSON.stringify((function(){
+    var cs = getComputedStyle(document.querySelector('.tabbar'));
+    return { prop: cs.transitionProperty, dur: cs.transitionDuration };
+  })())`));
+  check(hRm.prop === 'none' || /^0s(,\s*0s)*$/.test(hRm.dur),
+    '系统开启「减少动态效果」时底栏不做上下滑动动画',
+    `transitionProperty=${hRm.prop} duration=${hRm.dur}`);
+  await cdp.send('Emulation.setEmulatedMedia',
+    { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] }, sessionId);
+  await sleep(200);
 
   /* ---------- 显示模式（跟随系统 / 浅色 / 深色） ---------- */
   console.log('\n--- 显示模式 ---');

@@ -616,3 +616,26 @@ table.mtxout .forbid{color:var(--fg3)}
              opacity .2s linear;
 }
 .tb-pill.on{opacity:1}
+
+/* ---------- 底栏随滚动让位：往上滑收起，往下滑回来 ----------
+   只动 transform / opacity：两者都在合成层上，隐藏过程中不触发布局与重绘；
+   不动 bottom（每帧都要重排），也不加模糊（DESIGN 明确不做玻璃材质）。
+   translateY 写成「自身高度 100% + 16px + 安全区」：底栏高度会随系统字号和
+   安全区变化，写死像素在 iPhone 上会只藏进去一半；多出的 16px 保证连
+   底部那 10px 间距一起退出视口。
+   退场（.hide）比入场快 80ms：离开是被手势推走的，该干脆；回来是重新出现，
+   慢一点更从容。visibility 延迟到退场动画结束才撤 —— 立刻 hidden 会把退场
+   动画整段掐掉，不撤的话藏起来的两个链接还能被 Tab 聚焦。 */
+.tabbar{
+  transition:transform .3s var(--ease-out),
+             opacity .22s var(--ease-out),
+             visibility 0s;
+}
+.tabbar.hide{
+  transform:translateX(-50%) translateY(calc(100% + 16px + env(safe-area-inset-bottom)));
+  opacity:0;
+  visibility:hidden;
+  transition:transform .22s cubic-bezier(.4,0,1,1),
+             opacity .16s cubic-bezier(.4,0,1,1),
+             visibility 0s .22s;
+}
