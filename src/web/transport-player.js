@@ -3,12 +3,31 @@
 var view = require('./transport-table.js'), num = view.num, table = view.table, cellName = view.cellName;
 var esc = require('./dom.js').esc;
 var addScrollHints = require('./input-panel.js').addScrollHints;
+var NS = 'http://www.w3.org/2000/svg';
 function count(s) { return s.type === 'allocation' ? 3 : s.cycle.length + 3; }
+/* 末帧真正改变的格：用来闪一下，证明「同步调整」落在哪些格上。 */
+function changedCells(s) {
+  var out = [];
+  if (!s.beforeAllocation || !s.allocation) return out;
+  s.cycle.forEach(function (c) {
+    if (String(s.beforeAllocation[c.i][c.j]) !== String(s.allocation[c.i][c.j])) out.push(c);
+  });
+  return out;
+}
+function routeList(s, frame) {
+  return '<ol class="tp-route" aria-label="闭回路顺序">' + s.cycle.map(function (c, k) {
+    return '<li class="tp-route-item ' + (c.sign > 0 ? 'tp-route-plus' : 'tp-route-minus') + (k < frame ? ' tp-route-visited' : '') + '"'
+      + (frame === k + 1 ? ' aria-current="step"' : '') + '>'
+      + '<b class="tp-route-n">' + (k + 1) + '</b><span class="tp-route-cell">' + cellName(c) + '</span>'
+      + '<span class="tp-route-sign" aria-label="' + (c.sign > 0 ? '加' : '减') + '">' + (c.sign > 0 ? '+' : '−') + '</span></li>';
+  }).join('') + '</ol>';
+}
 function scene(m, s, frame) {
   var allocation = s.type === 'allocation', last = count(s) - 1, done = frame === last;
   var values = done ? s.allocation : s.beforeAllocation, basis = done ? s.basis : s.beforeBasis;
   var loop = allocation ? [] : s.cycle.slice(0, Math.min(frame, s.cycle.length));
   var active = allocation ? s.cell : frame === 0 ? s.entering : frame <= s.cycle.length ? s.cycle[frame - 1] : s.leaving;
+  var costName = m.direction === 'max' ? '原收益' : '原费用';
   var title, note, h = '', options = { active: active, selected: allocation ? s.cell : s.entering,
     selectedLabel: allocation ? '本次选择' : '入基格' };
   if (allocation) {
@@ -23,21 +42,22 @@ function scene(m, s, frame) {
       : (s.quantity === 0 ? '为保持可行，本格跳过，运量和基身份不变。' : '已分配 ' + num(s.quantity) + '，所选格与右侧剩余供应、底部剩余需求同步更新。');
   } else {
     if (frame >= s.cycle.length + 1) options.leaving = s.leaving;
+    options.dim = loop.length > 0;
+    options.theta = frame === s.cycle.length + 1;
+    options.updated = done ? changedCells(s) : [];
     title = frame === 0 ? '从入基格开始' : frame <= s.cycle.length ? '标记回路第 ' + frame + ' 格' : done ? '同步调整运量与基身份' : '从负号格确定调整量';
     note = frame === 0 ? '入基格 ' + cellName(s.entering) + ' 运量暂不改变。下一帧沿基树路径交替标记 + / −。'
       : frame <= s.cycle.length ? cellName(active) + (active.sign > 0 ? ' 标 +，调整时增加 θ。' : ' 标 −，调整时减少 θ。')
         + (frame === s.cycle.length ? '路径已闭合，下一帧比较所有负号格的运量。' : '此时仅标记路径，尚未改变运输量。')
       : done ? (s.theta === 0 ? 'θ = 0：退化换基，运量不变，入基格与离基格的基身份已更新。' : 'θ = ' + num(s.theta) + '：所有正负号格同步更新，显示的是算法记录的调整后方案。')
       : 'θ = 负号格的最小运量 = ' + num(s.theta) + '；' + cellName(s.leaving) + ' 离基，并列时取下标最小者。';
-    h += '<ol class="tp-route" aria-label="闭回路顺序">' + s.cycle.map(function (c, k) {
-      return '<li class="' + (k < frame ? 'tp-route-visited' : '') + '"' + (frame === k + 1 ? ' aria-current="step"' : '') + '>'
-        + (k + 1) + '. ' + cellName(c) + (c.sign > 0 ? ' +' : ' −') + '</li>';
-    }).join('') + '</ol>';
+    h += routeList(s, frame);
   }
   var objective = done ? s.objective : s.objectiveBefore;
   return { html: '<h4 class="tp-scene-title">' + title + '</h4><p>' + note + '</p>' + h
-    + '<p class="sens-note">宽表可左右滑动；当前格会自动定位，行名与供应列保持可见。</p>'
-    + table(m, values, basis, loop, allocation ? '分配联动表（右侧 / 底部为剩余量）' : '闭回路演示表（+ 增加，− 减少）', false, options)
+    + table(m, values, basis, loop, allocation
+      ? '最小元素分配表（左上角 ' + costName + '；右侧 / 底部为剩余量）'
+      : '闭回路演示表（左上角 ' + costName + '，＋ 加 θ / − 减 θ）', false, options)
     + '<p class="tp-player-objective">当前原目标值 <b>' + num(objective) + '</b>'
     + (!allocation && done ? '；' + num(s.objectiveBefore) + ' → ' + num(s.objectiveAfter) + '（变化 ' + num(s.delta) + '）' : '') + '。</p>', loop: loop };
 }
@@ -61,21 +81,48 @@ function wire(root, result) {
     return true;
   }
   function pauseAll() { players.forEach(function (p) { p.pause(); }); }
-  function draw(box, loop, closed) {
-    if (!loop.length || !visible(box)) return;
+  function svgEl(name, attrs) {
+    var el = document.createElementNS(NS, name);
+    Object.keys(attrs).forEach(function (k) { el.setAttribute(k, attrs[k]); });
+    return el;
+  }
+  /* 节点取格内「序号 + 正负号」角标的中心：连线正好穿进符号位，与教材画法一致。 */
+  function nodeAt(stage, rect, c) {
+    var cell = stage.querySelector('[data-tp-cell="' + c.i + '-' + c.j + '"]');
+    var node = cell && (cell.querySelector('.tp-anchor') || cell);
+    if (!node) return null;
+    var r = node.getBoundingClientRect();
+    return [r.left - rect.left + r.width / 2, r.top - rect.top + r.height / 2];
+  }
+  function draw(box, loop, closed, playing) {
+    if (loop.length < 2 || !visible(box)) return;
     var stage = box.querySelector('.tp-stage'), rect = stage.getBoundingClientRect(), points = [];
     if (!rect.width || !rect.height) return;
-    loop.forEach(function (c) {
-      var cell = stage.querySelector('[data-tp-cell="' + c.i + '-' + c.j + '"]'), r = cell.getBoundingClientRect();
-      /* 路径走格内边缘，避免穿过居中的运量、费用和正负号文字。 */
-      points.push((r.left - rect.left + 10) + ',' + (r.top - rect.top + 9));
-    });
-    if (closed && points.length) points.push(points[0]);
-    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('class', 'tp-path'); svg.setAttribute('aria-hidden', 'true');
-    svg.setAttribute('viewBox', '0 0 ' + rect.width + ' ' + rect.height);
-    var line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-    line.setAttribute('points', points.join(' ')); svg.appendChild(line); stage.appendChild(svg);
+    loop.forEach(function (c) { var p = nodeAt(stage, rect, c); if (p) points.push(p); });
+    if (points.length < 2) return;
+    if (closed) points.push(points[0].slice());
+    var svg = svgEl('svg', { class: 'tp-path', 'aria-hidden': 'true', viewBox: '0 0 ' + rect.width + ' ' + rect.height });
+    var d = points.map(function (p) { return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ');
+    svg.appendChild(svgEl('polyline', { class: 'tp-line', points: d }));
+    /* 流动光点：自动播放时沿闭合回路循环；手动逐帧时只在最新一段画一次，指明方向。 */
+    if (!media.matches && (!closed || playing)) {
+      var motion = 'M' + points.map(function (p) { return p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' L');
+      var dot = svgEl('circle', { class: 'tp-flow' + (closed ? ' tp-flow-loop' : ''), r: '3.4' });
+      dot.style.offsetPath = 'path("' + motion + '")';
+      dot.style.offsetRotate = '0deg';
+      svg.appendChild(dot);
+    }
+    for (var k = 1; k < points.length; k++) {
+      var a = points[k - 1], b = points[k], dx = b[0] - a[0], dy = b[1] - a[1];
+      var len = Math.sqrt(dx * dx + dy * dy);
+      if (len < 44) continue;
+      var arrow = svgEl('polyline', { class: 'tp-arrow' + (!closed && k === points.length - 1 ? ' tp-arrow-live' : ''),
+        points: '-5,-5.5 0,0 -5,5.5',
+        transform: 'translate(' + ((a[0] + b[0]) / 2).toFixed(1) + ',' + ((a[1] + b[1]) / 2).toFixed(1) + ') rotate('
+          + (Math.atan2(dy, dx) * 180 / Math.PI).toFixed(1) + ')' });
+      svg.appendChild(arrow);
+    }
+    stage.appendChild(svg);
   }
   Array.prototype.forEach.call(root.querySelectorAll('[data-transport-player]'), function (box) {
     var s = result.steps[+box.getAttribute('data-transport-player')], frame = 0, timer = null, playing = false;
@@ -101,7 +148,7 @@ function wire(root, result) {
       var trailing = body.querySelector('tbody td:last-child').getBoundingClientRect().left;
       if (cr.left < leading) viewport.scrollLeft -= leading - cr.left;
       else if (cr.right > trailing) viewport.scrollLeft += cr.right - trailing;
-      draw(box, rendered.loop, s.type === 'pivot' && frame >= s.cycle.length);
+      draw(box, rendered.loop, s.type === 'pivot' && frame >= s.cycle.length, playing && !media.matches);
     }
     function schedule() {
       timer = setTimeout(function () {

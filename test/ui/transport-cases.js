@@ -41,7 +41,7 @@ module.exports = async function transportCases(sess, check, url) {
     value('demand',0,null,4);value('demand',1,null,4);value('shortageCost',0,null,2);value('shortageCost',1,null,3);
     expect(q('#tpBalance').textContent.indexOf('缺货 3')>=0 && q('#tpVirtual').textContent.indexOf('虚拟产地')>=0,'实时缺货与虚拟产地');
     click('tpSolveBtn');expect(q('#tpOut .zv').textContent==='84','最大净收益正确还原84');
-    expect(q('#tpOut').textContent.indexOf('缺货量：销地1：3；销地2：0')>=0 && q('#tpOut').textContent.indexOf('原收益 -2')>=0,'逐销地缺货和虚拟负收益可见');
+    expect(q('#tpOut').textContent.indexOf('缺货量：销地1：3；销地2：0')>=0 && q('#tpOut [data-tp-cell="1-0"] .tp-cost').textContent==='-2','逐销地缺货和虚拟负收益可见');
     value('shortageCost',1,null,'1/0');click('tpSolveBtn');
     expect(q('#tpBanners').textContent && !q('#tpOut').textContent && q('#tpPanel [data-key=shortageCost][data-i="1"]').getAttribute('aria-invalid')==='true','零分母罚金被拒绝且无旧结果');
     q('#tpDirSeg [data-dir=min]').click();size(1,1);value('cells',0,0,'1/2');value('supply',0,null,'3/4');value('demand',0,null,'3/4');

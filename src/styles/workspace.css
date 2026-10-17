@@ -71,20 +71,43 @@
   #mod-simplex.has-result>#result{grid-column:2;grid-row:2/5;min-width:0}
 }
 @media(max-width:360px){.guide-intro{align-items:flex-start;flex-direction:column}.guide-fields .btn{width:100%}}
-/* 运输表保持中间费用、右侧供应、底部需求的阅读方向；宽表独立滚动。 */
+/* =========================================================================
+   运输表：教材版式
+   费用贴格子左上角（借格线收口），运量居中，基变量在运量外套一圈细方框，
+   闭回路的正负号写在运量前，连线从费用角标下方的节点穿过。
+   ========================================================================= */
 #mod-transport{max-width:1000px;margin:0 auto}
 .transport-table caption,.transport-input caption{text-align:left;color:var(--fg2);font-size:13px;padding:12px 0;white-space:normal}
 .transport-table td,.transport-table th{min-width:98px}
-.transport-table td{vertical-align:middle}
-.transport-table .tp-cost{display:block;color:var(--fg2);font-size:12px;margin-top:4px}
-.tp-basis{display:inline-block;margin-left:6px;font-size:12px;color:var(--accent-text)}
-.tp-virtual{background:var(--soft)}
-.tp-cycle{outline:2px solid var(--accent);outline-offset:-2px;background:var(--accent-soft)}
-.tp-sign{display:block;color:var(--accent-text);font-size:18px}
-.tp-sign small{font-size:12px;font-weight:500}
+.transport-table td{--cell-bg:var(--card);position:relative;height:108px;padding:40px 0 14px;
+  vertical-align:middle;text-align:center}
+.transport-table .tp-sub{display:block;margin-top:4px;font-size:12px;color:var(--fg2)}
+/* 费用角标：右边和下边各一条细线，另外两边借格子自己的格线。 */
+.tp-cost{position:absolute;left:0;top:0;z-index:2;padding:2px 12px 4px;
+  border-right:1px solid var(--line2);border-bottom:1px solid var(--line2);
+  background:var(--cell-bg);font:600 26px/1.15 var(--mono);color:var(--fg2)}
+/* 运量：居中的主数字；正负号在左边并染色 */
+.tp-value{display:inline-block;font-size:20px;font-weight:600;line-height:1.1;color:var(--fg)}
+.tp-sgn{display:inline-block;margin-right:5px;font-size:18px;line-height:22px;font-weight:700;vertical-align:middle}
+.tp-plus-cell .tp-sgn{color:var(--accent-text)}
+.tp-minus-cell .tp-sgn{color:var(--warn)}
+/* 基变量：运量外套细框 */
+.transport-table td.tp-has-base .tp-value{box-shadow:0 0 0 1.5px var(--fg3);border-radius:2px;padding:2px 8px}
+/* 格子底部的角色标签（本次选择 / 离基格 / 零值基…） */
+.tp-tag{position:absolute;left:0;right:0;bottom:4px;font-size:11px;line-height:1.2;color:var(--fg2)}
+/* 回路连线的节点：费用角标下方、运量上方的留白 */
+.tp-anchor{position:absolute;left:24px;top:52px;width:1px;height:1px}
+/* 只给读屏和测试看的文字 */
+.tp-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+/* 教材的对角线表头 */
+.transport-table th.tp-corner{position:relative;padding:0;height:52px;overflow:hidden}
+.transport-table th.tp-corner::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(to top right,transparent calc(50% - .5px),var(--line2) 50%,transparent calc(50% + .5px))}
+.transport-table th.tp-corner .tp-corner-x{position:absolute;top:2px;right:7px;font-size:11px;font-weight:600}
+.transport-table th.tp-corner .tp-corner-y{position:absolute;left:7px;bottom:2px;font-size:11px;font-weight:600}
 .tp-balance{font-size:14px;font-weight:650;line-height:1.7;margin:14px 0}
 .transport-input .tp-margin{background:var(--soft)}
-.tp-blocked{background:var(--soft);color:var(--fg2)}
+.tp-blocked,.transport-table td.tp-virtual{--cell-bg:var(--soft);background:var(--soft);color:var(--fg2)}
 .tp-blocked .num{font-weight:700}
 .tp-fee-options>summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:650}
 .tp-fee-options>summary::before{content:'＋';margin-right:8px;color:var(--accent)}
@@ -96,14 +119,29 @@
 #tpOut p{overflow-wrap:anywhere}
 .tp-stage{display:inline-block;position:relative;min-width:100%;vertical-align:top}
 .tp-stage>table{width:100%}
+/* 纯费用 / 检验数表：中间那个数就是主体，不需要费用角标 */
+.transport-table.tp-plain td{height:88px;padding:0}
+.transport-table.tp-plain .tp-value{font-size:19px}
+/* ---------- 演示区 ---------- */
 .tp-player{margin:18px 0 12px;padding:16px 0;border-top:1px solid var(--line)}
-.tp-player-controls{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px}
+/* 演示表有自己的固定列：滚动容器不再沿用卡片的全出血内边距，
+   否则固定列贴不到可视区边缘，外侧会漏出 20px 的文字碎片。 */
+.tp-player .scroll{margin-left:0;margin-right:0;padding-left:0;padding-right:0}
+.tp-player-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .tp-player-controls .btn{min-height:44px}
+/* 播放键是这一步的主操作：实心底 + 播放/暂停字形（字形用伪元素，按钮文案不变）。 */
+.tp-player-controls [data-tp-play]{min-width:98px;background:var(--button-bg);border-color:transparent;color:var(--button-fg);font-weight:650}
+.tp-player-controls [data-tp-play]::before{content:'▶';margin-right:7px;font-size:10px;line-height:1}
+.tp-player-controls [data-tp-play][aria-pressed="true"]::before{content:'❙❙';margin-right:8px;font-size:9px}
+.tp-player-controls [data-tp-play]:disabled{background:var(--input);border-color:var(--line2);color:var(--fg);opacity:.45}
+.tp-player-controls [data-tp-prev]::before{content:'‹';margin-right:5px;font-size:15px;line-height:1}
+.tp-player-controls [data-tp-next]::after{content:'›';margin-left:5px;font-size:15px;line-height:1}
+.tp-player-controls [data-tp-reset]{color:var(--fg2)}
 .tp-speed{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--fg2)}
 .tp-speed select{min-height:44px;font:inherit;font-size:13px;color:var(--fg);background:var(--input);border:1px solid var(--control-line);border-radius:var(--r-sm);padding:6px 10px}
 .tp-player-progress{font-size:13px;font-weight:650;color:var(--accent-text);line-height:1.7}
 .tp-scene-title{font-size:16px;line-height:1.5;margin:16px 0 8px}
-.tp-player .transport-table td{min-width:112px;height:136px}
+.tp-player .transport-table td{min-width:112px;height:134px;padding:46px 0 18px}
 .tp-player .tp-stage{isolation:isolate}
 .tp-player .transport-table tr>th:first-child{position:sticky;left:0;z-index:2;background:var(--soft);width:72px;min-width:72px;max-width:72px;white-space:normal}
 .tp-player .transport-table tr>:last-child{width:64px;min-width:64px}
@@ -112,17 +150,47 @@
 .tp-player .transport-table tbody td.tp-margin-active:last-child{background:var(--accent-soft);color:var(--accent-text)}
 .tp-player .transport-table tr>th.tp-cut-label:first-child{background:var(--warn-soft);color:var(--warn)}
 .tp-player .tp-active{outline:3px solid var(--accent);outline-offset:-3px}
-.transport-table td.tp-selected,.transport-table td.tp-margin-active{background:var(--accent-soft);color:var(--accent-text)}
-.transport-table td.tp-cycle{background:var(--accent-soft)}
+.transport-table td.tp-selected,.transport-table td.tp-margin-active{--cell-bg:var(--accent-soft);background:var(--accent-soft)}
+.transport-table td.tp-plus-cell{--cell-bg:var(--accent-soft);background:var(--accent-soft)}
+.transport-table td.tp-minus-cell{--cell-bg:var(--leave-soft);background:var(--leave-soft)}
+/* 演示时非回路格退后，回路和数字才是画面主体。 */
+.tp-player .transport-table td.tp-dim .tp-cost,.tp-player .transport-table td.tp-dim .tp-value{opacity:.5}
+/* θ 帧：把负号格的运量当成荧光笔标出来，指出比较对象。 */
+.tp-player .transport-table td.tp-theta .tp-value{background:var(--pivot-soft);border-bottom:2px solid var(--warn);border-radius:3px}
+/* 末帧只让「真正变了的运量」跳一下，不整格铺底色，正负号配色不受干扰。 */
+.tp-player .transport-table td.tp-updated .tp-value{animation:tp-value-pop 900ms var(--ease-out)}
+@keyframes tp-value-pop{0%{transform:scale(1.2);color:var(--warn)}55%{transform:scale(1.02)}100%{transform:scale(1)}}
 .transport-table td.tp-tie{outline:1px dashed var(--accent);outline-offset:-4px}
 .transport-table th.tp-cut-label{background:var(--warn-soft);color:var(--warn)}
-.tp-cut-label .tp-cost{color:inherit}
+.tp-cut-label .tp-sub{color:inherit}
+/* ---------- 回路顺序条 ---------- */
 .tp-route{display:flex;flex-wrap:wrap;gap:6px;padding:0;margin:12px 0;list-style:none;font-size:13px}
-.tp-route li{padding:6px 8px;border:1px solid var(--line);border-radius:var(--r-sm);color:var(--fg2)}
-.tp-route li.tp-route-visited{background:var(--accent-soft);color:var(--accent-text);border-color:var(--accent)}
-.tp-route li[aria-current]{outline:2px solid var(--accent);outline-offset:1px}
-.tp-path{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
-.tp-path polyline{fill:none;stroke:var(--accent-text);stroke-width:2;stroke-dasharray:5 5;stroke-linejoin:round;animation:tp-trace 200ms cubic-bezier(.16,1,.3,1)}
-@keyframes tp-trace{from{stroke-opacity:.15}to{stroke-opacity:1}}
-@media(prefers-reduced-motion:reduce){.tp-path polyline{animation:none}}
+.tp-route-item{display:inline-flex;align-items:center;gap:6px;padding:4px 9px 4px 5px;border:1px solid var(--line);
+  border-radius:999px;background:var(--card);color:var(--fg2)}
+.tp-route-n{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 3px;
+  border-radius:999px;background:var(--soft);color:var(--fg2);font-size:11px;line-height:1}
+.tp-route-cell{font-family:var(--mono);font-size:12px}
+.tp-route-sign{font-size:14px;font-weight:700;line-height:1}
+.tp-route-plus .tp-route-sign{color:var(--accent-text)}
+.tp-route-minus .tp-route-sign{color:var(--warn)}
+.tp-route-visited{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-text)}
+.tp-route-visited .tp-route-n{background:var(--accent);color:var(--card)}
+.tp-route-visited.tp-route-minus{background:var(--leave-soft);border-color:var(--warn);color:var(--warn)}
+.tp-route-visited.tp-route-minus .tp-route-n{background:var(--warn);color:var(--card)}
+.tp-route li[aria-current]{outline:2px solid currentColor;outline-offset:1px}
+/* ---------- 回路连线 ---------- */
+.tp-path{position:absolute;inset:0;z-index:1;width:100%;height:100%;pointer-events:none;overflow:visible}
+.tp-path .tp-line{fill:none;stroke:var(--accent-text);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round;animation:tp-trace 200ms cubic-bezier(.16,1,.3,1)}
+.tp-path .tp-arrow{fill:none;stroke:var(--accent-text);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.tp-path .tp-arrow-live{animation:tp-arrow-in 260ms cubic-bezier(.16,1,.3,1)}
+/* 流动光点：不支持 offset-path 的浏览器只是没有这个点，回路本身不受影响。 */
+@supports (offset-path:path("M0 0 L1 1")){
+  .tp-flow{fill:var(--accent-text);animation:tp-flow-once 560ms cubic-bezier(.16,1,.3,1) both}
+  .tp-flow.tp-flow-loop{animation:tp-flow-loop 2s linear infinite}
+}
+@keyframes tp-flow-once{from{offset-distance:0%}to{offset-distance:100%}}
+@keyframes tp-flow-loop{from{offset-distance:0%}to{offset-distance:100%}}
+@keyframes tp-trace{from{stroke-opacity:.2}to{stroke-opacity:1}}
+@keyframes tp-arrow-in{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){.tp-path .tp-line,.tp-path .tp-arrow-live,.tp-flow,.tp-player .tp-updated{animation:none}}
 .tp-motion-note[hidden]{display:none}

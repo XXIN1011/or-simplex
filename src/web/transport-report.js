@@ -77,7 +77,7 @@ function render(res) {
   if (res.surplus) h += '<p class="tp-balance">剩余供应：' + res.surplus.map(function (v, i) { return '产地' + (i + 1) + '：' + num(v); }).join('；') + '。</p>';
   if (res.shortage) h += '<p class="tp-balance">缺货量：' + res.shortage.map(function (v, j) { return '销地' + (j + 1) + '：' + num(v); }).join('；') + '。</p>';
   h += table(m, res.allocation, res.basis, null, optimal ? '最终最优运输方案' : '当前运输方案', false)
-    + '<p class="sens-note">x 是运输量；“基”标记独立记录基变量身份。零值基格也参与位势与回路计算。虚拟行列以文字标识，费用在格内可见。</p>';
+    + '<p class="sens-note">格内左上角是原费用（最大收益题为原收益），中间是运量；运量外套方框的格是基变量，零值基同样套框并在格内标注。零值基格也参与位势与回路计算。虚拟行列以文字标识。</p>';
   if (optimal) h += '<p>' + (res.multipleOptimal ? '存在多重最优：已找到可正量调整的零检验数回路（θ = ' + num(res.alternative.theta) + '），下方可查看另一方案。' : '未发现不同的最优运输方案；零检验数仅允许零步长换基时不算多重最优。') + '</p>';
   if (res.alternative) h += '<details><summary>查看另一个最优方案</summary>' + table(m, res.alternative.allocation, null, res.alternative.cycle, '另一最优运输方案（原目标 ' + num(res.alternative.objective) + '）', false) + '</details>';
   h += '</div>' + layout.navigation([['transport-derivation', '查看完整推导 / 单步学习']]);

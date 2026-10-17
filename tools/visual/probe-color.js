@@ -40,7 +40,7 @@ const SELECTORS = [
   '.muted', '#themeSeg button.on', '#themeSeg button:not(.on)',
   /* 模块页标题区：没有卡片背景，直接压在极光上 —— 这是最容易掉对比度的地方 */
   '.mod.on header h1', '.mod.on header p', '.mod.on a.back',
-  '.tp-balance', '.tp-basis', '.tp-cost', '.tp-sign', '.transport-table caption', '.transport-input caption',
+  '.tp-balance', '.tp-cost', '.tp-tag', '.transport-table caption', '.transport-input caption',
   '.transport-table .tp-blocked', '.transport-input .tp-blocked input',
   '.tp-player-progress', '.tp-scene-title', '.tp-route-visited', '.tp-cut-label', '.tp-player-objective'
 ];
