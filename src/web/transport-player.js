@@ -1,10 +1,10 @@
-/* 快照驱动的分配/回路演示；播放只改变显示阶段，绝不重新求解或插值运量。 */
+/* 快照驱动的闭回路演示；播放只改变显示阶段，绝不重新求解或插值运量。
+   最小元素分配只保留静态步骤表，不再逐帧播放。 */
 'use strict';
 var view = require('./transport-table.js'), num = view.num, table = view.table, cellName = view.cellName;
-var esc = require('./dom.js').esc;
 var addScrollHints = require('./input-panel.js').addScrollHints;
 var NS = 'http://www.w3.org/2000/svg';
-/* 帧数：分配三步；回路按「整条回路 → θ → 同步调整」三段。
+/* 帧数：短回路「逐格标号 → θ → 同步调整」；长回路「整条回路 → θ → 同步调整」。
    长回路（超过 6 格）不再逐格揭示：手机上每帧都要横向滚动去找下一格，
    读者跟着滚会丢掉上下文，正负号一次性标全反而更清楚。
    退化换基 θ=0 运量一个都不变、末帧没有可视变化，与 θ 帧合并成一帧，
@@ -12,7 +12,6 @@ var NS = 'http://www.w3.org/2000/svg';
 var LONG_LOOP = 6;
 function longLoop(s) { return s.type === 'pivot' && s.cycle.length > LONG_LOOP; }
 function count(s) {
-  if (s.type === 'allocation') return 3;
   var n = longLoop(s) ? 3 : s.cycle.length + 3;
   return s.theta === 0 ? n - 1 : n;
 }
@@ -34,67 +33,54 @@ function routeList(s, frame) {
   }).join('') + '</ol>';
 }
 function scene(m, s, frame) {
-  var allocation = s.type === 'allocation', last = count(s) - 1, done = frame === last;
-  var long = !allocation && longLoop(s);
+  var last = count(s) - 1, done = frame === last, long = longLoop(s);
   var values = done ? s.allocation : s.beforeAllocation, basis = done ? s.basis : s.beforeBasis;
+  /* 最后一个节点标完后仍保持开链，到 θ 帧才补闭合边。否则最后一格会把
+     整条回路一次连完，前面逐格画出的线看起来像被整段重绘盖掉。 */
+  var closed = long || frame > s.cycle.length;
+  var animateLast = !long && frame >= 2 && frame <= s.cycle.length + 1;
   var loop, active;
-  if (allocation) { loop = []; active = s.cell; }
-  else if (long) { loop = s.cycle; active = frame === 0 ? s.entering : s.leaving; }
+  if (long) { loop = s.cycle; active = frame === 0 ? s.entering : s.leaving; }
   else {
     loop = s.cycle.slice(0, Math.min(frame, s.cycle.length));
     active = frame === 0 ? s.entering : frame <= s.cycle.length ? s.cycle[frame - 1] : s.leaving;
   }
-  /* θ 帧在下面的回路分支里算：分配步骤没有 cycle，不能在这里碰 s.cycle */
-  var title, note, h = '', options = { active: active, selected: allocation ? s.cell : s.entering,
-    selectedLabel: allocation ? '本次选择' : '入基格' };
-  if (allocation) {
-    options.supply = done ? s.remainingSupply : s.beforeRemainingSupply;
-    options.demand = done ? s.remainingDemand : s.beforeRemainingDemand;
-    options.ties = s.ties;
-    if (frame === 1 && s.guarded) { options.cutRows = s.blockedCutRows; options.cutCols = s.blockedCutCols; }
-    title = frame === 0 ? '选择最小费用格' : frame === 1 ? '确定可行分配量' : '分配完成，更新剩余供需';
-    note = frame === 0 ? '选中 ' + cellName(s.cell) + '，费用 ' + num(s.cost) + '；右侧 / 底部为分配前的剩余量。'
-      : frame === 1 ? '分配上限 ' + num(s.proposedQuantity) + '；实际分配量 ' + num(s.quantity) + '。'
-        + (s.guarded ? '若按上限分配，后续将有 ' + num(s.feasibilityDeficit) + ' 单位无法匹配；高亮的是试分配后的瓶颈。' : '')
-      : (s.quantity === 0 ? '为保持可行，本格跳过，运量和基身份不变。' : '已分配 ' + num(s.quantity) + '，右侧 / 底部剩余量同步更新。');
+  /* θ 帧：短回路由逐格标记推进到这里，长回路则是第二帧 */
+  var thetaFrame = long ? 1 : s.cycle.length + 1;
+  var title, note, h = '', options = { active: active, selected: s.entering, selectedLabel: '入基格' };
+  if (frame >= thetaFrame) options.leaving = s.leaving;
+  options.dim = loop.length > 0;
+  options.theta = frame === thetaFrame;
+  options.updated = done ? changedCells(s) : [];
+  if (frame === 0) {
+    title = long ? '整条闭回路' : '从入基格开始';
+    note = long
+      ? '回路共 ' + s.cycle.length + ' 格，一次标全 + / −；下一帧确定 θ。'
+      : '入基格 ' + cellName(s.entering) + ' 运量不变；下一帧沿基树交替标记 + / −。';
+  } else if (frame < thetaFrame) {
+    title = '标记回路第 ' + frame + ' 格';
+    note = cellName(active) + (active.sign > 0 ? ' 标 +，调整时加 θ。' : ' 标 −，调整时减 θ。')
+      + (frame === s.cycle.length ? '路径已连通，下一帧闭合回路并比较负号格运量。' : '此时只标记路径。');
+  } else if (!done) {
+    title = '从负号格确定调整量';
+    note = 'θ = 负号格的最小运量 = ' + num(s.theta) + '；离基格 ' + cellName(s.leaving) + '，并列时取下标最小者。';
+  } else if (s.theta === 0) {
+    title = '退化换基：只换基，运量不变';
+    note = 'θ = 0：运量不变，只交换入基格与离基格的基身份。';
   } else {
-    /* θ 帧：短回路由逐格标记推进到这里，长回路则是第二帧 */
-    var thetaFrame = long ? 1 : s.cycle.length + 1;
-    if (frame >= thetaFrame) options.leaving = s.leaving;
-    options.dim = loop.length > 0;
-    options.theta = frame === thetaFrame;
-    options.updated = done ? changedCells(s) : [];
-    if (frame === 0) {
-      title = long ? '整条闭回路' : '从入基格开始';
-      note = long
-        ? '回路共 ' + s.cycle.length + ' 格，一次标全 + / −；下一帧确定 θ。'
-        : '入基格 ' + cellName(s.entering) + ' 运量不变；下一帧沿基树交替标记 + / −。';
-    } else if (frame < thetaFrame) {
-      title = '标记回路第 ' + frame + ' 格';
-      note = cellName(active) + (active.sign > 0 ? ' 标 +，调整时加 θ。' : ' 标 −，调整时减 θ。')
-        + (frame === s.cycle.length ? '路径已闭合，下一帧比较负号格运量。' : '此时只标记路径。');
-    } else if (!done) {
-      title = '从负号格确定调整量';
-      note = 'θ = 负号格的最小运量 = ' + num(s.theta) + '；离基格 ' + cellName(s.leaving) + '，并列时取下标最小者。';
-    } else if (s.theta === 0) {
-      title = '退化换基：只换基，运量不变';
-      note = 'θ = 0：运量不变，只交换入基格与离基格的基身份。';
-    } else {
-      title = '同步调整运量与基身份';
-      note = 'θ = ' + num(s.theta) + '：正负号格同步调整，显示算法记录的调整后方案。';
-    }
-    h += routeList(s, long ? s.cycle.length : frame);
+    title = '同步调整运量与基身份';
+    note = 'θ = ' + num(s.theta) + '：正负号格同步调整，显示算法记录的调整后方案。';
   }
+  h += routeList(s, long ? s.cycle.length : frame);
   var objective = done ? s.objective : s.objectiveBefore;
   return { html: '<h4 class="tp-scene-title">' + title + '</h4><p>' + note + '</p>' + h
-    + table(m, values, basis, loop, allocation
-      ? '分配表（左上角费用；右侧 / 底部为剩余量）'
-      : '回路表（左上角费用；＋ 加 θ / − 减 θ）', false, options)
+    + table(m, values, basis, loop, '回路表（左上角费用；＋ 加 θ / − 减 θ）', false, options)
     + '<p class="tp-player-objective">原目标值 <b>' + num(objective) + '</b>'
-    + (!allocation && done ? '；' + num(s.objectiveBefore) + ' → ' + num(s.objectiveAfter) + '（变化 ' + num(s.delta) + '）' : '') + '。</p>', loop: loop };
+    + (done ? '；' + num(s.objectiveBefore) + ' → ' + num(s.objectiveAfter) + '（变化 ' + num(s.delta) + '）' : '') + '。</p>',
+    loop: loop, closed: closed, animateLast: animateLast };
 }
 function render(m, s, index) {
-  return '<section class="tp-player" data-transport-player="' + index + '" data-kind="' + s.type + '" data-frame="0" aria-label="' + (s.type === 'allocation' ? '最小元素分配演示' : '闭回路动画') + '">'
+  return '<section class="tp-player" data-transport-player="' + index + '" data-kind="pivot" data-frame="0" aria-label="闭回路动画">'
     + '<div class="tp-player-controls" role="group" aria-label="演示播放控制">'
     + '<button type="button" class="btn" data-tp-prev disabled>上一帧</button><button type="button" class="btn" data-tp-play aria-pressed="false">播放</button>'
     + '<button type="button" class="btn" data-tp-next>下一帧</button><button type="button" class="btn" data-tp-reset>重播</button>'
@@ -126,7 +112,7 @@ function wire(root, result) {
     var r = node.getBoundingClientRect();
     return [r.left - rect.left + r.width / 2, r.top - rect.top + r.height / 2];
   }
-  function draw(box, loop, closed, playing) {
+  function draw(box, loop, closed, playing, animateLast) {
     if (loop.length < 2 || !visible(box)) return;
     var stage = box.querySelector('.tp-stage'), rect = stage.getBoundingClientRect(), points = [];
     if (!rect.width || !rect.height) return;
@@ -134,8 +120,17 @@ function wire(root, result) {
     if (points.length < 2) return;
     if (closed) points.push(points[0].slice());
     var svg = svgEl('svg', { class: 'tp-path', 'aria-hidden': 'true', viewBox: '0 0 ' + rect.width + ' ' + rect.height });
-    var d = points.map(function (p) { return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ');
-    svg.appendChild(svgEl('polyline', { class: 'tp-line', points: d }));
+    function coord(p) { return p[0].toFixed(1) + ',' + p[1].toFixed(1); }
+    /* 新画的一段单独放在上层，用 pathLength=1 的描边动画从 0 画到 1；
+       已画好的部分保持静态，不再每帧重放淡入。 */
+    if (animateLast && points.length >= 2) {
+      var rest = points.slice(0, -1);
+      if (rest.length >= 2) svg.appendChild(svgEl('polyline', { class: 'tp-line', points: rest.map(coord).join(' ') }));
+      svg.appendChild(svgEl('polyline', { class: 'tp-line tp-line-new', pathLength: '1',
+        points: points.slice(-2).map(coord).join(' ') }));
+    } else {
+      svg.appendChild(svgEl('polyline', { class: 'tp-line', points: points.map(coord).join(' ') }));
+    }
     /* 流动光点：自动播放时沿闭合回路循环；手动逐帧时只在最新一段画一次，指明方向。 */
     if (!media.matches && (!closed || playing)) {
       var motion = 'M' + points.map(function (p) { return p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' L');
@@ -186,7 +181,7 @@ function wire(root, result) {
         var max = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
         viewport.scrollLeft = Math.max(0, Math.min(max, offset - (leading - vr.left)));
       }
-      draw(box, rendered.loop, s.type === 'pivot' && (longLoop(s) || frame >= s.cycle.length), playing && !media.matches);
+      draw(box, rendered.loop, rendered.closed, playing && !media.matches, rendered.animateLast);
     }
     function schedule() {
       timer = setTimeout(function () {

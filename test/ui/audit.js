@@ -216,7 +216,7 @@ const AUDIT = `(function(){
   const cdp = sess.cdp, sessionId = sess.sessionId;
   const transportSetup = process.argv.includes('--player')
     ? "document.querySelector('#tpPanel [data-guide=sample]').click();document.getElementById('tpSolveBtn').click();document.querySelector('#tpOut [data-study-mode=single]').click();var p=document.querySelector('[data-kind=pivot]'),sel=document.querySelector('#tpOut [data-study-select]');sel.value=p.getAttribute('data-transport-player');sel.dispatchEvent(new Event('change',{bubbles:true}));for(var k=0;k<5;k++)p.querySelector('[data-tp-next]').click();"
-    : "document.querySelector('#tpPanel [data-transport-forbidden-sample]').click();document.getElementById('tpSolveBtn').click();document.querySelector('[data-kind=allocation] [data-tp-next]').click();";
+    : "document.querySelector('#tpPanel [data-transport-forbidden-sample]').click();document.getElementById('tpSolveBtn').click();document.querySelector('[data-kind=pivot] [data-tp-next]').click();";
   await cdp.send('Runtime.evaluate',
     { expression: wantHash === '#/transport' ? transportSetup : wantHash === '#/sens' ? SENS_SETUP : SETUP }, sessionId);
   await sleep(isRemote ? 1400 : 900);

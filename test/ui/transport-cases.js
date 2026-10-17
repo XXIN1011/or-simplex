@@ -25,6 +25,10 @@ module.exports = async function transportCases(sess, check, url) {
     expect(q('#tpOut').textContent.indexOf('初始可行方案')>=0 && q('#tpOut').textContent.indexOf('430')>=0,'初始费用430与最终360明确分开');
     expect(q('#tpInTbl tfoot [data-key=demand]') && q('#tpInTbl tbody [data-key=supply]'),'运输表右侧供应、底部需求');
     expect(q('#tpOut').textContent.indexOf('行位势')>=0 && q('#tpOut').textContent.indexOf('检验数')>=0 && q('#tpOut [data-kind=pivot]'),'展示位势、检验数与回路');
+    var potStep=q('#tpOut .study-step[data-step-title^="位势法"]'),potTable=potStep&&potStep.querySelector('.transport-table');
+    expect(potTable&&potTable.querySelectorAll('[data-tp-u]').length===potTable.querySelectorAll('tbody tr').length,'行位势放在表最右列');
+    expect(potTable&&potTable.querySelectorAll('[data-tp-v]').length===potTable.querySelectorAll('thead th').length-2,'列位势放在表底行');
+    expect(potTable&&potTable.querySelector('thead th:last-child').textContent.indexOf('行位势')>=0&&potTable.querySelector('tfoot th').textContent.indexOf('列位势')>=0,'位势行列有明确标题');
     var box=q('#tpOut [data-study]'),count=box.querySelectorAll('[data-study-step]').length;
     box.querySelector('[data-study-mode=single]').click();
     expect(count>3 && box.querySelectorAll('[data-study-step]:not([hidden])').length===1,'单步学习只显示当前步骤');

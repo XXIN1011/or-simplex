@@ -17,9 +17,10 @@ function balanceNote(m) {
 }
 function vector(a) { return a.map(num).join('，'); }
 function stepContent(m, s, index) {
-  var title, h = '', values = s.allocation, loop = null;
+  var title, h = '', values = s.allocation, loop = null, options = null;
   if (s.type === 'allocation') {
     title = '最小元素分配 ' + cellName(s.cell);
+    options = { selected: s.cell, ties: s.ties, supply: s.remainingSupply, demand: s.remainingDemand, cornerLabel: '—' };
     h += '<p>可运格中工作费用最小：' + cellName(s.cell) + '，费用 ' + num(s.cost)
       + (s.ties.length > 1 ? '；并列候选 ' + s.ties.map(cellName).join('、') + '，取下标最小者' : '') + '。</p>'
       + '<p>分配上限 ' + num(s.proposedQuantity) + '。'
@@ -34,10 +35,12 @@ function stepContent(m, s, index) {
       + (s.zeroBasics.length ? s.zeroBasics.map(cellName).join('、') : '无需补入')
       + '。可运图 ' + m.components + ' 个连通分量，基格构成 m+n−k = ' + m.basisSize + ' 条边的森林；零值基运量为 0。</p>';
   } else if (s.type === 'potentials') {
-    title = s.entering ? 'MODI 位势与检验：选择入基格' : 'MODI 最优性检验';
-    h += '<p>每个连通分量取一个零位势结点，按基格解 uᵢ + vⱼ = c′ᵢⱼ。行位势 u = [' + vector(s.u) + ']；列位势 v = [' + vector(s.v) + ']。</p>'
+    title = s.entering ? '位势法：选择入基格' : '位势法：最优性检验';
+    h += '<p>每个连通分量取一个零位势结点，按基格解 uᵢ + vⱼ = c′ᵢⱼ；行位势写在表最右列，列位势写在表底行。</p>'
       + '<p>检验数 Δᵢⱼ = c′ᵢⱼ − uᵢ − vⱼ，负值可改进；舍入容差上界 ' + num(m.costTolerance) + '。</p>'
-      + table(m, s.reduced, null, null, '检验数 Δ（基格应为 0）', true)
+      + table(m, s.reduced, null, null, '位势与检验数 Δ（基格 Δ = 0）', true,
+        { rowMargins: s.u, colMargins: s.v, rowLabel: '行位势 u', colLabel: '列位势 v', cornerLabel: '—',
+          rowMarginAttr: 'data-tp-u', colMarginAttr: 'data-tp-v', rowMarginClass: 'tp-u', colMarginClass: 'tp-v' })
       + '<p>' + (s.entering ? '取下标最小的负检验数格 ' + cellName(s.entering) + ' 入基。' : '可运非基检验数均 ≥ −容差，当前方案最优；禁运格不参与检验。') + '</p>';
   } else {
     title = '闭回路调整 · 第 ' + s.iteration + ' 轮';
@@ -47,8 +50,8 @@ function stepContent(m, s, index) {
       + '<p>原目标 ' + num(s.objectiveBefore) + ' → ' + num(s.objectiveAfter)
       + '（θΔ = ' + num(s.workingDelta) + '，变化 ' + num(s.delta) + '）。</p>';
   }
-  h += s.type === 'allocation' || s.type === 'pivot' ? player.render(m, s, index)
-    : table(m, values, s.basis, loop, title, false);
+  h += s.type === 'pivot' ? player.render(m, s, index)
+    : table(m, values, s.basis, loop, title, false, options);
   if (!s.invariant.valid) h += '<p class="sens-note">校验失败：' + esc(s.invariant.errors.join('、')) + '</p>';
   else if (s.type === 'initial' || s.type === 'potentials') h += '<p class="sens-note">原目标值 ' + num(s.objective) + '</p>';
   return { title: title, html: '<article class="card"><h3>' + (index + 1) + '. ' + esc(title) + '</h3>' + h + '</article>' };
@@ -79,11 +82,11 @@ function render(res) {
   if (optimal && res.multipleOptimal) h += '<p>存在多重最优（θ = ' + num(res.alternative.theta) + '），下方可查看另一方案。</p>';
   if (res.alternative) h += '<details><summary>查看另一个最优方案</summary>' + table(m, res.alternative.allocation, null, res.alternative.cycle, '另一最优运输方案（原目标 ' + num(res.alternative.objective) + '）', false) + '</details>';
   h += '</div>' + layout.navigation([['transport-derivation', '查看完整推导 / 单步学习']]);
-  h += '<details class="result-work" open><summary>计算过程：初始可行方案 → MODI 最优方案</summary><section data-section="transport-derivation">'
+  h += '<details class="result-work" open><summary>计算过程：初始可行方案 → 位势法最优方案</summary><section data-section="transport-derivation">'
     + '<div class="card"><h2 class="sec">模型平衡与转换</h2><p>' + balanceNote(m) + '</p>'
     + table(m, m.cost, null, null, '平衡后原费用 / 收益矩阵（含虚拟行列）', true)
     + (m.direction === 'max' ? table(m, m.working, null, null, '进入最小化算法的工作费用 c′ = −原收益', true) : '')
-    + '<p>禁运格不参与分配、补基、检验和回路。有禁运时先做辅助最大流可行性检查，再按最小元素分配、MODI 优化。</p></div>'
+    + '<p>禁运格不参与分配、补基、检验和回路。有禁运时先做辅助最大流可行性检查，再按最小元素分配、位势法优化。</p></div>'
     + study.group(res.steps.map(function (s, i) { return stepContent(m, s, i); }), '运输问题逐步推导') + '</section></details>';
   return h;
 }

@@ -10,7 +10,6 @@ const m = {
   cost: [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]],
   supply: [3, 3, 3, 3], demand: [3, 3, 3, 3]
 };
-const zeros = () => [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
 function pivot(cycle, theta) {
   return {
     type: 'pivot', entering: cycle[0], leaving: cycle[cycle.length / 2], theta: theta,
@@ -30,13 +29,20 @@ const eight = [
   { i: 2, j: 2, sign: 1 }, { i: 2, j: 3, sign: -1 }, { i: 3, j: 3, sign: 1 }, { i: 3, j: 0, sign: -1 }
 ];
 const four = [{ i: 0, j: 0, sign: 1 }, { i: 0, j: 1, sign: -1 }, { i: 1, j: 1, sign: 1 }, { i: 1, j: 0, sign: -1 }];
-const alloc = () => ({ type: 'allocation', cell: { i: 0, j: 0 }, cost: 1, quantity: 3, proposedQuantity: 3,
-  guarded: false, ties: [], basis: zeros(), remainingSupply: [0, 3, 3, 3], remainingDemand: [0, 3, 3, 3],
-  beforeRemainingSupply: [3, 3, 3, 3], beforeRemainingDemand: [3, 3, 3, 3],
-  beforeAllocation: zeros(), allocation: zeros(), beforeBasis: zeros(), objective: 0, objectiveBefore: 0 });
 
-test('分配演示固定三帧', () => {
-  assert.equal(player.frames(alloc()), 3);
+test('短回路最后一格先保持开链，到 θ 帧才闭合', () => {
+  const s = pivot(four, 2);
+  const lastNode = player.scene(m, s, 4);
+  assert.equal(lastNode.closed, false, '标完最后一个节点仍不提前闭合');
+  assert.equal(lastNode.animateLast, true, '最后一格只动画新增的一段');
+  assert.match(lastNode.html, /路径已连通/);
+  const theta = player.scene(m, s, 5);
+  assert.equal(theta.closed, true, 'θ 帧补闭合边');
+  assert.equal(theta.animateLast, true, '闭合边单独描边');
+  assert.match(theta.html, /θ = 负号格的最小运量/);
+  const final = player.scene(m, s, 6);
+  assert.equal(final.closed, true);
+  assert.equal(final.animateLast, false, '末帧同步运量，不再重画路径');
 });
 
 test('短回路逐格揭示：帧数为 回路格数 + 3（θ>0）/ + 2（θ=0）', () => {
@@ -52,6 +58,8 @@ test('长回路不逐格揭示：首帧就标全正负号，帧数压到 3 / 2',
   assert.equal(player.frames(long), 3);
   assert.equal(player.frames(Object.assign({}, long, { theta: 0 })), 2);
   const first = player.scene(m, long, 0);
+  assert.equal(first.closed, true, '长回路首帧直接闭合');
+  assert.equal(first.animateLast, false);
   assert.match(first.html, /整条闭回路/);
   assert.equal((first.html.match(/class="tp-cell[^"]*tp-cycle/g) || []).length, 8, '首帧标出全部 8 格');
   assert.doesNotMatch(first.html, /标记回路第/, '长回路不再有“标记回路第 k 格”帧');

@@ -121,6 +121,8 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
 .transport-table th.tp-corner .tp-corner-x{position:absolute;top:2px;right:7px;font-size:12px;font-weight:600}
 .transport-table th.tp-corner .tp-corner-y{position:absolute;left:7px;bottom:2px;font-size:12px;font-weight:600}
 .tp-balance{font-size:14px;font-weight:650;line-height:1.7;margin:14px 0}
+/* 位势表的边距格：右列是行位势 u、底行是列位势 v，用浅底和运量/费用分开 */
+.transport-table td.tp-u,.transport-table tfoot td.tp-v{background:var(--soft);font-weight:650}
 .transport-input .tp-margin{background:var(--soft)}
 .tp-blocked,.transport-table td.tp-virtual{--cell-bg:var(--soft);background:var(--soft);color:var(--fg2)}
 .tp-blocked .num{font-weight:700}
@@ -199,7 +201,10 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
 .tp-route li[aria-current]{outline:2px solid currentColor;outline-offset:1px}
 /* ---------- 回路连线 ---------- */
 .tp-path{position:absolute;inset:0;z-index:1;width:100%;height:100%;pointer-events:none;overflow:visible}
-.tp-path .tp-line{fill:none;stroke:var(--accent-text);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round;animation:tp-trace 200ms cubic-bezier(.16,1,.3,1)}
+.tp-path .tp-line{fill:none;stroke:var(--accent-text);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round}
+/* 只给本帧新增的一段描边：pathLength=1 把长度归一化，dashoffset 从 1 走到 0
+   就是沿线段画出来；已经画好的部分保持静态，不再整条回路一起淡入。 */
+.tp-path .tp-line-new{stroke-dasharray:1;stroke-dashoffset:0;animation:tp-draw 260ms cubic-bezier(.16,1,.3,1) both}
 .tp-path .tp-arrow{fill:none;stroke:var(--accent-text);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 .tp-path .tp-arrow-live{animation:tp-arrow-in 260ms cubic-bezier(.16,1,.3,1)}
 /* 流动光点：不支持 offset-path 的浏览器只是没有这个点，回路本身不受影响。 */
@@ -209,9 +214,9 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
 }
 @keyframes tp-flow-once{from{offset-distance:0%}to{offset-distance:100%}}
 @keyframes tp-flow-loop{from{offset-distance:0%}to{offset-distance:100%}}
-@keyframes tp-trace{from{stroke-opacity:.2}to{stroke-opacity:1}}
+@keyframes tp-draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
 @keyframes tp-arrow-in{from{opacity:0}to{opacity:1}}
-@media(prefers-reduced-motion:reduce){.tp-path .tp-line,.tp-path .tp-arrow-live,.tp-flow,.tp-player .tp-updated{animation:none}}
+@media(prefers-reduced-motion:reduce){.tp-path .tp-line-new,.tp-path .tp-arrow-live,.tp-flow,.tp-player .tp-updated{animation:none}}
 .tp-motion-note[hidden]{display:none}
 /* ---------- 手机：把运输表压回一屏能读的密度 ----------
    桌面按教材版式留足费用角标和运量，98px 起的格宽在手机上要滑三四屏才能看完
@@ -233,7 +238,7 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
   .transport-table tr>th:first-child,.transport-table tr>:last-child{min-width:46px}
   .transport-table th.tp-virtual{min-width:56px}
   .transport-table td{height:64px;padding:24px 0 8px}
-  .transport-table thead th,.transport-table tbody th{white-space:normal;padding:5px 1px 6px}
+  .transport-table thead th,.transport-table tbody th,.transport-table tfoot th{white-space:normal;padding:5px 1px 6px}
   .transport-table .tp-cost{font-size:16px;padding:1px 5px 3px}
   .transport-table .tp-value{font-size:15px}
   .transport-table .tp-sgn{font-size:14px;line-height:16px;margin-right:2px}

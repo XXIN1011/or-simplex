@@ -10,7 +10,14 @@ function colName(m, j) { return j < m.n ? '销地' + (j + 1) : '虚拟销地'; }
 function cellName(c) { return '(' + (c.i + 1) + ', ' + (c.j + 1) + ')'; }
 function same(a, i, j) { return a && a.i === i && a.j === j; }
 function table(m, values, basis, loop, caption, costs, options) {
-  var o = options || {}, supply = o.supply || m.supply, demand = o.demand || m.demand;
+  var o = options || {};
+  var rowMargins = o.rowMargins || o.supply || m.supply;
+  var colMargins = o.colMargins || o.demand || m.demand;
+  var rowLabel = o.rowLabel || (o.supply ? '剩余供应' : '供应量');
+  var colLabel = o.colLabel || (o.demand ? '剩余需求' : '需求量');
+  var cornerLabel = o.cornerLabel !== undefined ? o.cornerLabel : (o.supply ? '逐步更新' : num(m.total));
+  var rowAttr = o.rowMarginAttr || 'data-tp-supply', colAttr = o.colMarginAttr || 'data-tp-demand';
+  var rowCls = o.rowMarginClass ? ' ' + o.rowMarginClass : '', colCls = o.colMarginClass ? ' ' + o.colMarginClass : '';
   var at = {}, changed = {};
   (loop || []).forEach(function (c, k) { at[c.i + '-' + c.j] = { sign: c.sign > 0 ? '+' : '−' }; });
   (o.updated || []).forEach(function (c) { changed[c.i + '-' + c.j] = 1; });
@@ -22,7 +29,7 @@ function table(m, values, basis, loop, caption, costs, options) {
     + ((o.cutCols || []).indexOf(j) >= 0 ? 'tp-cut-label' : '') + '">' + colName(m, j)
     + (j >= m.n ? '<small class="tp-sub">剩余</small>' : '')
     + ((o.cutCols || []).indexOf(j) >= 0 ? '<small class="tp-sub">可达销地</small>' : '') + '</th>';
-  h += '<th scope="col">' + (o.supply ? '剩余供应' : '供应量') + '</th></tr></thead><tbody>';
+  h += '<th scope="col">' + rowLabel + '</th></tr></thead><tbody>';
   for (i = 0; i < m.rows; i++) {
     var cut = (o.cutRows || []).indexOf(i) >= 0;
     h += '<tr' + (i >= m.m ? ' class="tp-virtual"' : '') + '><th scope="row" class="' + (cut ? 'tp-cut-label' : '') + '">' + rowName(m, i)
@@ -61,10 +68,10 @@ function table(m, values, basis, loop, caption, costs, options) {
       if (tags.length) h += '<small class="tp-tag">' + tags.join(' · ') + '</small>';
       h += '</td>';
     }
-    h += '<td data-tp-supply="' + i + '" class="mono ' + (o.selected && o.selected.i === i ? 'tp-margin-active' : '') + '">' + num(supply[i]) + '</td></tr>';
+    h += '<td ' + rowAttr + '="' + i + '" class="mono' + rowCls + (o.selected && o.selected.i === i ? ' tp-margin-active' : '') + '">' + num(rowMargins[i]) + '</td></tr>';
   }
-  h += '</tbody><tfoot><tr><th scope="row">' + (o.demand ? '剩余需求' : '需求量') + '</th>';
-  for (j = 0; j < m.cols; j++) h += '<td data-tp-demand="' + j + '" class="mono ' + (o.selected && o.selected.j === j ? 'tp-margin-active' : '') + '">' + num(demand[j]) + '</td>';
-  return h + '<td>' + (o.supply ? '逐步更新' : num(m.total)) + '</td></tr></tfoot></table></div></div>';
+  h += '</tbody><tfoot><tr><th scope="row">' + colLabel + '</th>';
+  for (j = 0; j < m.cols; j++) h += '<td ' + colAttr + '="' + j + '" class="mono' + colCls + (o.selected && o.selected.j === j ? ' tp-margin-active' : '') + '">' + num(colMargins[j]) + '</td>';
+  return h + '<td class="mono">' + cornerLabel + '</td></tr></tfoot></table></div></div>';
 }
 module.exports = { table: table, num: num, rowName: rowName, colName: colName, cellName: cellName };

@@ -1,9 +1,10 @@
-/* 演示必须与算法快照一致；时间推进、减少动态效果和销毁也要可验证。 */
+/* 演示必须与算法快照一致；时间推进、减少动态效果和销毁也要可验证。
+   最小元素分配只保留静态步骤表，播放控件只属于闭回路。 */
 'use strict';
 const {sleep} = require('../../lib/chrome');
 module.exports = async function playerCases(sess, run) {
-  async function waitFor(expression) {
-    const deadline=Date.now()+4000;
+  async function waitFor(expression, ms) {
+    const deadline=Date.now()+(ms||6000);
     while(Date.now()<deadline) {
       if(await sess.evl(expression)) return;
       await sleep(50);
@@ -13,28 +14,27 @@ module.exports = async function playerCases(sess, run) {
   await sess.cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'no-preference'}]},sess.sessionId);
   await run(`
     q('#tpDirSeg [data-dir=min]').click();q('#tpPanel [data-guide=sample]').click();click('tpSolveBtn');
-    var a=q('[data-kind=allocation]');
-    expect(a && a.getAttribute('data-frame')==='0' && a.querySelector('.tp-selected').getAttribute('data-tp-cell')==='0-3','分配演示初始帧选中最小费用格');
-    expect(a.querySelectorAll('.tp-tie').length===1,'并列费用候选有文字及边框标识');
-    expect(a.querySelector('[data-tp-supply="0"]').textContent==='20' && a.querySelector('[data-tp-demand="3"]').textContent==='20','分配前显示剩余供需20');
-    expect(a.querySelector('[data-tp-cell="0-3"] .tp-value').textContent==='0','演示开始尚未分配');
-    a.querySelector('[data-tp-next]').click();
-    expect(a.getAttribute('data-frame')==='1' && a.querySelector('.tp-scene').textContent.indexOf('实际分配量 20')>=0,'下一帧确定分配量');
-    a.querySelector('[data-tp-next]').click();
-    expect(a.querySelector('[data-tp-cell="0-3"] .tp-value').textContent==='20' && a.querySelector('[data-tp-supply="0"]').textContent==='0' && a.querySelector('[data-tp-demand="3"]').textContent==='0','运量与行列剩余量同步更新');
-    expect(a.querySelector('.tp-player-objective').textContent.indexOf('40')>=0 && q('#tpOut .zv').textContent==='360','演示目标40与最终目标360独立');
-    a.querySelector('[data-tp-prev]').click();a.querySelector('[data-tp-reset]').click();
-    expect(a.getAttribute('data-frame')==='0' && a.querySelector('[data-tp-prev]').disabled && !a.querySelector('[data-tp-next]').disabled,'重播恢复首帧及按钮边界');
+    expect(!q('#tpOut [data-kind=allocation]'),'最小元素分配不再有逐帧演示');
+    var alloc=q('#tpOut .study-step[data-step-title^="最小元素分配"]');
+    expect(alloc && alloc.querySelector('[data-tp-cell="0-3"].tp-selected') && alloc.querySelectorAll('.tp-tie').length===1,'分配步骤用静态表标出所选格与并列候选');
     var p=q('[data-kind=pivot]');
+    expect(p && p.getAttribute('data-frame')==='0','闭回路演示仍从首帧开始');
     expect(p.querySelectorAll('.tp-cycle').length===0 && p.querySelector('.tp-player-objective').textContent.indexOf('430')>=0,'回路首帧保留调整前目标430');
     for(var k=1;k<=4;k++){
       p.querySelector('[data-tp-next]').click();
       expect(p.querySelectorAll('.tp-cycle').length===k && p.querySelectorAll('.tp-route-visited').length===k,'按顺序揭示回路正负号 '+k);
     }
-    expect(p.querySelector('.tp-path polyline').getAttribute('points').trim().split(' ').length===5,'四格回路路径闭合回起点');
-    expect(p.querySelector('.tp-scene').textContent.indexOf('路径已闭合')>=0,'闭合状态有文字说明');
+    expect(p.querySelector('.tp-scene').textContent.indexOf('路径已连通')>=0,'最后一格只连通路径，不提前闭合');
+    expect(p.querySelectorAll('.tp-path .tp-line-new').length===1,'最后一格只给新增线段描边');
+    var drawn=p.querySelector('.tp-path .tp-line:not(.tp-line-new)');
+    expect(drawn && drawn.getAttribute('points').trim().split(' ').length===3,'已画好的三段保持静态，不整条重绘');
     p.querySelector('[data-tp-next]').click();
     expect(p.querySelector('.tp-scene').textContent.indexOf('θ = 负号格的最小运量 = 10')>=0 && p.querySelector('.tp-scene').textContent.indexOf('离基格')>=0,'从负号格确定theta及离基格');
+    drawn=p.querySelector('.tp-path .tp-line:not(.tp-line-new)');
+    var fresh=p.querySelector('.tp-path .tp-line-new');
+    var startPoint=drawn.getAttribute('points').trim().split(' ')[0];
+    var endPoint=fresh.getAttribute('points').trim().split(' ').slice(-1)[0];
+    expect(startPoint===endPoint,'θ 帧的闭合边回到起点');
     p.querySelector('[data-tp-next]').click();
     expect(p.querySelector('[data-tp-cell="2-3"] .tp-value').textContent==='10' && p.querySelector('[data-tp-cell="0-3"] .tp-value').textContent==='10','回路正负号格同步更新运量');
     expect(p.querySelector('.tp-player-objective').textContent.indexOf('430 → 380')>=0 && p.querySelector('[data-tp-next]').disabled,'演示显示本轮费用变化并停止于末帧');
@@ -43,51 +43,54 @@ module.exports = async function playerCases(sess, run) {
     expect(p.querySelector('[data-tp-cell="2-3"] .tp-value').textContent==='0','回退时准确恢复调整前快照');
     p.querySelector('[data-tp-reset]').click();
     var box=q('#tpOut [data-study]');box.querySelector('[data-study-mode=single]').click();
-    expect(box.querySelectorAll('[data-study-step]:not([hidden])').length===1,'分配演示与单步学习共存');
-    a=q('[data-kind=allocation]');a.scrollIntoView({block:'start',behavior:'instant'});
-    a.querySelector('[data-tp-speed]').value='600';
+    var picker=q('#tpOut [data-study-select]');
+    picker.value=p.getAttribute('data-transport-player');picker.dispatchEvent(new Event('change',{bubbles:true}));
+    expect(box.querySelectorAll('[data-study-step]:not([hidden])').length===1 && q('[data-kind=pivot]'),'单步学习直接进入闭回路步骤');
+    q('[data-kind=pivot]').scrollIntoView({block:'start',behavior:'instant'});
+    q('[data-kind=pivot] [data-tp-speed]').value='600';
   `);
   // 让 IntersectionObserver 收到定位后的可见性，再模拟用户点击可见控件。
   await sleep(100);
   await run(`
-    var a=q('[data-kind=allocation]');a.querySelector('[data-tp-play]').click();
-    expect(a.getAttribute('data-playing')==='true' && a.querySelector('[data-tp-play]').textContent==='暂停','显式播放启动且可暂停');
+    var p=q('[data-kind=pivot]');
+    p.querySelector('[data-tp-play]').click();
+    expect(p.getAttribute('data-playing')==='true' && p.querySelector('[data-tp-play]').textContent==='暂停','显式播放启动且可暂停');
   `);
-  await waitFor("+document.querySelector('[data-kind=allocation]').getAttribute('data-frame')>=1");
+  await waitFor("+document.querySelector('[data-kind=pivot]').getAttribute('data-frame')>=1");
   await run(`
-    var a=q('[data-kind=allocation]');
-    expect(+a.getAttribute('data-frame')>=1,'计时器推进演示帧');
-    if(a.getAttribute('data-playing')==='true')a.querySelector('[data-tp-play]').click();
-    window.__tpPausedFrame=a.getAttribute('data-frame');
-    expect(a.getAttribute('data-playing')==='false','暂停停止播放状态');
+    var p=q('[data-kind=pivot]');
+    expect(+p.getAttribute('data-frame')>=1,'计时器推进演示帧');
+    if(p.getAttribute('data-playing')==='true')p.querySelector('[data-tp-play]').click();
+    window.__tpPausedFrame=p.getAttribute('data-frame');
+    expect(p.getAttribute('data-playing')==='false','暂停停止播放状态');
   `);
   await sleep(750);
   await run(`
-    var a=q('[data-kind=allocation]');
-    expect(a.getAttribute('data-frame')===window.__tpPausedFrame,'暂停后计时器不继续推进');
-    a.querySelector('[data-tp-play]').click();
+    var p=q('[data-kind=pivot]');
+    expect(p.getAttribute('data-frame')===window.__tpPausedFrame,'暂停后计时器不继续推进');
+    p.querySelector('[data-tp-play]').click();
   `);
-  await waitFor("document.querySelector('[data-kind=allocation]').getAttribute('data-frame')==='2' && document.querySelector('[data-kind=allocation]').getAttribute('data-playing')==='false'");
+  await waitFor("document.querySelector('[data-kind=pivot]').getAttribute('data-frame')==='6' && document.querySelector('[data-kind=pivot]').getAttribute('data-playing')==='false'",8000);
   await run(`
-    var a=q('[data-kind=allocation]');
-    expect(a.getAttribute('data-frame')==='2' && a.getAttribute('data-playing')==='false','自动播放到末帧后停止');
-    a.querySelector('[data-tp-reset]').click();a.querySelector('[data-tp-play]').click();
+    var p=q('[data-kind=pivot]');
+    expect(p.getAttribute('data-frame')==='6' && p.getAttribute('data-playing')==='false','自动播放到末帧后停止');
+    p.querySelector('[data-tp-reset]').click();p.querySelector('[data-tp-play]').click();
     q('#tpOut [data-study-next]').click();
-    expect(a.getAttribute('data-playing')==='false','切换学习步骤暂停被隐藏演示');
-    q('#tpOut [data-study-prev]').click();a.scrollIntoView({block:'start',behavior:'instant'});a.querySelector('[data-tp-play]').click();
+    expect(p.getAttribute('data-playing')==='false','切换学习步骤暂停被隐藏演示');
+    q('#tpOut [data-study-prev]').click();p.scrollIntoView({block:'start',behavior:'instant'});p.querySelector('[data-tp-play]').click();
   `);
   await sess.evl("location.hash='#/'");
   await sleep(100);
-  await run(`expect(q('[data-kind=allocation]').getAttribute('data-playing')==='false','离开运输模块暂停动画');`);
+  await run(`expect(q('[data-kind=pivot]').getAttribute('data-playing')==='false','离开运输模块暂停动画');`);
   await sess.evl("location.hash='#/transport'");
   await sleep(100);
   await sess.cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]},sess.sessionId);
   await sleep(100);
   await run(`
-    var a=q('[data-kind=allocation]');
-    expect(a.querySelector('[data-tp-play]').disabled && !a.querySelector('.tp-motion-note').hidden,'减少动态效果模式禁用计时播放并解释');
-    a.querySelector('[data-tp-next]').click();
-    expect(a.getAttribute('data-frame')==='1','减少动态效果模式仍可手动逐帧');
+    var p=q('[data-kind=pivot]');
+    expect(p.querySelector('[data-tp-play]').disabled && !p.querySelector('.tp-motion-note').hidden,'减少动态效果模式禁用计时播放并解释');
+    p.querySelector('[data-tp-next]').click();
+    expect(p.getAttribute('data-frame')==='1','减少动态效果模式仍可手动逐帧');
     value('cells',0,0,7);expect(!q('#tpOut').textContent,'编辑题目清除演示及旧结果');
   `);
   await sleep(750);
@@ -95,18 +98,16 @@ module.exports = async function playerCases(sess, run) {
   await sess.cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'no-preference'}]},sess.sessionId);
   await run(`
     q('#tpPanel [data-transport-forbidden-sample]').click();click('tpSolveBtn');
-    var a=q('[data-kind=allocation]');a.querySelector('[data-tp-next]').click();
-    expect(a.querySelectorAll('.tp-cut-label').length>=1 && a.querySelector('.tp-scene').textContent.indexOf('后续将有 5')>=0,'禁运保护帧突出瓶颈与无法匹配量');
-    a.querySelector('[data-tp-next]').click();
-    expect(a.querySelector('[data-tp-cell="0-0"] .tp-value').textContent==='0' && !a.querySelector('[data-tp-cell="0-0"] .tp-basis'),'禁运保护跳过零分配格且不伪造基身份');
+    expect(q('#tpOut').textContent.indexOf('剩余网络将有 5')>=0,'防堵路解释留在静态分配步骤');
+    var alloc=q('#tpOut .study-step[data-step-title^="最小元素分配"]');
+    expect(alloc.querySelector('[data-tp-cell="0-0"] .tp-value').textContent==='0' && !alloc.querySelector('[data-tp-cell="0-0"] .tp-basis'),'禁运保护跳过零分配格且不伪造基身份');
     value('cells',0,1,'M');value('cells',1,1,'M');click('tpSolveBtn');
     expect(q('#tpOut .tp-cut-label') && !q('#tpOut [data-transport-player]'),'无解瓶颈在原表突出且不播放伪方案');
     size(1,1);value('cells',0,0,'1/2');value('supply',0,null,'3/4');value('demand',0,null,'3/4');click('tpSolveBtn');
-    a=q('[data-kind=allocation]');a.querySelector('[data-tp-next]').click();a.querySelector('[data-tp-next]').click();
-    expect(a.querySelector('[data-tp-cell="0-0"] .tp-value').textContent==='3/4' && a.querySelector('.tp-player-objective').textContent.indexOf('3/8')>=0,'分数运量和目标在演示中正确显示');
+    expect(q('#tpOut .zv').textContent==='3/8','分数目标在最终结果中正确显示');
+    expect(q('#tpOut [data-tp-cell="0-0"] .tp-value').textContent==='3/4','分数运量在结果表中正确显示');
     q('#tpDirSeg [data-dir=max]').click();click('tpSolveBtn');
-    a=q('[data-kind=allocation]');a.querySelector('[data-tp-next]').click();a.querySelector('[data-tp-next]').click();
-    expect(a.querySelector('.tp-player-objective').textContent.indexOf('3/8')>=0,'最大收益演示使用原目标而非取负后的工作目标');
+    expect(q('#tpOut .zv').textContent==='3/8','最大收益使用原目标而非取负后的工作目标');
     q('#tpDirSeg [data-dir=min]').click();size(2,3);
     var costs=[[5,1,3],[0,4,2]];
     for(var i=0;i<2;i++){value('supply',i,null,1);for(var j=0;j<3;j++)value('cells',i,j,costs[i][j])}

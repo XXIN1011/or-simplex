@@ -16,7 +16,7 @@ require('./ui.js');            /* 单纯形法界面 */
 require('./sens-ui.js');       /* 灵敏度分析界面 */
 require('./ip-ui.js');         /* 整数规划界面 */
 require('./assign-ui.js');     /* 指派问题界面（匈牙利法） */
-require('./transport-ui.js');  /* 运输问题：最小元素法 + MODI */
+require('./transport-ui.js');  /* 运输问题：最小元素法 + 位势法 */
 require('./settings-ui.js');   /* 设置页 + 显示模式（要在路由之前把主题属性落好） */
 require('./router.js');        /* 首页 / 模块路由：最后启动 */
 
