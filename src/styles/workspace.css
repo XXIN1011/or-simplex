@@ -12,23 +12,38 @@
 .guide-actions{display:flex;gap:8px;flex-shrink:0}
 .draft-tools{margin-top:8px}
 .draft-tools .guide-note{margin:0}
-.problem-history{margin-top:8px}
-.problem-history>summary{min-height:44px;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:650;color:var(--fg)}
-.problem-history>summary::before{content:'＋';color:var(--accent)}
-.problem-history[open]>summary::before{content:'−'}
-.history-count{min-width:24px;text-align:center;color:var(--fg2);font-size:12px;font-weight:500}
+.problem-history{position:relative;margin-top:12px;padding-top:8px;border-top:1px solid var(--line)}
+.problem-history>summary{min-height:44px;display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none;font-size:14px;font-weight:650;color:var(--fg);padding-right:24px}
+.problem-history>summary::-webkit-details-marker{display:none}
+.problem-history>summary::after{content:'';position:absolute;right:4px;top:25px;width:6px;height:6px;border-right:1.5px solid var(--fg2);border-bottom:1.5px solid var(--fg2);transform:rotate(45deg)}
+.problem-history[open]>summary{padding-right:124px}
+.problem-history[open]>summary::after{transform:rotate(225deg);top:28px}
+.problem-history svg{display:block;width:16px;height:16px;flex:none}
+.problem-history>summary>svg{color:var(--fg2);width:18px;height:18px}
+.history-count{min-width:22px;padding:0 5px;border-radius:4px;background:var(--soft);text-align:center;color:var(--fg2);font-size:12px;font-weight:500;line-height:22px;font-variant-numeric:tabular-nums}
 .problem-history .guide-note:empty{display:none}
-.history-toolbar{display:flex;justify-content:flex-end;padding:4px 0 8px}
-.history-list{list-style:none;margin:0;padding:0;max-height:360px;overflow:auto;overscroll-behavior:contain}
-.history-list>li{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line2)}
-.history-info{flex:1;min-width:0}
-.history-info b{display:block;font-size:13px;line-height:1.6;overflow-wrap:anywhere}
-.history-info time{display:block;margin-top:2px;color:var(--fg2);font-size:12px}
-.history-info p{margin:4px 0 0;color:var(--fg2);font-size:12px;line-height:1.6;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.history-actions{display:flex;gap:6px;flex-shrink:0}
-.history-actions .btn,.history-toolbar .btn{min-height:44px}
-.history-delete{width:44px;padding:0;font-size:22px}
-@media(max-width:480px){.history-list>li{align-items:flex-start;flex-direction:column;gap:8px}.history-actions{align-self:flex-end}}
+.problem-history>.guide-note{margin:4px 0 8px}
+.history-toolbar{position:absolute;top:8px;right:28px}
+.history-toolbar .btn{display:flex;align-items:center;gap:6px;min-height:44px;padding:8px;border-color:transparent;background:transparent;box-shadow:none;color:var(--fg2);font-size:12px;font-weight:500}
+.history-toolbar button.btn:hover:not(:disabled),.history-actions button.history-delete:hover:not(:disabled){background:var(--err-soft);color:var(--err);border-color:transparent}
+.history-list{list-style:none;margin:8px 0 0;padding:0 8px 0 0;max-height:440px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line2) var(--soft);scrollbar-gutter:stable}
+.history-list>li{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;padding:16px 0;border-top:1px solid var(--line)}
+.history-info{min-width:0}
+.history-item-heading{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:2px 12px}
+.history-info b{font-size:14px;font-weight:650;line-height:1.6;overflow-wrap:anywhere}
+.history-info time{color:var(--fg2);font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.history-info p{margin:6px 0 0;color:var(--fg2);font:12px/1.8 var(--mono);overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.history-facts{display:flex;flex-wrap:wrap;gap:2px 20px;margin:6px 0 0;font-size:12px;line-height:1.7}
+.history-facts[hidden]{display:none}
+.history-facts>div{display:flex;gap:8px;min-width:0}
+.history-facts dt{flex:none;color:var(--fg2)}
+.history-facts dd{margin:0;min-width:0;font-family:var(--mono);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;color:var(--fg)}
+.history-actions{display:flex;align-items:center;gap:4px}
+.history-actions .btn{display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px}
+.history-actions .history-restore{padding:8px 12px;background:var(--accent-soft);border-color:transparent;color:var(--accent-text);font-weight:600}
+.history-actions button.history-restore:hover:not(:disabled){background:var(--accent-soft);border-color:var(--accent-text)}
+.history-actions .history-delete{width:44px;padding:0;border-color:transparent;background:transparent;box-shadow:none;color:var(--fg2)}
+@media(max-width:600px){.history-list{max-height:400px}.history-list>li{gap:10px;padding:14px 0}.history-item-heading{display:block}.history-info time{display:block;margin-top:2px}.history-facts{display:grid;gap:2px}.history-actions{flex-direction:column;gap:4px}.history-actions .history-restore{padding:8px;min-width:64px}.history-actions .history-delete{align-self:flex-end}.history-info b{font-size:13px}}
 .input-guide.has-model>.guide-note,.input-guide.has-model .guide-intro p{display:none}
 /* 费用矩阵有更多行：收紧辅助区间距，并让求解紧接矩阵，长说明接在操作之后。
    44px 的按钮和折叠入口保持不变，避免主操作落在浮动导航的遮挡位置。 */
@@ -75,7 +90,7 @@
 #mod-transport{max-width:1000px;margin:0 auto}
 #mod-transport>header{margin-bottom:16px}
 /* 原始输入直接融入表格；仅在编辑或错误时标出当前输入。 */
-#tpInTbl input.num{border:0;border-radius:0;background:transparent;box-shadow:none}
+#tpInTbl input.num{border:0;border-radius:0;background:transparent;box-shadow:none;font-weight:400}
 #tpInTbl input.num:focus{outline:2px solid var(--accent);outline-offset:-2px;background:var(--accent-soft);box-shadow:none}
 #tpInTbl input.num[aria-invalid="true"]{outline:2px solid var(--err);outline-offset:-2px;background:var(--err-soft);box-shadow:none}
 #tpPanel .input-guide{margin-bottom:12px;padding-bottom:12px}
@@ -85,26 +100,19 @@
 #tpPanel .guide-actions{flex-wrap:wrap}
 #tpPanel .ctrls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;max-width:560px;margin-inline:auto}
 #tpPanel .ctrls .btn{padding:8px 4px;min-width:0}
-.tp-input-tools{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;margin-top:12px}
-.tp-input-tools .sens-note{margin:0;flex:1;min-width:160px}
-.tp-input-tools .btn{flex-shrink:0}
+.tp-input-note{margin:12px 0 0}
 .tp-extra>summary{min-height:44px;display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--fg2);font-size:13px;font-weight:600}
 .tp-extra>summary::before{content:'＋';color:var(--accent)}
 .tp-extra[open]>summary::before{content:'−'}
 .tp-extra>p{font-size:13px;line-height:1.7;color:var(--fg2);margin:4px 0 12px}
 .tp-help{margin-top:8px;border-top:1px solid var(--line)}
-.tp-fee-options{margin-top:8px}
-.tp-result-overview{display:grid;gap:12px;margin-bottom:16px}
-.tp-result-overview .verdict{margin:0}
-.tp-result-facts{display:flex;flex-wrap:wrap;gap:12px 24px;margin:0;align-content:center}
-.tp-result-facts div{flex:1;min-width:110px}
-.tp-result-facts dt{font-size:13px;color:var(--fg2)}
-.tp-result-facts dd{font:600 18px/1.6 var(--mono);margin:2px 0 0;color:var(--fg);overflow-wrap:anywhere}
 #tpOut .tp-step-lead{margin:4px 0 10px;font-size:14px;line-height:1.8}
 #tpOut .tp-step-guard{color:var(--warn);font-size:13px;line-height:1.7}
 #tpOut .tp-step-total{margin:12px 0 0;font-size:14px;font-weight:600}
+#tpOut .tp-check-notes{display:grid;gap:6px;margin-top:14px;line-height:1.8}
+#tpOut .tp-check-notes p{margin:0}
+#tpOut .tp-check-verdict{font-size:14px;font-weight:600}
 #tpOut .tp-formula{font-size:14px;line-height:1.9;margin:10px 0;overflow-wrap:anywhere}
-@media(min-width:768px){.tp-result-overview{grid-template-columns:minmax(200px,1fr) 1fr;gap:24px;align-items:center}}
 @media(max-width:480px){#tpPanel .guide-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}#tpPanel .guide-actions .btn{padding:8px}}
 .transport-table caption,.transport-input caption,.tp-caption{text-align:left;color:var(--fg2);font-size:13px;padding:12px 0;white-space:normal}
 .tp-caption{margin:0;line-height:1.6}
@@ -132,6 +140,7 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
   background:var(--cell-bg);font:600 26px/1.15 var(--mono);color:var(--fg2)}
 /* 运量：居中的主数字；正负号在左边并染色 */
 .tp-value{display:inline-block;font-size:20px;font-weight:600;line-height:1.1;color:var(--fg)}
+.transport-table .tp-cross{color:var(--fg2);font-weight:400}
 .tp-sgn{display:inline-block;margin-right:5px;font-size:18px;line-height:22px;font-weight:700;vertical-align:middle}
 .tp-plus-cell .tp-sgn{color:var(--accent-text)}
 .tp-minus-cell .tp-sgn{color:var(--warn)}
@@ -155,12 +164,7 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
 .transport-input .tp-margin{background:var(--soft)}
 .tp-blocked,.transport-table td.tp-virtual{--cell-bg:var(--soft);background:var(--soft);color:var(--fg2)}
 .tp-blocked .num{font-weight:700}
-.tp-fee-options>summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:650}
-.tp-fee-options>summary::before{content:'＋';margin-right:8px;color:var(--accent)}
-.tp-fee-options[open]>summary::before{content:'−'}
-.tp-fee-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;padding:8px 0}
-.tp-fee-fields label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px}
-.transport-table tfoot,.transport-input tfoot{font-weight:650}
+.transport-table tfoot{font-weight:650}
 #tpOut h3{margin:0 0 12px;font-size:18px;line-height:1.5}
 #tpOut p{overflow-wrap:anywhere}
 .tp-stage{display:inline-block;position:relative;min-width:100%;vertical-align:top}
@@ -173,7 +177,8 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
 /* 演示表有自己的固定列：滚动容器不再沿用卡片的全出血内边距，
    否则固定列贴不到可视区边缘，外侧会漏出 20px 的文字碎片。 */
 .tp-player .scroll{margin-left:0;margin-right:0;padding-left:0;padding-right:0}
-.tp-player-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.tp-player-controls{display:flex;flex-wrap:nowrap;align-items:center;gap:8px;max-width:100%;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:thin;scrollbar-color:var(--line2) var(--soft)}
+.tp-player-controls>*{flex-shrink:0;white-space:nowrap}
 .tp-player-controls .btn{min-height:44px}
 /* 播放键是这一步的主操作：实心底 + 播放/暂停字形（字形用伪元素，按钮文案不变）。 */
 .tp-player-controls [data-tp-play]{min-width:98px;background:var(--button-bg);border-color:transparent;color:var(--button-fg);font-weight:650}
@@ -183,9 +188,9 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
 .tp-player-controls [data-tp-prev]::before{content:'‹';margin-right:5px;font-size:15px;line-height:1}
 .tp-player-controls [data-tp-next]::after{content:'›';margin-left:5px;font-size:15px;line-height:1}
 .tp-player-controls [data-tp-reset]{color:var(--fg2)}
-.tp-speed{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--fg2)}
+.tp-speed{display:flex;align-items:center;gap:8px;margin-left:8px;font-size:12px;color:var(--fg2)}
 .tp-speed select{min-height:44px;font:inherit;font-size:13px;color:var(--fg);background:var(--input);border:1px solid var(--control-line);border-radius:var(--r-sm);padding:6px 10px}
-.tp-player-progress{font-size:13px;font-weight:650;color:var(--accent-text);line-height:1.7}
+.tp-player-progress{margin:0 0 0 auto;padding-left:8px;font-size:13px;font-weight:650;color:var(--accent-text);line-height:1.7;font-variant-numeric:tabular-nums}
 .tp-scene-title{font-size:16px;line-height:1.5;margin:16px 0 8px}
 .tp-player .transport-table td{min-width:112px;height:134px;padding:46px 0 18px}
 .tp-player .tp-stage{isolation:isolate}
@@ -290,7 +295,8 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
   .tp-player .transport-table tr>:last-child{width:50px;min-width:50px}
   .tp-player-controls{gap:6px}
   .tp-player-controls [data-tp-play]{min-width:84px}
-  .tp-player-progress{font-size:12px;margin:6px 0}
+  .tp-speed{margin-left:4px}
+  .tp-player-progress{font-size:12px}
   .tp-scene-title{font-size:15px;margin:10px 0 6px}
   .tp-route{margin:8px 0;gap:4px}
   .tp-route-item{padding:3px 7px 3px 4px}

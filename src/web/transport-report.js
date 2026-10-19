@@ -12,7 +12,7 @@ function balanceNote(m) {
   if (!m.virtual) return h + '供需平衡。';
   h += m.virtual.type === 'surplus' ? '补虚拟销地 ' : '补虚拟产地 ';
   h += num(m.virtual.amount) + '，表示' + (m.virtual.type === 'surplus' ? '剩余供应' : '缺货') + '，不作实运。';
-  return h + '默认零费用；可另设处理费或罚金。';
+  return h + '虚拟线路按零费用计算。';
 }
 function stepContent(m, s, index) {
   var title, h = '', values = s.allocation, loop = null, options = {};
@@ -28,21 +28,28 @@ function stepContent(m, s, index) {
         + ' 单位无法匹配，已缩减分配。瓶颈：' + s.blockedCutRows.map(function (i) { return rowName(m, i); }).join('、') + '。</p>' : '');
   } else if (s.type === 'initial') {
     title = '初始可行方案（尚未检验最优）';
-    h += '<p>零值基：'
-      + (s.zeroBasics.length ? s.zeroBasics.map(cellName).join('、') : '无需补入')
-      + '（运量 0）。</p><details class="tp-extra"><summary>基与连通分量</summary><p>' + m.components + ' 个连通分量，m+n−k = ' + m.basisSize + ' 个基格；补基按下标，不形成回路。</p></details>';
+    h += '<details class="tp-extra"><summary>基与连通分量</summary><p>' + m.components + ' 个连通分量，m+n−k = ' + m.basisSize + ' 个基格；补基按下标，不形成回路。</p></details>';
   } else if (s.type === 'potentials') {
     title = s.entering ? '位势法：选择入基格' : '位势法：最优性检验';
-    h += '<p class="tp-formula">基格：uᵢ + vⱼ = c′ᵢⱼ<br>检验数：Δᵢⱼ = c′ᵢⱼ − uᵢ − vⱼ</p>'
-      + table(m, s.reduced, null, null, '位势与检验数 Δ（基格 Δ = 0）', true,
-        { rowMargins: s.u, colMargins: s.v, rowLabel: '行位势 u', colLabel: '列位势 v', cornerLabel: '—',
+    var potentialValues = s.reduced.map(function (row, i) { return row.map(function (delta, j) {
+      return s.basis[i][j] ? s.allocation[i][j] : delta;
+    }); });
+    h += '<p class="tp-formula">基格：uᵢ + vⱼ = c′ᵢⱼ<br>非基格检验数：Δᵢⱼ = c′ᵢⱼ − uᵢ − vⱼ</p>'
+      + table(m, potentialValues, s.basis, null, '位势表：左上角为' + (maximizing ? '工作费用' : '运费') + '，框内为基变量运量，其余为检验数 Δ', false,
+        { costMatrix: maximizing ? m.working : m.cost, selected: s.entering, selectedLabel: '入基格', rowMargins: s.u, colMargins: s.v, rowLabel: '行位势 u', colLabel: '列位势 v', cornerLabel: '—',
           rowMarginAttr: 'data-tp-u', colMarginAttr: 'data-tp-v', rowMarginClass: 'tp-u', colMarginClass: 'tp-v' })
-      + '<p>' + (s.entering ? '选负检验数格 ' + cellName(s.entering) + ' 入基（按下标）。' : '可运格 Δ ≥ −容差，当前方案最优。') + '禁运格不参与检验。</p>';
+      + '<div class="tp-check-notes"><p class="tp-check-verdict">' + (s.entering ? '选负检验数格 ' + cellName(s.entering) + ' 入基（按下标）。' : '所有可运格的检验数 Δ ≥ 0，当前方案最优。') + '</p>'
+      + '<p class="sens-note">禁运格不参与检验。</p></div>';
   } else {
     title = '闭回路调整 · 第 ' + s.iteration + ' 轮';
     values = s.beforeAllocation; loop = s.cycle;
-    h += '<p class="tp-step-lead">θ = <b>' + num(s.theta) + '</b> · 离基 ' + cellName(s.leaving) + ' · θΔ = ' + num(s.workingDelta)
+    h += '<p class="tp-step-lead">' + player.thetaFormula(s) + ' · 离基 ' + cellName(s.leaving)
       + (s.theta === 0 ? '；只换基，运量不变。' : '') + '</p>';
+  }
+  if (s.type === 'allocation' || s.type === 'initial') {
+    options.markExhausted = true;
+    options.remainingSupply = s.remainingSupply;
+    options.remainingDemand = s.remainingDemand;
   }
   if (maximizing) options.costMatrix = m.working;
   options.hideCaption = s.type === 'allocation' || s.type === 'initial';
@@ -64,25 +71,22 @@ function render(res) {
       + '<p>' + balanceNote(m) + '</p>' + table(m, m.cost, null, null, '平衡后运输表与禁运瓶颈', true,
         { cutRows: f.cutRows, cutCols: f.cutCols }) + '</div>';
   }
-  var h = '<div class="card tp-result"><div class="tp-result-overview"><div class="verdict ' + (optimal ? 'opt' : 'no') + '"><div class="vtitle">'
-    + (optimal ? m.direction === 'max' ? '最优净收益' : '最小总费用' : res.feasible ? '当前可行方案（未确认最优）' : '数值校验未通过（未确认最优）') + '</div>'
-    + '<div class="sol">z = <span class="zv">' + num(res.objective) + '</span></div></div>'
-    + '<dl class="tp-result-facts"><div><dt>线路' + (m.direction === 'max' ? '收益' : '费用') + '</dt><dd>' + num(res.realObjective)
-    + '</dd></div><div><dt>处理费 / 罚金</dt><dd>' + num(res.penalty) + '</dd></div></dl></div>';
+  var h = '<div class="card tp-result"><div class="verdict ' + (optimal ? 'opt' : 'no') + '"><div class="vtitle">'
+    + (optimal ? m.direction === 'max' ? '最大总收益' : '最小总费用' : res.feasible ? '当前可行方案（未确认最优）' : '数值校验未通过（未确认最优）') + '</div>'
+    + '<div class="sol">z = <span class="zv">' + num(res.objective) + '</span></div></div>';
   if (!optimal) h += '<p>' + esc(res.message) + '</p>';
   if (res.surplus) h += '<p class="tp-balance">剩余供应：' + res.surplus.map(function (v, i) { return '产地' + (i + 1) + '：' + num(v); }).join('；') + '。</p>';
   if (res.shortage) h += '<p class="tp-balance">缺货量：' + res.shortage.map(function (v, j) { return '销地' + (j + 1) + '：' + num(v); }).join('；') + '。</p>';
   h += table(m, res.allocation, res.basis, null, optimal ? '最终最优运输方案' : '当前运输方案', false)
     + '<p class="sens-note">角标：原' + (m.direction === 'max' ? '收益' : '费用') + ' · 中间：运量 · 细框：基变量（含零值基）</p>';
-  if (optimal && res.multipleOptimal) h += '<p>存在多重最优（θ = ' + num(res.alternative.theta) + '）。</p>';
+  if (optimal && res.multipleOptimal) h += '<p>存在多重最优（' + player.thetaFormula({ cycle: res.alternative.cycle, beforeAllocation: res.allocation, theta: res.alternative.theta }) + '）。</p>';
   if (res.alternative) h += '<details><summary>查看另一个最优方案</summary>' + table(m, res.alternative.allocation, null, res.alternative.cycle, '另一最优运输方案（原目标 ' + num(res.alternative.objective) + '）', false) + '</details>';
   h += '</div>' + layout.navigation([['transport-derivation', '查看完整推导 / 单步学习']]);
   var contents = res.steps.map(function (s, i) { return stepContent(m, s, i); });
   if (m.direction === 'max') contents.push({ title: optimal ? '最大收益还原' : '当前方案收益还原',
     html: '<article class="card"><h3>' + (contents.length + 1) + '. ' + (optimal ? '最大收益还原' : '当前方案收益还原')
-      + '</h3><p>按原收益结算' + (optimal ? '最大净收益' : '当前净收益（未确认最优）') + '。</p>'
+      + '</h3><p>按原收益结算' + (optimal ? '最大总收益' : '当前总收益（未确认最优）') + '。</p>'
       + table(m, res.allocation, res.basis, null, '按原收益结算最终运量', false)
-      + '<p>收益 ' + num(res.realObjective) + ' − 费用 ' + num(res.penalty) + ' = ' + num(res.objective) + '。</p>'
       + '<p>工作目标 ' + num(res.workingObjective) + ' · 总运量 Q = ' + num(m.total) + '</p>'
       + '<p class="tp-formula">还原 z = R × Q − 工作目标 = ' + num(res.objective)
       + '<br>' + num(m.maxReward) + ' × ' + num(m.total) + ' − ' + num(res.workingObjective) + ' = ' + num(res.objective) + '</p></article>' });
@@ -93,7 +97,7 @@ function render(res) {
     + (m.direction === 'max' ? '<p class="tp-formula">最大收益 R = ' + num(m.maxReward) + '；c′ᵢⱼ = R − 原收益ᵢⱼ。</p>' : '')
     + (m.direction === 'max' ? table(m, m.working, null, null, '进入最小化算法的工作费用 c′ᵢⱼ = R − 原收益ᵢⱼ（R = ' + num(m.maxReward) + '）', true) : '')
     + '<p class="sens-note">禁运格不参与计算；有禁运时先验可行性。</p>'
-    + (m.direction === 'max' ? '<p class="sens-note">虚拟格收益为负费用；过程使用 c′，末步还原原收益。</p>' : '') + '</div>'
+    + (m.direction === 'max' ? '<p class="sens-note">虚拟格原收益为 0；过程使用 c′，末步还原原收益。</p>' : '') + '</div>'
     + study.group(contents, '运输问题逐步推导') + '</section></details>';
   return h;
 }

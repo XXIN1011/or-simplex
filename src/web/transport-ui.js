@@ -16,8 +16,7 @@ var draft = require('./draft.js');
   function number(raw) { return parseNumber(raw, true); }
   function problem() {
     return { direction: state.direction, cost: state.cells.map(function (r) { return r.map(function (v) { return transport.isForbidden(v) ? v : number(v); }); }),
-      supply: state.supply.map(number), demand: state.demand.map(number),
-      surplusCost: state.surplusCost.map(number), shortageCost: state.shortageCost.map(number) };
+      supply: state.supply.map(number), demand: state.demand.map(number) };
   }
   function syncBalance() {
     var m = transport.validate(problem());
@@ -58,10 +57,6 @@ var draft = require('./draft.js');
       h += '<td>—</td></tr></tfoot>';
     }
     $('tpInTbl').innerHTML = h;
-    var fees = '<div class="tp-fee-fields">';
-    for (i = 0; i < state.rows; i++) fees += '<label>产地' + (i + 1) + '处理费 ' + input('surplusCost', i, undefined, '产地' + (i + 1) + '单位剩余处理费') + '</label>';
-    for (j = 0; j < state.cols; j++) fees += '<label>销地' + (j + 1) + '罚金 ' + input('shortageCost', j, undefined, '销地' + (j + 1) + '单位缺货罚金') + '</label>';
-    $('tpFees').innerHTML = fees + '</div>';
     $('tpAddRow').disabled = state.rows >= MAX; $('tpDelRow').disabled = !state.rows;
     $('tpAddCol').disabled = state.cols >= MAX; $('tpDelCol').disabled = !state.cols;
     Array.prototype.forEach.call($('tpDirSeg').querySelectorAll('button'), function (b) {
@@ -83,7 +78,10 @@ var draft = require('./draft.js');
   function load(p) {
     state.direction = p.direction;
     state.cells = p.cells.map(function (r) { return r.slice(); });
-    ['supply', 'demand', 'surplusCost', 'shortageCost'].forEach(function (k) { state[k] = p[k].slice(); });
+    ['supply', 'demand'].forEach(function (k) { state[k] = p[k].slice(); });
+    /* 保留草稿结构兼容性；已移除的费用配置不从旧题恢复，也不参与网页求解。 */
+    state.surplusCost = p.supply.map(function () { return ''; });
+    state.shortageCost = p.demand.map(function () { return ''; });
     state.rows = p.rows; state.cols = p.cols;
     invalidate(); renderInput();
   }
@@ -92,23 +90,17 @@ var draft = require('./draft.js');
     addVar: 'tpAddRow', delVar: 'tpDelRow', addCon: 'tpAddCol', delCon: 'tpDelCol',
     labels: { addVar: '+ 产地', delVar: '− 产地', addCon: '+ 销地', delCon: '− 销地' } });
   var extras = document.createElement('div');
-  extras.innerHTML = '<div class="tp-input-tools"><p class="sens-note">空白=0 · 支持分数 · M 禁运</p>'
-    + '<button type="button" class="btn" data-transport-forbidden-sample>禁运示例</button></div>'
+  extras.innerHTML = '<p class="sens-note tp-input-note">空白=0 · 支持分数 · M 禁运</p>'
     + '<p class="tp-balance" id="tpBalance" role="status" aria-live="polite"></p>'
-    + '<details class="tp-fee-options"><summary>处理费与缺货罚金</summary>'
-    + '<p class="sens-note">每单位计费，默认 0；最大化时扣除。</p>'
-    + '<div id="tpFees"></div></details><div id="tpVirtual"></div>';
+    + '<div id="tpVirtual"></div>';
   $('tpPanel').appendChild(extras);
-  /* 主操作紧接供需状态，费用和补齐表作为后续可选配置。 */
-  extras.insertBefore($('tpSolveBtn').parentNode, extras.querySelector('.tp-fee-options'));
+  /* 主操作紧接供需状态，补齐表作为后续可选查看内容。 */
+  extras.insertBefore($('tpSolveBtn').parentNode, $('tpVirtual'));
   function loadExample(p) {
     load({ direction: p.direction, rows: p.supply.length, cols: p.demand.length,
       cells: p.cost.map(function (r) { return r.map(String); }), supply: p.supply.map(String), demand: p.demand.map(String),
       surplusCost: p.supply.map(function () { return ''; }), shortageCost: p.demand.map(function () { return ''; }) });
   }
-  extras.querySelector('[data-transport-forbidden-sample]').addEventListener('click', function () {
-    loadExample(require('./examples.js').transportForbidden());
-  });
   Array.prototype.forEach.call($('tpDirSeg').querySelectorAll('button'), function (b) {
     b.textContent = b.dataset.dir === 'min' ? '最小运费' : '最大收益';
     b.addEventListener('click', function () { state.direction = b.dataset.dir; invalidate(); renderInput(); });

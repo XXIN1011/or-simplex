@@ -38,9 +38,14 @@ function table(m, values, basis, loop, caption, costs, options) {
       + (cut ? '<small class="tp-sub">瓶颈产地</small>' : '') + '</th>';
     for (j = 0; j < m.cols; j++) {
       var key = i + '-' + j, hit = at[key], selected = same(o.selected, i, j), active = same(o.active, i, j), tie = false;
+      var basic = basis && basis[i][j];
+      var exhausted = o.markExhausted && !basic && m.allowed[i][j]
+        && (o.remainingSupply[i] === 0 || o.remainingDemand[j] === 0);
+      var unassigned = o.markExhausted && !basic && values[i][j] === 0;
       (o.ties || []).forEach(function (c) { if (same(c, i, j)) tie = true; });
       var cls = 'tp-cell';
       if (!m.allowed[i][j]) cls += ' tp-blocked';
+      if (exhausted) cls += ' tp-exhausted';
       if (j >= m.n || i >= m.m) cls += ' tp-virtual';
       if (hit) cls += ' tp-cycle ' + (hit.sign === '+' ? 'tp-plus-cell' : 'tp-minus-cell');
       if (basis && basis[i][j]) cls += ' tp-has-base';
@@ -58,7 +63,9 @@ function table(m, values, basis, loop, caption, costs, options) {
       if (!costs) h += '<b class="tp-cost">' + num(costMatrix[i][j]) + '</b>';
       if (hit) h += '<i class="tp-anchor"></i>';
       if (hit) h += '<span class="tp-sgn">' + hit.sign + '</span>';
-      h += '<span class="mono tp-value">' + num(values[i][j]) + '</span>';
+      if (exhausted) h += '<span class="mono tp-value tp-cross" role="img" aria-label="供需已耗尽，不再分配">×</span>';
+      else if (unassigned) h += '<span class="tp-sr">未分配</span>';
+      else h += '<span class="mono tp-value">' + num(values[i][j]) + '</span>';
       if (basis && basis[i][j]) h += '<span class="tp-basis tp-sr">基</span>';
       var tags = [];
       if (selected) tags.push(esc(o.selectedLabel || '本次选择'));
@@ -69,10 +76,10 @@ function table(m, values, basis, loop, caption, costs, options) {
       if (tags.length) h += '<small class="tp-tag">' + tags.join(' · ') + '</small>';
       h += '</td>';
     }
-    h += '<td ' + rowAttr + '="' + i + '" class="mono' + rowCls + (o.selected && o.selected.i === i ? ' tp-margin-active' : '') + '">' + num(rowMargins[i]) + '</td></tr>';
+    h += '<td ' + rowAttr + '="' + i + '" class="mono' + rowCls + (o.selected && o.selected.i === i ? ' tp-margin-active' : '') + '"><span class="tp-value">' + num(rowMargins[i]) + '</span></td></tr>';
   }
   h += '</tbody><tfoot><tr><th scope="row">' + colLabel + '</th>';
-  for (j = 0; j < m.cols; j++) h += '<td ' + colAttr + '="' + j + '" class="mono' + colCls + (o.selected && o.selected.j === j ? ' tp-margin-active' : '') + '">' + num(colMargins[j]) + '</td>';
-  return h + '<td class="mono">' + cornerLabel + '</td></tr></tfoot></table></div></div>';
+  for (j = 0; j < m.cols; j++) h += '<td ' + colAttr + '="' + j + '" class="mono' + colCls + (o.selected && o.selected.j === j ? ' tp-margin-active' : '') + '"><span class="tp-value">' + num(colMargins[j]) + '</span></td>';
+  return h + '<td class="mono"><span class="tp-value">' + cornerLabel + '</span></td></tr></tfoot></table></div></div>';
 }
 module.exports = { table: table, num: num, rowName: rowName, colName: colName, cellName: cellName };

@@ -104,6 +104,9 @@ module.exports = async function historyCases(sess, check, url) {
     await checks(`
       expect(document.documentElement.scrollWidth<=innerWidth+1,'历史列表无页面横向溢出 ${width}px');
       var detail=q('#simplexPanel .problem-history'),box=detail.getBoundingClientRect();
+      var header=detail.querySelector('summary').getBoundingClientRect(),clearButton=detail.querySelector('[data-history-clear]').getBoundingClientRect();
+      expect(Math.abs(header.top-clearButton.top)<=1 && clearButton.right<header.right,'清空操作与历史标题同一行且不占据额外操作区 ${width}px');
+      expect([].every.call(detail.querySelectorAll('time'),function(time){return !!time.dateTime && !!time.title}),'历史时间保留完整日期语义 ${width}px');
       expect(Array.prototype.every.call(detail.querySelectorAll('button'),function(b){var r=b.getBoundingClientRect();
         return r.width>=44 && r.height>=44 && r.left>=box.left-1 && r.right<=box.right+1}),
         '历史操作按钮可触摸且位于输入区内 ${width}px');

@@ -24,6 +24,9 @@ module.exports = async function playerCases(sess, run) {
       && initial.textContent.indexOf('最小化工作目标值 280')>=0,'初始方案角标和目标使用转换后费用');
     var alloc=q('#tpOut .study-step[data-step-title^="最小元素分配"]');
     expect(alloc.querySelector('[data-tp-cell="0-3"] .tp-cost').textContent==='0','最小元素分配表使用转换后费用');
+    var enteringTable=q('#tpOut .study-step[data-step-title="位势法：选择入基格"]');
+    expect(enteringTable.querySelector('[data-tp-cell="0-0"] .tp-cost').textContent==='4'
+      && enteringTable.querySelector('[data-tp-cell="0-3"] .tp-cost').textContent==='0','最大收益题的位势表角标使用转换后工作费用');
     var p=q('#tpOut [data-kind=pivot]');
     expect(p.querySelector('[data-tp-cell="0-0"] .tp-cost').textContent==='4'
       && p.querySelector('.tp-player-objective').textContent.indexOf('最小化工作目标值 280')>=0,'闭回路首帧使用工作费用和工作目标');
@@ -46,6 +49,18 @@ module.exports = async function playerCases(sess, run) {
     expect(!q('#tpOut [data-kind=allocation]'),'最小元素分配不再有逐帧演示');
     var alloc=q('#tpOut .study-step[data-step-title^="最小元素分配"]');
     expect(alloc && alloc.querySelector('[data-tp-cell="0-3"].tp-selected') && alloc.querySelectorAll('.tp-tie').length===1,'分配步骤用静态表标出所选格与并列候选');
+    expect(alloc.querySelectorAll('.tp-cross').length===5
+      && alloc.querySelector('[data-tp-cell="0-0"] .tp-cross') && alloc.querySelector('[data-tp-cell="2-3"] .tp-cross'),'行列同时耗尽时非基格都打叉');
+    expect(alloc.querySelector('[data-tp-cell="0-3"].tp-has-base .tp-value').textContent==='20'
+      && !alloc.querySelector('[data-tp-cell="0-3"] .tp-cross'),'耗尽行列中已分配的基格保留带框运量');
+    expect(!alloc.querySelector('[data-tp-cell="1-0"] .tp-value') && !alloc.querySelector('[data-tp-cell="1-0"] .tp-cross'),'尚未耗尽行列的未分配格留空');
+    var second=alloc.nextElementSibling;
+    expect(second.querySelector('[data-tp-cell="2-1"] .tp-cross')
+      && second.querySelector('[data-tp-cell="1-1"].tp-has-base .tp-value').textContent==='25','下一步列需求耗尽后即时标叉并保留新基格');
+    var initial=q('#tpOut .study-step[data-step-title^="初始可行"]');
+    expect(initial.querySelector('[data-tp-cell="0-0"].tp-has-base .tp-value').textContent==='0'
+      && !initial.querySelector('[data-tp-cell="0-0"] .tp-cross'),'初始解补入的零值基显示带框0而非叉号');
+    expect(initial.querySelectorAll('.tp-cross').length===6 && !q('#tpOut .tp-result .tp-cross'),'初始解非基格标叉，最终方案保持原展示');
     var p=q('[data-kind=pivot]');
     expect(p && p.getAttribute('data-frame')==='0','闭回路演示仍从首帧开始');
     expect(p.querySelectorAll('.tp-cycle').length===0 && p.querySelector('.tp-player-objective').textContent.indexOf('430')>=0,'回路首帧保留调整前目标430');
@@ -58,7 +73,7 @@ module.exports = async function playerCases(sess, run) {
     var drawn=p.querySelector('.tp-path .tp-line:not(.tp-line-new)');
     expect(drawn && drawn.getAttribute('points').trim().split(' ').length===3,'已画好的三段保持静态，不整条重绘');
     p.querySelector('[data-tp-next]').click();
-    expect(p.querySelector('.tp-scene').textContent.indexOf('θ = 负号格的最小运量 = 10')>=0 && p.querySelector('.tp-scene').textContent.indexOf('离基格')>=0,'从负号格确定theta及离基格');
+    expect(p.querySelector('.tp-scene').textContent.indexOf('θ = min{20, 10} = 10')>=0 && p.querySelector('.tp-scene').textContent.indexOf('离基格')>=0,'列出负号格运量的min计算并确定离基格');
     drawn=p.querySelector('.tp-path .tp-line:not(.tp-line-new)');
     var fresh=p.querySelector('.tp-path .tp-line-new');
     var startPoint=drawn.getAttribute('points').trim().split(' ')[0];
@@ -126,10 +141,10 @@ module.exports = async function playerCases(sess, run) {
   await run(`expect(!q('#tpOut').textContent && window.__errors.length===0,'销毁后无延迟回写或JS错误');`);
   await sess.cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'no-preference'}]},sess.sessionId);
   await run(`
-    q('#tpPanel [data-transport-forbidden-sample]').click();click('tpSolveBtn');
+    forbiddenProblem();click('tpSolveBtn');
     expect(q('#tpOut .tp-step-guard').textContent.indexOf('5 单位无法匹配')>=0,'防堵路解释留在静态分配步骤');
     var alloc=q('#tpOut .study-step[data-step-title^="最小元素分配"]');
-    expect(alloc.querySelector('[data-tp-cell="0-0"] .tp-value').textContent==='0' && !alloc.querySelector('[data-tp-cell="0-0"] .tp-basis'),'禁运保护跳过零分配格且不伪造基身份');
+    expect(!alloc.querySelector('[data-tp-cell="0-0"] .tp-value') && !alloc.querySelector('[data-tp-cell="0-0"] .tp-basis'),'禁运保护跳过的未分配格留空且不伪造基身份');
     value('cells',0,1,'M');value('cells',1,1,'M');click('tpSolveBtn');
     expect(q('#tpOut .tp-cut-label') && !q('#tpOut [data-transport-player]'),'无解瓶颈在原表突出且不播放伪方案');
     size(1,1);value('cells',0,0,'1/2');value('supply',0,null,'3/4');value('demand',0,null,'3/4');click('tpSolveBtn');
@@ -143,7 +158,7 @@ module.exports = async function playerCases(sess, run) {
     for(var j=0;j<3;j++)value('demand',j,null,j===0?0:1);click('tpSolveBtn');
     var degenerate=q('[data-kind=pivot]');
     while(!degenerate.querySelector('[data-tp-next]').disabled)degenerate.querySelector('[data-tp-next]').click();
-    expect(degenerate.querySelector('.tp-scene').textContent.indexOf('θ = 0')>=0 && degenerate.querySelector('[data-tp-cell="1-0"] .tp-basis') && !degenerate.querySelector('[data-tp-cell="0-0"] .tp-basis'),'退化闭回路零运量不变但基身份正确切换');
+    expect(/θ = min\{[^}]*\} = 0/.test(degenerate.querySelector('.tp-scene').textContent) && degenerate.querySelector('[data-tp-cell="1-0"] .tp-basis') && !degenerate.querySelector('[data-tp-cell="0-0"] .tp-basis'),'退化闭回路零运量不变但基身份正确切换');
     /* θ=0 只换基：不再单独留一帧“同步调整”，帧数应比 θ>0 的回路少 1 */
     var degText=degenerate.querySelector('.tp-player-progress').textContent;
     var degFrames=parseInt(String(degText).split('/')[1],10);
@@ -162,6 +177,12 @@ module.exports = async function playerCases(sess, run) {
       var p=q('[data-kind=pivot]');
       expect(document.documentElement.scrollWidth<=window.innerWidth+1,'演示表无页面横向溢出 ${width}px');
       expect(p.querySelector('[data-tp-play]').getBoundingClientRect().height>=44,'演示控制触摸目标 ${width}px');
+      var controls=p.querySelector('.tp-player-controls'),controlRow=controls.getBoundingClientRect();
+      expect([].every.call(controls.children,function(el){var r=el.getBoundingClientRect();return Math.abs((r.top+r.bottom)/2-(controlRow.top+controlRow.bottom-4)/2)<=2}),
+        '播放按钮、帧间隔和帧状态同一行且居中 ${width}px');
+      controls.scrollLeft=controls.scrollWidth;
+      expect(p.querySelector('.tp-player-progress').getBoundingClientRect().right<=controlRow.right+1,'窄屏滚动后可查看帧状态 ${width}px');
+      controls.scrollLeft=0;
       /* 命中测试只对视口内的点有效，先把演示区滚进视口 */
       p.scrollIntoView({block:'center',behavior:'instant'});
       var current=p.querySelector('.tp-active').getBoundingClientRect(),left=p.querySelector('tbody th').getBoundingClientRect(),right=p.querySelector('tbody td:last-child').getBoundingClientRect();
@@ -218,5 +239,5 @@ module.exports = async function playerCases(sess, run) {
   `);
   if(process.env.OR_TRANSPORT_SHOTS) {await sess.evl('window.scrollTo(0,300)');await sess.saveShot('preview/home-transport-after.png',{captureBeyondViewport:false});}
   await sess.evl("location.hash='#/transport'");await sleep(100);
-  await run(`q('#tpOut [data-study-mode=all]').click();q('#tpPanel [data-transport-forbidden-sample]').click();click('tpSolveBtn');delete window.__tpPausedFrame;`);
+  await run(`q('#tpOut [data-study-mode=all]').click();forbiddenProblem();click('tpSolveBtn');delete window.__tpPausedFrame;`);
 };

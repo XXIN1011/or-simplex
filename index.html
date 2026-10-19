@@ -814,23 +814,38 @@ button.btn.primary:disabled{filter:none}
 .guide-actions{display:flex;gap:8px;flex-shrink:0}
 .draft-tools{margin-top:8px}
 .draft-tools .guide-note{margin:0}
-.problem-history{margin-top:8px}
-.problem-history>summary{min-height:44px;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:650;color:var(--fg)}
-.problem-history>summary::before{content:'＋';color:var(--accent)}
-.problem-history[open]>summary::before{content:'−'}
-.history-count{min-width:24px;text-align:center;color:var(--fg2);font-size:12px;font-weight:500}
+.problem-history{position:relative;margin-top:12px;padding-top:8px;border-top:1px solid var(--line)}
+.problem-history>summary{min-height:44px;display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none;font-size:14px;font-weight:650;color:var(--fg);padding-right:24px}
+.problem-history>summary::-webkit-details-marker{display:none}
+.problem-history>summary::after{content:'';position:absolute;right:4px;top:25px;width:6px;height:6px;border-right:1.5px solid var(--fg2);border-bottom:1.5px solid var(--fg2);transform:rotate(45deg)}
+.problem-history[open]>summary{padding-right:124px}
+.problem-history[open]>summary::after{transform:rotate(225deg);top:28px}
+.problem-history svg{display:block;width:16px;height:16px;flex:none}
+.problem-history>summary>svg{color:var(--fg2);width:18px;height:18px}
+.history-count{min-width:22px;padding:0 5px;border-radius:4px;background:var(--soft);text-align:center;color:var(--fg2);font-size:12px;font-weight:500;line-height:22px;font-variant-numeric:tabular-nums}
 .problem-history .guide-note:empty{display:none}
-.history-toolbar{display:flex;justify-content:flex-end;padding:4px 0 8px}
-.history-list{list-style:none;margin:0;padding:0;max-height:360px;overflow:auto;overscroll-behavior:contain}
-.history-list>li{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line2)}
-.history-info{flex:1;min-width:0}
-.history-info b{display:block;font-size:13px;line-height:1.6;overflow-wrap:anywhere}
-.history-info time{display:block;margin-top:2px;color:var(--fg2);font-size:12px}
-.history-info p{margin:4px 0 0;color:var(--fg2);font-size:12px;line-height:1.6;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.history-actions{display:flex;gap:6px;flex-shrink:0}
-.history-actions .btn,.history-toolbar .btn{min-height:44px}
-.history-delete{width:44px;padding:0;font-size:22px}
-@media(max-width:480px){.history-list>li{align-items:flex-start;flex-direction:column;gap:8px}.history-actions{align-self:flex-end}}
+.problem-history>.guide-note{margin:4px 0 8px}
+.history-toolbar{position:absolute;top:8px;right:28px}
+.history-toolbar .btn{display:flex;align-items:center;gap:6px;min-height:44px;padding:8px;border-color:transparent;background:transparent;box-shadow:none;color:var(--fg2);font-size:12px;font-weight:500}
+.history-toolbar button.btn:hover:not(:disabled),.history-actions button.history-delete:hover:not(:disabled){background:var(--err-soft);color:var(--err);border-color:transparent}
+.history-list{list-style:none;margin:8px 0 0;padding:0 8px 0 0;max-height:440px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line2) var(--soft);scrollbar-gutter:stable}
+.history-list>li{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;padding:16px 0;border-top:1px solid var(--line)}
+.history-info{min-width:0}
+.history-item-heading{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:2px 12px}
+.history-info b{font-size:14px;font-weight:650;line-height:1.6;overflow-wrap:anywhere}
+.history-info time{color:var(--fg2);font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.history-info p{margin:6px 0 0;color:var(--fg2);font:12px/1.8 var(--mono);overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.history-facts{display:flex;flex-wrap:wrap;gap:2px 20px;margin:6px 0 0;font-size:12px;line-height:1.7}
+.history-facts[hidden]{display:none}
+.history-facts>div{display:flex;gap:8px;min-width:0}
+.history-facts dt{flex:none;color:var(--fg2)}
+.history-facts dd{margin:0;min-width:0;font-family:var(--mono);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;color:var(--fg)}
+.history-actions{display:flex;align-items:center;gap:4px}
+.history-actions .btn{display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px}
+.history-actions .history-restore{padding:8px 12px;background:var(--accent-soft);border-color:transparent;color:var(--accent-text);font-weight:600}
+.history-actions button.history-restore:hover:not(:disabled){background:var(--accent-soft);border-color:var(--accent-text)}
+.history-actions .history-delete{width:44px;padding:0;border-color:transparent;background:transparent;box-shadow:none;color:var(--fg2)}
+@media(max-width:600px){.history-list{max-height:400px}.history-list>li{gap:10px;padding:14px 0}.history-item-heading{display:block}.history-info time{display:block;margin-top:2px}.history-facts{display:grid;gap:2px}.history-actions{flex-direction:column;gap:4px}.history-actions .history-restore{padding:8px;min-width:64px}.history-actions .history-delete{align-self:flex-end}.history-info b{font-size:13px}}
 .input-guide.has-model>.guide-note,.input-guide.has-model .guide-intro p{display:none}
 /* 费用矩阵有更多行：收紧辅助区间距，并让求解紧接矩阵，长说明接在操作之后。
    44px 的按钮和折叠入口保持不变，避免主操作落在浮动导航的遮挡位置。 */
@@ -877,7 +892,7 @@ button.btn.primary:disabled{filter:none}
 #mod-transport{max-width:1000px;margin:0 auto}
 #mod-transport>header{margin-bottom:16px}
 /* 原始输入直接融入表格；仅在编辑或错误时标出当前输入。 */
-#tpInTbl input.num{border:0;border-radius:0;background:transparent;box-shadow:none}
+#tpInTbl input.num{border:0;border-radius:0;background:transparent;box-shadow:none;font-weight:400}
 #tpInTbl input.num:focus{outline:2px solid var(--accent);outline-offset:-2px;background:var(--accent-soft);box-shadow:none}
 #tpInTbl input.num[aria-invalid="true"]{outline:2px solid var(--err);outline-offset:-2px;background:var(--err-soft);box-shadow:none}
 #tpPanel .input-guide{margin-bottom:12px;padding-bottom:12px}
@@ -887,26 +902,19 @@ button.btn.primary:disabled{filter:none}
 #tpPanel .guide-actions{flex-wrap:wrap}
 #tpPanel .ctrls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;max-width:560px;margin-inline:auto}
 #tpPanel .ctrls .btn{padding:8px 4px;min-width:0}
-.tp-input-tools{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;margin-top:12px}
-.tp-input-tools .sens-note{margin:0;flex:1;min-width:160px}
-.tp-input-tools .btn{flex-shrink:0}
+.tp-input-note{margin:12px 0 0}
 .tp-extra>summary{min-height:44px;display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--fg2);font-size:13px;font-weight:600}
 .tp-extra>summary::before{content:'＋';color:var(--accent)}
 .tp-extra[open]>summary::before{content:'−'}
 .tp-extra>p{font-size:13px;line-height:1.7;color:var(--fg2);margin:4px 0 12px}
 .tp-help{margin-top:8px;border-top:1px solid var(--line)}
-.tp-fee-options{margin-top:8px}
-.tp-result-overview{display:grid;gap:12px;margin-bottom:16px}
-.tp-result-overview .verdict{margin:0}
-.tp-result-facts{display:flex;flex-wrap:wrap;gap:12px 24px;margin:0;align-content:center}
-.tp-result-facts div{flex:1;min-width:110px}
-.tp-result-facts dt{font-size:13px;color:var(--fg2)}
-.tp-result-facts dd{font:600 18px/1.6 var(--mono);margin:2px 0 0;color:var(--fg);overflow-wrap:anywhere}
 #tpOut .tp-step-lead{margin:4px 0 10px;font-size:14px;line-height:1.8}
 #tpOut .tp-step-guard{color:var(--warn);font-size:13px;line-height:1.7}
 #tpOut .tp-step-total{margin:12px 0 0;font-size:14px;font-weight:600}
+#tpOut .tp-check-notes{display:grid;gap:6px;margin-top:14px;line-height:1.8}
+#tpOut .tp-check-notes p{margin:0}
+#tpOut .tp-check-verdict{font-size:14px;font-weight:600}
 #tpOut .tp-formula{font-size:14px;line-height:1.9;margin:10px 0;overflow-wrap:anywhere}
-@media(min-width:768px){.tp-result-overview{grid-template-columns:minmax(200px,1fr) 1fr;gap:24px;align-items:center}}
 @media(max-width:480px){#tpPanel .guide-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}#tpPanel .guide-actions .btn{padding:8px}}
 .transport-table caption,.transport-input caption,.tp-caption{text-align:left;color:var(--fg2);font-size:13px;padding:12px 0;white-space:normal}
 .tp-caption{margin:0;line-height:1.6}
@@ -934,6 +942,7 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
   background:var(--cell-bg);font:600 26px/1.15 var(--mono);color:var(--fg2)}
 /* 运量：居中的主数字；正负号在左边并染色 */
 .tp-value{display:inline-block;font-size:20px;font-weight:600;line-height:1.1;color:var(--fg)}
+.transport-table .tp-cross{color:var(--fg2);font-weight:400}
 .tp-sgn{display:inline-block;margin-right:5px;font-size:18px;line-height:22px;font-weight:700;vertical-align:middle}
 .tp-plus-cell .tp-sgn{color:var(--accent-text)}
 .tp-minus-cell .tp-sgn{color:var(--warn)}
@@ -957,12 +966,7 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
 .transport-input .tp-margin{background:var(--soft)}
 .tp-blocked,.transport-table td.tp-virtual{--cell-bg:var(--soft);background:var(--soft);color:var(--fg2)}
 .tp-blocked .num{font-weight:700}
-.tp-fee-options>summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:650}
-.tp-fee-options>summary::before{content:'＋';margin-right:8px;color:var(--accent)}
-.tp-fee-options[open]>summary::before{content:'−'}
-.tp-fee-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;padding:8px 0}
-.tp-fee-fields label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px}
-.transport-table tfoot,.transport-input tfoot{font-weight:650}
+.transport-table tfoot{font-weight:650}
 #tpOut h3{margin:0 0 12px;font-size:18px;line-height:1.5}
 #tpOut p{overflow-wrap:anywhere}
 .tp-stage{display:inline-block;position:relative;min-width:100%;vertical-align:top}
@@ -975,7 +979,8 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
 /* 演示表有自己的固定列：滚动容器不再沿用卡片的全出血内边距，
    否则固定列贴不到可视区边缘，外侧会漏出 20px 的文字碎片。 */
 .tp-player .scroll{margin-left:0;margin-right:0;padding-left:0;padding-right:0}
-.tp-player-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.tp-player-controls{display:flex;flex-wrap:nowrap;align-items:center;gap:8px;max-width:100%;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:thin;scrollbar-color:var(--line2) var(--soft)}
+.tp-player-controls>*{flex-shrink:0;white-space:nowrap}
 .tp-player-controls .btn{min-height:44px}
 /* 播放键是这一步的主操作：实心底 + 播放/暂停字形（字形用伪元素，按钮文案不变）。 */
 .tp-player-controls [data-tp-play]{min-width:98px;background:var(--button-bg);border-color:transparent;color:var(--button-fg);font-weight:650}
@@ -985,9 +990,9 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
 .tp-player-controls [data-tp-prev]::before{content:'‹';margin-right:5px;font-size:15px;line-height:1}
 .tp-player-controls [data-tp-next]::after{content:'›';margin-left:5px;font-size:15px;line-height:1}
 .tp-player-controls [data-tp-reset]{color:var(--fg2)}
-.tp-speed{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--fg2)}
+.tp-speed{display:flex;align-items:center;gap:8px;margin-left:8px;font-size:12px;color:var(--fg2)}
 .tp-speed select{min-height:44px;font:inherit;font-size:13px;color:var(--fg);background:var(--input);border:1px solid var(--control-line);border-radius:var(--r-sm);padding:6px 10px}
-.tp-player-progress{font-size:13px;font-weight:650;color:var(--accent-text);line-height:1.7}
+.tp-player-progress{margin:0 0 0 auto;padding-left:8px;font-size:13px;font-weight:650;color:var(--accent-text);line-height:1.7;font-variant-numeric:tabular-nums}
 .tp-scene-title{font-size:16px;line-height:1.5;margin:16px 0 8px}
 .tp-player .transport-table td{min-width:112px;height:134px;padding:46px 0 18px}
 .tp-player .tp-stage{isolation:isolate}
@@ -1092,7 +1097,8 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
   .tp-player .transport-table tr>:last-child{width:50px;min-width:50px}
   .tp-player-controls{gap:6px}
   .tp-player-controls [data-tp-play]{min-width:84px}
-  .tp-player-progress{font-size:12px;margin:6px 0}
+  .tp-speed{margin-left:4px}
+  .tp-player-progress{font-size:12px}
   .tp-scene-title{font-size:15px;margin:10px 0 6px}
   .tp-route{margin:8px 0;gap:4px}
   .tp-route-item{padding:3px 7px 3px 4px}
@@ -7022,11 +7028,8 @@ function transport() {
   return { direction: 'min', cost: [[6,16,5,2],[9,2,5,8],[15,13,11,6]],
     supply: [20,30,25], demand: [10,25,20,20] };
 }
-function transportForbidden() {
-  return { direction: 'min', cost: [[1,2],[3,'M']], supply: [5,5], demand: [5,5] };
-}
 module.exports = { linear: linear, integer: integer, assignment: assignment,
-  transport: transport, transportForbidden: transportForbidden };
+  transport: transport };
 });
 
 __define__("src/web/graph.js", function (module, exports, require) {
@@ -8415,10 +8418,16 @@ function createHistory(key, valid, storage, now) {
 
 function describe(p) {
   var direction = p.direction === 'max' ? '最大化' : '最小化';
-  if (p.cells) return { title: (p.supply ? '运输 · ' : '') + direction + ' · ' + p.rows + ' 行 × ' + p.cols + ' 列',
-    preview: p.cells.map(function (row) { return '[' + row.join(', ') + ']'; }).join(' ')
-      + (p.supply ? '；供应 [' + p.supply.join(', ') + ']；需求 [' + p.demand.join(', ') + ']；处理费 ['
-        + p.surplusCost.join(', ') + ']；罚金 [' + p.shortageCost.join(', ') + ']' : '') };
+  if (p.supply) return {
+    title: (p.direction === 'max' ? '最大收益' : '最小运费') + ' · ' + p.rows + ' 产地 × ' + p.cols + ' 销地',
+    preview: (p.direction === 'max' ? '收益' : '运费') + '：' + p.cells.map(function (row) {
+      return '[' + row.map(function (value) { return value === '' ? '0' : value; }).join(', ') + ']';
+    }).join('  '),
+    facts: [['供应', p.supply.map(function (v) { return v === '' ? '0' : v; }).join(' / ')],
+      ['需求', p.demand.map(function (v) { return v === '' ? '0' : v; }).join(' / ')]]
+  };
+  if (p.cells) return { title: direction + ' · ' + p.rows + ' 行 × ' + p.cols + ' 列',
+    preview: p.cells.map(function (row) { return '[' + row.join(', ') + ']'; }).join(' ') };
   var title = direction + ' · ' + p.c.length + ' 个变量 · ' + p.constraints.length + ' 条约束';
   var preview = 'c = [' + p.c.join(', ') + ']；b = ['
     + p.constraints.map(function (k) { return k.rhs; }).join(', ') + ']';
@@ -8432,11 +8441,17 @@ function describe(p) {
 
 function attach(cfg) {
   var history = createHistory(cfg.key, cfg.valid);
+  function icon(path) {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + path + '</svg>';
+  }
+  var removeIcon = icon('<path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/>');
+  var restoreIcon = icon('<path d="M4 4v6h6M4.6 10a8 8 0 1 1 .8 7"/>');
   var details = document.createElement('details');
   details.className = 'problem-history';
-  details.innerHTML = '<summary>历史记录 <span class="history-count">0</span></summary>'
+  details.innerHTML = '<summary>' + icon('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>')
+    + '<span>历史记录</span><span class="history-count">0</span></summary>'
     + '<p class="guide-note" role="status" aria-live="polite"></p>'
-    + '<div class="history-toolbar"><button type="button" class="btn" data-history-clear>清空记录</button></div>'
+    + '<div class="history-toolbar"><button type="button" class="btn" data-history-clear>' + removeIcon + '<span>清空记录</span></button></div>'
     + '<ol class="history-list"></ol>';
   cfg.mount.querySelector('.input-guide').appendChild(details);
   var summary = details.querySelector('summary');
@@ -8455,15 +8470,24 @@ function attach(cfg) {
     list.innerHTML = '';
     items.forEach(function (item) {
       var row = document.createElement('li');
-      row.innerHTML = '<div class="history-info"><b></b><time></time><p></p></div>'
-        + '<div class="history-actions"><button type="button" class="btn" data-history-restore>恢复</button>'
-        + '<button type="button" class="btn history-delete" data-history-delete title="删除这条记录" aria-label="删除这条记录">×</button></div>';
+      row.innerHTML = '<div class="history-info"><div class="history-item-heading"><b></b><time></time></div><p></p><dl class="history-facts"></dl></div>'
+        + '<div class="history-actions"><button type="button" class="btn history-restore" data-history-restore>' + restoreIcon + '<span>恢复</span></button>'
+        + '<button type="button" class="btn history-delete" data-history-delete title="删除这条记录" aria-label="删除这条记录">' + removeIcon + '</button></div>';
       var description = describe(item.data);
       row.querySelector('b').textContent = description.title;
       var time = row.querySelector('time');
       time.dateTime = new Date(item.savedAt).toISOString();
-      time.textContent = new Date(item.savedAt).toLocaleString();
+      time.textContent = new Date(item.savedAt).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+      time.title = new Date(item.savedAt).toLocaleString();
       row.querySelector('p').textContent = description.preview;
+      row.querySelector('p').title = description.preview;
+      var facts = row.querySelector('.history-facts');
+      facts.hidden = !description.facts;
+      (description.facts || []).forEach(function (fact) {
+        var pair = document.createElement('div'), label = document.createElement('dt'), value = document.createElement('dd');
+        label.textContent = fact[0]; value.textContent = fact[1];
+        pair.appendChild(label); pair.appendChild(value); facts.appendChild(pair);
+      });
       row.querySelector('[data-history-restore]').addEventListener('click', function () {
         cfg.restore(JSON.parse(JSON.stringify(item.data)));
         details.open = false;
@@ -9930,6 +9954,11 @@ function routeList(s, frame) {
       + '<span class="tp-route-sign" aria-label="' + (c.sign > 0 ? '加' : '减') + '">' + (c.sign > 0 ? '+' : '−') + '</span></li>';
   }).join('') + '</ol>';
 }
+function thetaFormula(s) {
+  return 'θ = min{' + s.cycle.filter(function (c) { return c.sign < 0; }).map(function (c) {
+    return num(s.beforeAllocation[c.i][c.j]);
+  }).join(', ') + '} = ' + num(s.theta);
+}
 function scene(m, s, frame) {
   var last = count(s) - 1, done = frame === last, long = longLoop(s);
   var values = done ? s.allocation : s.beforeAllocation, basis = done ? s.basis : s.beforeBasis;
@@ -9962,13 +9991,13 @@ function scene(m, s, frame) {
       + (frame === s.cycle.length ? '路径已连通，下一帧闭合回路并比较负号格运量。' : '此时只标记路径。');
   } else if (!done) {
     title = '从负号格确定调整量';
-    note = 'θ = 负号格的最小运量 = ' + num(s.theta) + '；离基格 ' + cellName(s.leaving) + '，并列时取下标最小者。';
+    note = thetaFormula(s) + '；取负号格的最小运量。离基格 ' + cellName(s.leaving) + '，并列时取下标最小者。';
   } else if (s.theta === 0) {
     title = '退化换基：只换基，运量不变';
-    note = 'θ = 0：运量不变，只交换入基格与离基格的基身份。';
+    note = thetaFormula(s) + '：运量不变，只交换入基格与离基格的基身份。';
   } else {
     title = '同步调整运量与基身份';
-    note = 'θ = ' + num(s.theta) + '：正负号格同步调整，显示算法记录的调整后方案。';
+    note = thetaFormula(s) + '：正负号格同步调整，显示算法记录的调整后方案。';
   }
   h += routeList(s, long ? s.cycle.length : frame);
   var maximizing = m.direction === 'max';
@@ -9986,9 +10015,9 @@ function render(m, s, index) {
     + '<div class="tp-player-controls" role="group" aria-label="演示播放控制">'
     + '<button type="button" class="btn" data-tp-prev disabled>上一帧</button><button type="button" class="btn" data-tp-play aria-pressed="false">播放</button>'
     + '<button type="button" class="btn" data-tp-next>下一帧</button><button type="button" class="btn" data-tp-reset>重播</button>'
-    + '<label class="tp-speed">帧间隔<select data-tp-speed aria-label="演示帧间隔"><option value="1000">1 秒</option><option value="1800">1.8 秒</option><option value="600">0.6 秒</option></select></label></div>'
+    + '<label class="tp-speed">帧间隔<select data-tp-speed aria-label="演示帧间隔"><option value="1000">1 秒</option><option value="1800">1.8 秒</option><option value="600">0.6 秒</option></select></label>'
+    + '<p class="tp-player-progress" role="status" aria-live="polite">第 1 / ' + count(s) + ' 帧 · 等待播放</p></div>'
     + '<p class="sens-note tp-motion-note" hidden>已启用减少动态效果：请用上一帧 / 下一帧查看。</p>'
-    + '<p class="tp-player-progress" role="status" aria-live="polite">第 1 / ' + count(s) + ' 帧 · 等待播放</p>'
     + '<div class="tp-scene">' + scene(m, s, 0).html + '</div></section>';
 }
 function wire(root, result) {
@@ -10138,7 +10167,7 @@ function wire(root, result) {
 }
 /* frames / scene 导出给单测：帧结构（长回路合并、退化换基少一帧）是被断言的行为，
    不靠浏览器才能验证。产品代码只用 render / wire。 */
-module.exports = { render: render, wire: wire, frames: count, scene: scene };
+module.exports = { render: render, wire: wire, frames: count, scene: scene, thetaFormula: thetaFormula };
 });
 
 __define__("src/web/transport-report.js", function (module, exports, require) {
@@ -10156,7 +10185,7 @@ function balanceNote(m) {
   if (!m.virtual) return h + '供需平衡。';
   h += m.virtual.type === 'surplus' ? '补虚拟销地 ' : '补虚拟产地 ';
   h += num(m.virtual.amount) + '，表示' + (m.virtual.type === 'surplus' ? '剩余供应' : '缺货') + '，不作实运。';
-  return h + '默认零费用；可另设处理费或罚金。';
+  return h + '虚拟线路按零费用计算。';
 }
 function stepContent(m, s, index) {
   var title, h = '', values = s.allocation, loop = null, options = {};
@@ -10172,21 +10201,28 @@ function stepContent(m, s, index) {
         + ' 单位无法匹配，已缩减分配。瓶颈：' + s.blockedCutRows.map(function (i) { return rowName(m, i); }).join('、') + '。</p>' : '');
   } else if (s.type === 'initial') {
     title = '初始可行方案（尚未检验最优）';
-    h += '<p>零值基：'
-      + (s.zeroBasics.length ? s.zeroBasics.map(cellName).join('、') : '无需补入')
-      + '（运量 0）。</p><details class="tp-extra"><summary>基与连通分量</summary><p>' + m.components + ' 个连通分量，m+n−k = ' + m.basisSize + ' 个基格；补基按下标，不形成回路。</p></details>';
+    h += '<details class="tp-extra"><summary>基与连通分量</summary><p>' + m.components + ' 个连通分量，m+n−k = ' + m.basisSize + ' 个基格；补基按下标，不形成回路。</p></details>';
   } else if (s.type === 'potentials') {
     title = s.entering ? '位势法：选择入基格' : '位势法：最优性检验';
-    h += '<p class="tp-formula">基格：uᵢ + vⱼ = c′ᵢⱼ<br>检验数：Δᵢⱼ = c′ᵢⱼ − uᵢ − vⱼ</p>'
-      + table(m, s.reduced, null, null, '位势与检验数 Δ（基格 Δ = 0）', true,
-        { rowMargins: s.u, colMargins: s.v, rowLabel: '行位势 u', colLabel: '列位势 v', cornerLabel: '—',
+    var potentialValues = s.reduced.map(function (row, i) { return row.map(function (delta, j) {
+      return s.basis[i][j] ? s.allocation[i][j] : delta;
+    }); });
+    h += '<p class="tp-formula">基格：uᵢ + vⱼ = c′ᵢⱼ<br>非基格检验数：Δᵢⱼ = c′ᵢⱼ − uᵢ − vⱼ</p>'
+      + table(m, potentialValues, s.basis, null, '位势表：左上角为' + (maximizing ? '工作费用' : '运费') + '，框内为基变量运量，其余为检验数 Δ', false,
+        { costMatrix: maximizing ? m.working : m.cost, selected: s.entering, selectedLabel: '入基格', rowMargins: s.u, colMargins: s.v, rowLabel: '行位势 u', colLabel: '列位势 v', cornerLabel: '—',
           rowMarginAttr: 'data-tp-u', colMarginAttr: 'data-tp-v', rowMarginClass: 'tp-u', colMarginClass: 'tp-v' })
-      + '<p>' + (s.entering ? '选负检验数格 ' + cellName(s.entering) + ' 入基（按下标）。' : '可运格 Δ ≥ −容差，当前方案最优。') + '禁运格不参与检验。</p>';
+      + '<div class="tp-check-notes"><p class="tp-check-verdict">' + (s.entering ? '选负检验数格 ' + cellName(s.entering) + ' 入基（按下标）。' : '所有可运格的检验数 Δ ≥ 0，当前方案最优。') + '</p>'
+      + '<p class="sens-note">禁运格不参与检验。</p></div>';
   } else {
     title = '闭回路调整 · 第 ' + s.iteration + ' 轮';
     values = s.beforeAllocation; loop = s.cycle;
-    h += '<p class="tp-step-lead">θ = <b>' + num(s.theta) + '</b> · 离基 ' + cellName(s.leaving) + ' · θΔ = ' + num(s.workingDelta)
+    h += '<p class="tp-step-lead">' + player.thetaFormula(s) + ' · 离基 ' + cellName(s.leaving)
       + (s.theta === 0 ? '；只换基，运量不变。' : '') + '</p>';
+  }
+  if (s.type === 'allocation' || s.type === 'initial') {
+    options.markExhausted = true;
+    options.remainingSupply = s.remainingSupply;
+    options.remainingDemand = s.remainingDemand;
   }
   if (maximizing) options.costMatrix = m.working;
   options.hideCaption = s.type === 'allocation' || s.type === 'initial';
@@ -10208,25 +10244,22 @@ function render(res) {
       + '<p>' + balanceNote(m) + '</p>' + table(m, m.cost, null, null, '平衡后运输表与禁运瓶颈', true,
         { cutRows: f.cutRows, cutCols: f.cutCols }) + '</div>';
   }
-  var h = '<div class="card tp-result"><div class="tp-result-overview"><div class="verdict ' + (optimal ? 'opt' : 'no') + '"><div class="vtitle">'
-    + (optimal ? m.direction === 'max' ? '最优净收益' : '最小总费用' : res.feasible ? '当前可行方案（未确认最优）' : '数值校验未通过（未确认最优）') + '</div>'
-    + '<div class="sol">z = <span class="zv">' + num(res.objective) + '</span></div></div>'
-    + '<dl class="tp-result-facts"><div><dt>线路' + (m.direction === 'max' ? '收益' : '费用') + '</dt><dd>' + num(res.realObjective)
-    + '</dd></div><div><dt>处理费 / 罚金</dt><dd>' + num(res.penalty) + '</dd></div></dl></div>';
+  var h = '<div class="card tp-result"><div class="verdict ' + (optimal ? 'opt' : 'no') + '"><div class="vtitle">'
+    + (optimal ? m.direction === 'max' ? '最大总收益' : '最小总费用' : res.feasible ? '当前可行方案（未确认最优）' : '数值校验未通过（未确认最优）') + '</div>'
+    + '<div class="sol">z = <span class="zv">' + num(res.objective) + '</span></div></div>';
   if (!optimal) h += '<p>' + esc(res.message) + '</p>';
   if (res.surplus) h += '<p class="tp-balance">剩余供应：' + res.surplus.map(function (v, i) { return '产地' + (i + 1) + '：' + num(v); }).join('；') + '。</p>';
   if (res.shortage) h += '<p class="tp-balance">缺货量：' + res.shortage.map(function (v, j) { return '销地' + (j + 1) + '：' + num(v); }).join('；') + '。</p>';
   h += table(m, res.allocation, res.basis, null, optimal ? '最终最优运输方案' : '当前运输方案', false)
     + '<p class="sens-note">角标：原' + (m.direction === 'max' ? '收益' : '费用') + ' · 中间：运量 · 细框：基变量（含零值基）</p>';
-  if (optimal && res.multipleOptimal) h += '<p>存在多重最优（θ = ' + num(res.alternative.theta) + '）。</p>';
+  if (optimal && res.multipleOptimal) h += '<p>存在多重最优（' + player.thetaFormula({ cycle: res.alternative.cycle, beforeAllocation: res.allocation, theta: res.alternative.theta }) + '）。</p>';
   if (res.alternative) h += '<details><summary>查看另一个最优方案</summary>' + table(m, res.alternative.allocation, null, res.alternative.cycle, '另一最优运输方案（原目标 ' + num(res.alternative.objective) + '）', false) + '</details>';
   h += '</div>' + layout.navigation([['transport-derivation', '查看完整推导 / 单步学习']]);
   var contents = res.steps.map(function (s, i) { return stepContent(m, s, i); });
   if (m.direction === 'max') contents.push({ title: optimal ? '最大收益还原' : '当前方案收益还原',
     html: '<article class="card"><h3>' + (contents.length + 1) + '. ' + (optimal ? '最大收益还原' : '当前方案收益还原')
-      + '</h3><p>按原收益结算' + (optimal ? '最大净收益' : '当前净收益（未确认最优）') + '。</p>'
+      + '</h3><p>按原收益结算' + (optimal ? '最大总收益' : '当前总收益（未确认最优）') + '。</p>'
       + table(m, res.allocation, res.basis, null, '按原收益结算最终运量', false)
-      + '<p>收益 ' + num(res.realObjective) + ' − 费用 ' + num(res.penalty) + ' = ' + num(res.objective) + '。</p>'
       + '<p>工作目标 ' + num(res.workingObjective) + ' · 总运量 Q = ' + num(m.total) + '</p>'
       + '<p class="tp-formula">还原 z = R × Q − 工作目标 = ' + num(res.objective)
       + '<br>' + num(m.maxReward) + ' × ' + num(m.total) + ' − ' + num(res.workingObjective) + ' = ' + num(res.objective) + '</p></article>' });
@@ -10237,7 +10270,7 @@ function render(res) {
     + (m.direction === 'max' ? '<p class="tp-formula">最大收益 R = ' + num(m.maxReward) + '；c′ᵢⱼ = R − 原收益ᵢⱼ。</p>' : '')
     + (m.direction === 'max' ? table(m, m.working, null, null, '进入最小化算法的工作费用 c′ᵢⱼ = R − 原收益ᵢⱼ（R = ' + num(m.maxReward) + '）', true) : '')
     + '<p class="sens-note">禁运格不参与计算；有禁运时先验可行性。</p>'
-    + (m.direction === 'max' ? '<p class="sens-note">虚拟格收益为负费用；过程使用 c′，末步还原原收益。</p>' : '') + '</div>'
+    + (m.direction === 'max' ? '<p class="sens-note">虚拟格原收益为 0；过程使用 c′，末步还原原收益。</p>' : '') + '</div>'
     + study.group(contents, '运输问题逐步推导') + '</section></details>';
   return h;
 }
@@ -10285,9 +10318,14 @@ function table(m, values, basis, loop, caption, costs, options) {
       + (cut ? '<small class="tp-sub">瓶颈产地</small>' : '') + '</th>';
     for (j = 0; j < m.cols; j++) {
       var key = i + '-' + j, hit = at[key], selected = same(o.selected, i, j), active = same(o.active, i, j), tie = false;
+      var basic = basis && basis[i][j];
+      var exhausted = o.markExhausted && !basic && m.allowed[i][j]
+        && (o.remainingSupply[i] === 0 || o.remainingDemand[j] === 0);
+      var unassigned = o.markExhausted && !basic && values[i][j] === 0;
       (o.ties || []).forEach(function (c) { if (same(c, i, j)) tie = true; });
       var cls = 'tp-cell';
       if (!m.allowed[i][j]) cls += ' tp-blocked';
+      if (exhausted) cls += ' tp-exhausted';
       if (j >= m.n || i >= m.m) cls += ' tp-virtual';
       if (hit) cls += ' tp-cycle ' + (hit.sign === '+' ? 'tp-plus-cell' : 'tp-minus-cell');
       if (basis && basis[i][j]) cls += ' tp-has-base';
@@ -10305,7 +10343,9 @@ function table(m, values, basis, loop, caption, costs, options) {
       if (!costs) h += '<b class="tp-cost">' + num(costMatrix[i][j]) + '</b>';
       if (hit) h += '<i class="tp-anchor"></i>';
       if (hit) h += '<span class="tp-sgn">' + hit.sign + '</span>';
-      h += '<span class="mono tp-value">' + num(values[i][j]) + '</span>';
+      if (exhausted) h += '<span class="mono tp-value tp-cross" role="img" aria-label="供需已耗尽，不再分配">×</span>';
+      else if (unassigned) h += '<span class="tp-sr">未分配</span>';
+      else h += '<span class="mono tp-value">' + num(values[i][j]) + '</span>';
       if (basis && basis[i][j]) h += '<span class="tp-basis tp-sr">基</span>';
       var tags = [];
       if (selected) tags.push(esc(o.selectedLabel || '本次选择'));
@@ -10316,11 +10356,11 @@ function table(m, values, basis, loop, caption, costs, options) {
       if (tags.length) h += '<small class="tp-tag">' + tags.join(' · ') + '</small>';
       h += '</td>';
     }
-    h += '<td ' + rowAttr + '="' + i + '" class="mono' + rowCls + (o.selected && o.selected.i === i ? ' tp-margin-active' : '') + '">' + num(rowMargins[i]) + '</td></tr>';
+    h += '<td ' + rowAttr + '="' + i + '" class="mono' + rowCls + (o.selected && o.selected.i === i ? ' tp-margin-active' : '') + '"><span class="tp-value">' + num(rowMargins[i]) + '</span></td></tr>';
   }
   h += '</tbody><tfoot><tr><th scope="row">' + colLabel + '</th>';
-  for (j = 0; j < m.cols; j++) h += '<td ' + colAttr + '="' + j + '" class="mono' + colCls + (o.selected && o.selected.j === j ? ' tp-margin-active' : '') + '">' + num(colMargins[j]) + '</td>';
-  return h + '<td class="mono">' + cornerLabel + '</td></tr></tfoot></table></div></div>';
+  for (j = 0; j < m.cols; j++) h += '<td ' + colAttr + '="' + j + '" class="mono' + colCls + (o.selected && o.selected.j === j ? ' tp-margin-active' : '') + '"><span class="tp-value">' + num(colMargins[j]) + '</span></td>';
+  return h + '<td class="mono"><span class="tp-value">' + cornerLabel + '</span></td></tr></tfoot></table></div></div>';
 }
 module.exports = { table: table, num: num, rowName: rowName, colName: colName, cellName: cellName };
 });
@@ -10344,8 +10384,7 @@ var draft = require('./draft.js');
   function number(raw) { return parseNumber(raw, true); }
   function problem() {
     return { direction: state.direction, cost: state.cells.map(function (r) { return r.map(function (v) { return transport.isForbidden(v) ? v : number(v); }); }),
-      supply: state.supply.map(number), demand: state.demand.map(number),
-      surplusCost: state.surplusCost.map(number), shortageCost: state.shortageCost.map(number) };
+      supply: state.supply.map(number), demand: state.demand.map(number) };
   }
   function syncBalance() {
     var m = transport.validate(problem());
@@ -10386,10 +10425,6 @@ var draft = require('./draft.js');
       h += '<td>—</td></tr></tfoot>';
     }
     $('tpInTbl').innerHTML = h;
-    var fees = '<div class="tp-fee-fields">';
-    for (i = 0; i < state.rows; i++) fees += '<label>产地' + (i + 1) + '处理费 ' + input('surplusCost', i, undefined, '产地' + (i + 1) + '单位剩余处理费') + '</label>';
-    for (j = 0; j < state.cols; j++) fees += '<label>销地' + (j + 1) + '罚金 ' + input('shortageCost', j, undefined, '销地' + (j + 1) + '单位缺货罚金') + '</label>';
-    $('tpFees').innerHTML = fees + '</div>';
     $('tpAddRow').disabled = state.rows >= MAX; $('tpDelRow').disabled = !state.rows;
     $('tpAddCol').disabled = state.cols >= MAX; $('tpDelCol').disabled = !state.cols;
     Array.prototype.forEach.call($('tpDirSeg').querySelectorAll('button'), function (b) {
@@ -10411,7 +10446,10 @@ var draft = require('./draft.js');
   function load(p) {
     state.direction = p.direction;
     state.cells = p.cells.map(function (r) { return r.slice(); });
-    ['supply', 'demand', 'surplusCost', 'shortageCost'].forEach(function (k) { state[k] = p[k].slice(); });
+    ['supply', 'demand'].forEach(function (k) { state[k] = p[k].slice(); });
+    /* 保留草稿结构兼容性；已移除的费用配置不从旧题恢复，也不参与网页求解。 */
+    state.surplusCost = p.supply.map(function () { return ''; });
+    state.shortageCost = p.demand.map(function () { return ''; });
     state.rows = p.rows; state.cols = p.cols;
     invalidate(); renderInput();
   }
@@ -10420,23 +10458,17 @@ var draft = require('./draft.js');
     addVar: 'tpAddRow', delVar: 'tpDelRow', addCon: 'tpAddCol', delCon: 'tpDelCol',
     labels: { addVar: '+ 产地', delVar: '− 产地', addCon: '+ 销地', delCon: '− 销地' } });
   var extras = document.createElement('div');
-  extras.innerHTML = '<div class="tp-input-tools"><p class="sens-note">空白=0 · 支持分数 · M 禁运</p>'
-    + '<button type="button" class="btn" data-transport-forbidden-sample>禁运示例</button></div>'
+  extras.innerHTML = '<p class="sens-note tp-input-note">空白=0 · 支持分数 · M 禁运</p>'
     + '<p class="tp-balance" id="tpBalance" role="status" aria-live="polite"></p>'
-    + '<details class="tp-fee-options"><summary>处理费与缺货罚金</summary>'
-    + '<p class="sens-note">每单位计费，默认 0；最大化时扣除。</p>'
-    + '<div id="tpFees"></div></details><div id="tpVirtual"></div>';
+    + '<div id="tpVirtual"></div>';
   $('tpPanel').appendChild(extras);
-  /* 主操作紧接供需状态，费用和补齐表作为后续可选配置。 */
-  extras.insertBefore($('tpSolveBtn').parentNode, extras.querySelector('.tp-fee-options'));
+  /* 主操作紧接供需状态，补齐表作为后续可选查看内容。 */
+  extras.insertBefore($('tpSolveBtn').parentNode, $('tpVirtual'));
   function loadExample(p) {
     load({ direction: p.direction, rows: p.supply.length, cols: p.demand.length,
       cells: p.cost.map(function (r) { return r.map(String); }), supply: p.supply.map(String), demand: p.demand.map(String),
       surplusCost: p.supply.map(function () { return ''; }), shortageCost: p.demand.map(function () { return ''; }) });
   }
-  extras.querySelector('[data-transport-forbidden-sample]').addEventListener('click', function () {
-    loadExample(require('./examples.js').transportForbidden());
-  });
   Array.prototype.forEach.call($('tpDirSeg').querySelectorAll('button'), function (b) {
     b.textContent = b.dataset.dir === 'min' ? '最小运费' : '最大收益';
     b.addEventListener('click', function () { state.direction = b.dataset.dir; invalidate(); renderInput(); });

@@ -39,10 +39,16 @@ function createHistory(key, valid, storage, now) {
 
 function describe(p) {
   var direction = p.direction === 'max' ? '最大化' : '最小化';
-  if (p.cells) return { title: (p.supply ? '运输 · ' : '') + direction + ' · ' + p.rows + ' 行 × ' + p.cols + ' 列',
-    preview: p.cells.map(function (row) { return '[' + row.join(', ') + ']'; }).join(' ')
-      + (p.supply ? '；供应 [' + p.supply.join(', ') + ']；需求 [' + p.demand.join(', ') + ']；处理费 ['
-        + p.surplusCost.join(', ') + ']；罚金 [' + p.shortageCost.join(', ') + ']' : '') };
+  if (p.supply) return {
+    title: (p.direction === 'max' ? '最大收益' : '最小运费') + ' · ' + p.rows + ' 产地 × ' + p.cols + ' 销地',
+    preview: (p.direction === 'max' ? '收益' : '运费') + '：' + p.cells.map(function (row) {
+      return '[' + row.map(function (value) { return value === '' ? '0' : value; }).join(', ') + ']';
+    }).join('  '),
+    facts: [['供应', p.supply.map(function (v) { return v === '' ? '0' : v; }).join(' / ')],
+      ['需求', p.demand.map(function (v) { return v === '' ? '0' : v; }).join(' / ')]]
+  };
+  if (p.cells) return { title: direction + ' · ' + p.rows + ' 行 × ' + p.cols + ' 列',
+    preview: p.cells.map(function (row) { return '[' + row.join(', ') + ']'; }).join(' ') };
   var title = direction + ' · ' + p.c.length + ' 个变量 · ' + p.constraints.length + ' 条约束';
   var preview = 'c = [' + p.c.join(', ') + ']；b = ['
     + p.constraints.map(function (k) { return k.rhs; }).join(', ') + ']';
@@ -56,11 +62,17 @@ function describe(p) {
 
 function attach(cfg) {
   var history = createHistory(cfg.key, cfg.valid);
+  function icon(path) {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + path + '</svg>';
+  }
+  var removeIcon = icon('<path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/>');
+  var restoreIcon = icon('<path d="M4 4v6h6M4.6 10a8 8 0 1 1 .8 7"/>');
   var details = document.createElement('details');
   details.className = 'problem-history';
-  details.innerHTML = '<summary>历史记录 <span class="history-count">0</span></summary>'
+  details.innerHTML = '<summary>' + icon('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>')
+    + '<span>历史记录</span><span class="history-count">0</span></summary>'
     + '<p class="guide-note" role="status" aria-live="polite"></p>'
-    + '<div class="history-toolbar"><button type="button" class="btn" data-history-clear>清空记录</button></div>'
+    + '<div class="history-toolbar"><button type="button" class="btn" data-history-clear>' + removeIcon + '<span>清空记录</span></button></div>'
     + '<ol class="history-list"></ol>';
   cfg.mount.querySelector('.input-guide').appendChild(details);
   var summary = details.querySelector('summary');
@@ -79,15 +91,24 @@ function attach(cfg) {
     list.innerHTML = '';
     items.forEach(function (item) {
       var row = document.createElement('li');
-      row.innerHTML = '<div class="history-info"><b></b><time></time><p></p></div>'
-        + '<div class="history-actions"><button type="button" class="btn" data-history-restore>恢复</button>'
-        + '<button type="button" class="btn history-delete" data-history-delete title="删除这条记录" aria-label="删除这条记录">×</button></div>';
+      row.innerHTML = '<div class="history-info"><div class="history-item-heading"><b></b><time></time></div><p></p><dl class="history-facts"></dl></div>'
+        + '<div class="history-actions"><button type="button" class="btn history-restore" data-history-restore>' + restoreIcon + '<span>恢复</span></button>'
+        + '<button type="button" class="btn history-delete" data-history-delete title="删除这条记录" aria-label="删除这条记录">' + removeIcon + '</button></div>';
       var description = describe(item.data);
       row.querySelector('b').textContent = description.title;
       var time = row.querySelector('time');
       time.dateTime = new Date(item.savedAt).toISOString();
-      time.textContent = new Date(item.savedAt).toLocaleString();
+      time.textContent = new Date(item.savedAt).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+      time.title = new Date(item.savedAt).toLocaleString();
       row.querySelector('p').textContent = description.preview;
+      row.querySelector('p').title = description.preview;
+      var facts = row.querySelector('.history-facts');
+      facts.hidden = !description.facts;
+      (description.facts || []).forEach(function (fact) {
+        var pair = document.createElement('div'), label = document.createElement('dt'), value = document.createElement('dd');
+        label.textContent = fact[0]; value.textContent = fact[1];
+        pair.appendChild(label); pair.appendChild(value); facts.appendChild(pair);
+      });
       row.querySelector('[data-history-restore]').addEventListener('click', function () {
         cfg.restore(JSON.parse(JSON.stringify(item.data)));
         details.open = false;

@@ -39,7 +39,7 @@ test('短回路最后一格先保持开链，到 θ 帧才闭合', () => {
   const theta = player.scene(m, s, 5);
   assert.equal(theta.closed, true, 'θ 帧补闭合边');
   assert.equal(theta.animateLast, true, '闭合边单独描边');
-  assert.match(theta.html, /θ = 负号格的最小运量/);
+  assert.match(theta.html, /θ = min\{/);
   const final = player.scene(m, s, 6);
   assert.equal(final.closed, true);
   assert.equal(final.animateLast, false, '末帧同步运量，不再重画路径');
@@ -63,7 +63,7 @@ test('长回路不逐格揭示：首帧就标全正负号，帧数压到 3 / 2',
   assert.match(first.html, /整条闭回路/);
   assert.equal((first.html.match(/class="tp-cell[^"]*tp-cycle/g) || []).length, 8, '首帧标出全部 8 格');
   assert.doesNotMatch(first.html, /标记回路第/, '长回路不再有“标记回路第 k 格”帧');
-  assert.match(player.scene(m, long, 1).html, /θ = 负号格的最小运量/);
+  assert.match(player.scene(m, long, 1).html, /θ = min\{/);
   assert.match(player.scene(m, long, 2).html, /同步调整/);
 });
 
@@ -71,7 +71,7 @@ test('退化换基不占“同步调整”空帧，末帧直说只换基', () =>
   const degenerate = pivot(four, 0);
   const last = player.frames(degenerate) - 1;
   const html = player.scene(m, degenerate, last).html;
-  assert.match(html, /θ = 0/);
+  assert.match(html, /θ = min\{0, 0\} = 0/);
   assert.match(html, /只换基/);
   assert.doesNotMatch(html, /同步调整/, 'θ=0 时不再单独留一帧“同步调整”');
 });

@@ -18,8 +18,5 @@ function transport() {
   return { direction: 'min', cost: [[6,16,5,2],[9,2,5,8],[15,13,11,6]],
     supply: [20,30,25], demand: [10,25,20,20] };
 }
-function transportForbidden() {
-  return { direction: 'min', cost: [[1,2],[3,'M']], supply: [5,5], demand: [5,5] };
-}
 module.exports = { linear: linear, integer: integer, assignment: assignment,
-  transport: transport, transportForbidden: transportForbidden };
+  transport: transport };

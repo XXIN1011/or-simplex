@@ -32,6 +32,11 @@ function routeList(s, frame) {
       + '<span class="tp-route-sign" aria-label="' + (c.sign > 0 ? '加' : '减') + '">' + (c.sign > 0 ? '+' : '−') + '</span></li>';
   }).join('') + '</ol>';
 }
+function thetaFormula(s) {
+  return 'θ = min{' + s.cycle.filter(function (c) { return c.sign < 0; }).map(function (c) {
+    return num(s.beforeAllocation[c.i][c.j]);
+  }).join(', ') + '} = ' + num(s.theta);
+}
 function scene(m, s, frame) {
   var last = count(s) - 1, done = frame === last, long = longLoop(s);
   var values = done ? s.allocation : s.beforeAllocation, basis = done ? s.basis : s.beforeBasis;
@@ -64,13 +69,13 @@ function scene(m, s, frame) {
       + (frame === s.cycle.length ? '路径已连通，下一帧闭合回路并比较负号格运量。' : '此时只标记路径。');
   } else if (!done) {
     title = '从负号格确定调整量';
-    note = 'θ = 负号格的最小运量 = ' + num(s.theta) + '；离基格 ' + cellName(s.leaving) + '，并列时取下标最小者。';
+    note = thetaFormula(s) + '；取负号格的最小运量。离基格 ' + cellName(s.leaving) + '，并列时取下标最小者。';
   } else if (s.theta === 0) {
     title = '退化换基：只换基，运量不变';
-    note = 'θ = 0：运量不变，只交换入基格与离基格的基身份。';
+    note = thetaFormula(s) + '：运量不变，只交换入基格与离基格的基身份。';
   } else {
     title = '同步调整运量与基身份';
-    note = 'θ = ' + num(s.theta) + '：正负号格同步调整，显示算法记录的调整后方案。';
+    note = thetaFormula(s) + '：正负号格同步调整，显示算法记录的调整后方案。';
   }
   h += routeList(s, long ? s.cycle.length : frame);
   var maximizing = m.direction === 'max';
@@ -88,9 +93,9 @@ function render(m, s, index) {
     + '<div class="tp-player-controls" role="group" aria-label="演示播放控制">'
     + '<button type="button" class="btn" data-tp-prev disabled>上一帧</button><button type="button" class="btn" data-tp-play aria-pressed="false">播放</button>'
     + '<button type="button" class="btn" data-tp-next>下一帧</button><button type="button" class="btn" data-tp-reset>重播</button>'
-    + '<label class="tp-speed">帧间隔<select data-tp-speed aria-label="演示帧间隔"><option value="1000">1 秒</option><option value="1800">1.8 秒</option><option value="600">0.6 秒</option></select></label></div>'
+    + '<label class="tp-speed">帧间隔<select data-tp-speed aria-label="演示帧间隔"><option value="1000">1 秒</option><option value="1800">1.8 秒</option><option value="600">0.6 秒</option></select></label>'
+    + '<p class="tp-player-progress" role="status" aria-live="polite">第 1 / ' + count(s) + ' 帧 · 等待播放</p></div>'
     + '<p class="sens-note tp-motion-note" hidden>已启用减少动态效果：请用上一帧 / 下一帧查看。</p>'
-    + '<p class="tp-player-progress" role="status" aria-live="polite">第 1 / ' + count(s) + ' 帧 · 等待播放</p>'
     + '<div class="tp-scene">' + scene(m, s, 0).html + '</div></section>';
 }
 function wire(root, result) {
@@ -240,4 +245,4 @@ function wire(root, result) {
 }
 /* frames / scene 导出给单测：帧结构（长回路合并、退化换基少一帧）是被断言的行为，
    不靠浏览器才能验证。产品代码只用 render / wire。 */
-module.exports = { render: render, wire: wire, frames: count, scene: scene };
+module.exports = { render: render, wire: wire, frames: count, scene: scene, thetaFormula: thetaFormula };
