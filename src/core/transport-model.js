@@ -97,13 +97,29 @@ function normalize(problem) {
   /* 每个可运连通分量各用一棵基树；孤立的零供需结点也计为分量。 */
   var f = forest(supply.length, demand.length), rank = 0;
   for (i = 0; i < supply.length; i++) for (j = 0; j < demand.length; j++) if (allowed[i][j] && f.join(i, j)) rank++;
-  var working = cost.map(function (row) { return row.map(function (v) { return p.direction === 'max' ? -v : v; }); });
+  /* 最大收益转最小费用：平衡后所有可运格统一用最大收益 R 减去本格收益。
+     虚拟格收益为负罚金，也参与转换；禁运格没有数值收益，不参与取最大值。
+     完整方案总运量固定，因此原目标 z = R * total - workingObjective。 */
+  var maxReward = 0;
+  if (p.direction === 'max') {
+    maxReward = -Infinity;
+    for (i = 0; i < supply.length; i++) for (j = 0; j < demand.length; j++) {
+      if (allowed[i][j]) maxReward = Math.max(maxReward, cost[i][j]);
+    }
+    if (maxReward === -Infinity || maxReward === 0) maxReward = 0;
+  }
+  var working = cost.map(function (row, rowIndex) { return row.map(function (v, colIndex) {
+    return p.direction === 'max' && allowed[rowIndex][colIndex] ? maxReward - v : v;
+  }); });
+  if (!working.every(function (row) { return row.every(function (v) { return isFinite(v); }); })) {
+    return { ok: false, message: '最大收益转换费用溢出，请缩小收益或罚金单位' };
+  }
   var costScale = 0;
   working.forEach(function (row) { row.forEach(function (v) { costScale = Math.max(costScale, Math.abs(v)); }); });
   return { ok: true, direction: p.direction, m: m, n: n, rows: supply.length, cols: demand.length,
     original: original, originalSupply: originalSupply, originalDemand: originalDemand,
     supply: supply, demand: demand, originalSupplyTotal: a, originalDemandTotal: b,
-    cost: cost, working: working, allowed: allowed, forbiddenCount: forbiddenCount,
+    cost: cost, working: working, maxReward: maxReward, allowed: allowed, forbiddenCount: forbiddenCount,
     basisSize: rank, components: supply.length + demand.length - rank,
     virtual: virtual, balanceAdjustment: adjustment,
     quantityTolerance: (scale || 1) * EPS, costTolerance: (costScale || 1) * ROUND_EPS * (supply.length + demand.length),

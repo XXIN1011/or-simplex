@@ -34,8 +34,46 @@ test('供小于求逐销地罚金与默认零费用', () => {
 test('最大收益、负收益和罚金正确还原原目标', () => {
   solve(Object.assign({}, base, { direction: 'max' }), 180);
   const r = solve({ direction: 'max', cost: [[10,20]], supply: [5], demand: [4,4], shortageCost: [2,3] }, 84);
-  assert.equal(r.realObjective, 90); assert.equal(r.penalty, 6); assert.equal(r.workingObjective, -84);
+  assert.equal(r.realObjective, 90); assert.equal(r.penalty, 6); assert.equal(r.workingObjective, 76);
+  assert.equal(r.model.maxReward, 20); assert.deepEqual(r.model.working, [[10,0],[22,23]]);
   solve({direction:'max',cost:[[-2],[-3]],supply:[4,4],demand:[5],surplusCost:[1,2]}, -17);
+});
+
+test('最大收益用全表统一最大值减各格收益，每步工作目标与原目标对应', () => {
+  const r = solve(Object.assign({}, base, { direction: 'max' }), 180);
+  assert.equal(r.model.maxReward, 4);
+  assert.deepEqual(r.model.working, [[2,1],[0,3]]);
+  assert.deepEqual(r.steps[0].cell, {i:1,j:0}); assert.equal(r.steps[0].cost, 0);
+  for (const s of r.steps) {
+    const shipped = s.allocation.flat().reduce((a,b) => a+b, 0);
+    assert.equal(s.objective, r.model.maxReward * shipped - s.workingObjective);
+  }
+  assert.equal(r.workingObjective, 20);
+  assert.equal(r.objective, r.model.maxReward * r.model.total - r.workingObjective);
+});
+
+test('全负收益、分数及禁运格不以零代替真实最大收益', () => {
+  const r = solve({direction:'max',cost:[['-1/2','M'],['-3/2','-5/2']],supply:[1,1],demand:[1,1]}, -3);
+  assert.equal(r.model.maxReward, -.5);
+  assert.deepEqual(r.model.working, [[0,0],[1,2]]);
+  assert.equal(r.workingObjective, 2);
+  assert.equal(r.allocation[0][1], 0); assert.equal(r.basis[0][1], false);
+  const zero = solve({direction:'max',cost:[['M']],supply:[0],demand:[0]}, 0);
+  assert.equal(zero.model.maxReward, 0); assert.deepEqual(zero.model.working, [[0]]);
+});
+
+test('虚拟格统一最大值转换，净收益仍由原收益和罚金计算', () => {
+  const surplus = solve({direction:'max',cost:[[-2],[-3]],supply:[4,4],demand:[5],surplusCost:[1,2]}, -17);
+  assert.equal(surplus.model.maxReward, -1);
+  assert.deepEqual(surplus.model.working, [[1,0],[2,1]]);
+  assert.equal(surplus.objective, surplus.model.maxReward * surplus.model.total - surplus.workingObjective);
+  const noFee = solve({direction:'max',cost:[[-2]],supply:[2],demand:[1]}, -2);
+  assert.equal(noFee.model.maxReward, 0); assert.deepEqual(noFee.model.working, [[2,0]]);
+});
+
+test('最大收益差值溢出时拒绝转换，避免非有限工作费用参与计算', () => {
+  const r = solveTransport({direction:'max',cost:[[1e308,-1e308]],supply:[1],demand:[.5,.5]});
+  assert.equal(r.ok, false); assert.match(r.message, /转换费用溢出/);
 });
 test('分数、小数、科学计数法、微小运量', () => {
   solve({direction:'min',cost:[['1/2','3/2']],supply:['3/4'],demand:['1/4','.5']}, .875);

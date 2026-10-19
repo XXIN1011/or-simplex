@@ -45,6 +45,13 @@ module.exports = async function transportCases(sess, check, url) {
     value('demand',0,null,4);value('demand',1,null,4);value('shortageCost',0,null,2);value('shortageCost',1,null,3);
     expect(q('#tpBalance').textContent.indexOf('缺货 3')>=0 && q('#tpVirtual').textContent.indexOf('虚拟产地')>=0,'实时缺货与虚拟产地');
     click('tpSolveBtn');expect(q('#tpOut .zv').textContent==='84','最大净收益正确还原84');
+    expect(q('#tpOut').textContent.indexOf('最大收益 R = 20')>=0 && q('#tpOut').textContent.indexOf('工作目标 76')>=0
+      && q('#tpOut').textContent.indexOf('还原 z = R × Q − 工作目标 = 84')>=0,'最大收益减各格收益并按总运量还原');
+    var workingTable=q('#tpOut table[aria-label^="进入最小化算法"]');
+    expect(workingTable && workingTable.querySelector('[data-tp-cell="0-0"] .tp-value').textContent==='10'
+      && workingTable.querySelector('[data-tp-cell="0-1"] .tp-value').textContent==='0'
+      && workingTable.querySelector('[data-tp-cell="1-0"] .tp-value').textContent==='22'
+      && workingTable.querySelector('[data-tp-cell="1-1"] .tp-value').textContent==='23','转换矩阵含统一转换后的虚拟格');
     expect(q('#tpOut').textContent.indexOf('缺货量：销地1：3；销地2：0')>=0 && q('#tpOut [data-tp-cell="1-0"] .tp-cost').textContent==='-2','逐销地缺货和虚拟负收益可见');
     value('shortageCost',1,null,'1/0');click('tpSolveBtn');
     expect(q('#tpBanners').textContent && !q('#tpOut').textContent && q('#tpPanel [data-key=shortageCost][data-i="1"]').getAttribute('aria-invalid')==='true','零分母罚金被拒绝且无旧结果');

@@ -107,7 +107,7 @@ module.exports = async function playerCases(sess, run) {
     expect(q('#tpOut .zv').textContent==='3/8','分数目标在最终结果中正确显示');
     expect(q('#tpOut [data-tp-cell="0-0"] .tp-value').textContent==='3/4','分数运量在结果表中正确显示');
     q('#tpDirSeg [data-dir=max]').click();click('tpSolveBtn');
-    expect(q('#tpOut .zv').textContent==='3/8','最大收益使用原目标而非取负后的工作目标');
+    expect(q('#tpOut .zv').textContent==='3/8','最大收益显示还原后的原目标');
     q('#tpDirSeg [data-dir=min]').click();size(2,3);
     var costs=[[5,1,3],[0,4,2]];
     for(var i=0;i<2;i++){value('supply',i,null,1);for(var j=0;j<3;j++)value('cells',i,j,costs[i][j])}

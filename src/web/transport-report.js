@@ -74,7 +74,10 @@ function render(res) {
     + '<div class="sol">z = <span class="zv">' + num(res.objective) + '</span></div></div>';
   if (!optimal) h += '<p>' + esc(res.message) + '</p>';
   h += '<p>真实线路' + (m.direction === 'max' ? '总收益' : '总费用') + ' ' + num(res.realObjective) + '；剩余处理费 / 缺货罚金 ' + num(res.penalty) + '。</p>';
-  if (m.direction === 'max') h += '<p>c′ = −原收益，工作目标 ' + num(res.workingObjective) + '，还原 z = −工作目标 = ' + num(res.objective) + '。</p>';
+  if (m.direction === 'max') h += '<p>取平衡后全部可运格的最大收益 R = ' + num(m.maxReward)
+    + '，c′ᵢⱼ = R − 原收益ᵢⱼ。虚拟格收益为处理费 / 罚金的负数，禁运格不参与转换。工作目标 '
+    + num(res.workingObjective) + '，总运量 Q = ' + num(m.total)
+    + '，还原 z = R × Q − 工作目标 = ' + num(res.objective) + '。</p>';
   if (res.surplus) h += '<p class="tp-balance">剩余供应：' + res.surplus.map(function (v, i) { return '产地' + (i + 1) + '：' + num(v); }).join('；') + '。</p>';
   if (res.shortage) h += '<p class="tp-balance">缺货量：' + res.shortage.map(function (v, j) { return '销地' + (j + 1) + '：' + num(v); }).join('；') + '。</p>';
   h += table(m, res.allocation, res.basis, null, optimal ? '最终最优运输方案' : '当前运输方案', false)
@@ -85,7 +88,7 @@ function render(res) {
   h += '<details class="result-work" open><summary>计算过程：初始可行方案 → 位势法最优方案</summary><section data-section="transport-derivation">'
     + '<div class="card"><h2 class="sec">模型平衡与转换</h2><p>' + balanceNote(m) + '</p>'
     + table(m, m.cost, null, null, '平衡后原费用 / 收益矩阵（含虚拟行列）', true)
-    + (m.direction === 'max' ? table(m, m.working, null, null, '进入最小化算法的工作费用 c′ = −原收益', true) : '')
+    + (m.direction === 'max' ? table(m, m.working, null, null, '进入最小化算法的工作费用 c′ᵢⱼ = R − 原收益ᵢⱼ（R = ' + num(m.maxReward) + '）', true) : '')
     + '<p>禁运格不参与分配、补基、检验和回路。有禁运时先做辅助最大流可行性检查，再按最小元素分配、位势法优化。</p></div>'
     + study.group(res.steps.map(function (s, i) { return stepContent(m, s, i); }), '运输问题逐步推导') + '</section></details>';
   return h;
