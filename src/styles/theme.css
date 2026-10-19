@@ -28,7 +28,7 @@ button.btn.primary:disabled{filter:none}
   html[data-theme="dark"] button.btn.primary:not(:disabled):hover{background:var(--accent-hi)}
   a.back:hover,.repolink:hover{text-decoration:underline}
   .seg button:not(.on):hover{background:var(--card);color:var(--fg)}
-  .help summary:hover,.problem-history>summary:hover,.guide-size>summary:hover{color:var(--accent-text)}
+  .help summary:hover,.problem-history>summary:hover{color:var(--accent-text)}
 }
 
 /* 手机保留横向表格滚动，不缩小数字来硬塞列。 */

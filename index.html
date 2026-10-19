@@ -778,7 +778,7 @@ button.btn.primary:disabled{filter:none}
   html[data-theme="dark"] button.btn.primary:not(:disabled):hover{background:var(--accent-hi)}
   a.back:hover,.repolink:hover{text-decoration:underline}
   .seg button:not(.on):hover{background:var(--card);color:var(--fg)}
-  .help summary:hover,.problem-history>summary:hover,.guide-size>summary:hover{color:var(--accent-text)}
+  .help summary:hover,.problem-history>summary:hover{color:var(--accent-text)}
 }
 
 /* 手机保留横向表格滚动，不缩小数字来硬塞列。 */
@@ -807,13 +807,9 @@ button.btn.primary:disabled{filter:none}
 .guide-intro b{font-size:16px}
 .guide-intro p{margin:3px 0 0;color:var(--fg2);font-size:12.5px}
 .guide-intro .btn{flex-shrink:0}
-.guide-size{margin-top:8px}
-.guide-size summary,.result-work>summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:650;color:var(--fg)}
-.guide-size summary::before,.result-work>summary::before{content:'＋';display:inline-block;margin-right:8px;color:var(--accent)}
-.guide-size[open]>summary::before,.result-work[open]>summary::before{content:'−'}
-.guide-fields{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;padding:4px 0}
-.guide-fields label{display:flex;flex:1;min-width:90px;flex-direction:column;gap:5px;font-size:12px;color:var(--fg2)}
-.guide-fields select{min-height:44px;width:100%;padding:8px 12px;font:inherit;font-size:15px;color:var(--fg);background:var(--input);border:1px solid var(--line2);border-radius:var(--r-sm)}
+.result-work>summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:650;color:var(--fg)}
+.result-work>summary::before{content:'＋';display:inline-block;margin-right:8px;color:var(--accent)}
+.result-work[open]>summary::before{content:'−'}
 .guide-note{font-size:12px;line-height:1.65;color:var(--fg2);margin:8px 0 0}
 .guide-actions{display:flex;gap:8px;flex-shrink:0}
 .draft-tools{margin-top:8px}
@@ -840,7 +836,7 @@ button.btn.primary:disabled{filter:none}
    44px 的按钮和折叠入口保持不变，避免主操作落在浮动导航的遮挡位置。 */
 #mod-assign>header{margin-bottom:12px}
 #asPanel .input-guide{margin-bottom:12px;padding-bottom:8px}
-#asPanel .guide-size,#asPanel .draft-tools,#asPanel .problem-history{margin-top:4px}
+#asPanel .draft-tools,#asPanel .problem-history{margin-top:4px}
 .result-nav{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 18px}
 .result-nav .btn{min-height:44px}
 .study-toolbar{padding:12px!important}
@@ -872,7 +868,7 @@ button.btn.primary:disabled{filter:none}
   #mod-simplex.has-result>#banners{grid-column:1;grid-row:4}
   #mod-simplex.has-result>#result{grid-column:2;grid-row:2/5;min-width:0}
 }
-@media(max-width:360px){.guide-intro{align-items:flex-start;flex-direction:column}.guide-fields .btn{width:100%}}
+@media(max-width:360px){.guide-intro{align-items:flex-start;flex-direction:column}}
 /* =========================================================================
    运输表：教材版式
    费用贴格子左上角（借格线收口），运量居中，基变量在运量外套一圈细方框，
@@ -6089,6 +6085,7 @@ function optimize(model, state, emit, maxIterations) {
     emit('pivot', x, basis, { iteration: iteration, entering: p.entering, leaving: change.leaving,
       cycle: loop, theta: change.theta, beforeAllocation: beforeAllocation, beforeBasis: beforeBasis,
       objectiveBefore: before, objectiveAfter: after, delta: after - before,
+      workingObjectiveBefore: workingBefore, workingObjectiveAfter: workingAfter,
       workingDelta: workingAfter - workingBefore, reducedEntering: p.reduced[p.entering.i][p.entering.j] });
   }
 }
@@ -6705,7 +6702,6 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
   });
 
   var guide = require('./input-guide.js').attach($('asPanel'), {
-    resize: setSize,
     sample: function () {
       var p = require('./examples.js').assignment();
       $('asDirSeg').querySelector('[data-dir="' + p.direction + '"]').click();
@@ -7306,36 +7302,20 @@ module.exports = {
 __define__("src/web/input-guide.js", function (module, exports, require) {
 'use strict';
 
-/* 四个模块共用同一条首次输入路径；选择规模仍允许 0，保持空题目的数学语义。 */
-function markup(matrix, maxN, maxM) {
+/* 各模块共用首次输入提示；题目行列由表格下方的增减按钮编辑。 */
+function markup(matrix) {
   var transport = matrix === 'transport';
-  function options(max) {
-    var out = '';
-    for (var i = 0; i <= max; i++) out += '<option value="' + i + '">' + i + '</option>';
-    return out;
-  }
   return '<div class="input-guide">'
-    + '<div class="guide-intro"><div><b>从一道题开始</b><p>载入示例，或按题目设置' + (matrix ? '行列数' : '变量和约束数') + '。</p></div>'
+    + '<div class="guide-intro"><div><b>从一道题开始</b><p>载入示例，或用下方按钮逐项增减' + (transport ? '产地和销地' : matrix ? '行和列' : '变量和约束') + '。</p></div>'
     + '<button type="button" class="btn" data-guide="sample" title="载入示例会替换当前输入">载入示例</button></div>'
-    + '<details class="guide-size"><summary>自定义题目规模</summary><div class="guide-fields">'
-    + '<label>' + (transport ? '产地（行）' : matrix ? '人员（行）' : '变量数') + '<select data-guide="n">' + options(maxN) + '</select></label>'
-    + '<label>' + (transport ? '销地（列）' : matrix ? '工作（列）' : '约束数') + '<select data-guide="m">' + options(maxM) + '</select></label>'
-    + '<button type="button" class="btn" data-guide="apply">设置规模</button></div>'
-    + '<p class="guide-note">缩小规模会移除末尾数据；载入示例会替换当前输入。</p></details>'
     + '<p class="guide-note">' + (transport ? '中间填单位运费或收益，右侧填供应量，底部填需求量。供需量须非负。' : matrix ? '行是人员，列是工作；填 × 表示禁止指派。' : '先选 max / min，再填写目标系数和各条约束。')
     + ' 空白按 0；支持小数、1e3 和分数（如 1/2、-3/4），分母不能为 0。</p></div>';
 }
 
 function attach(mount, cfg) {
   var root = mount.querySelector('.input-guide');
-  var n = root.querySelector('[data-guide="n"]');
-  var m = root.querySelector('[data-guide="m"]');
-  root.querySelector('[data-guide="apply"]').addEventListener('click', function () {
-    cfg.resize(+n.value, +m.value);
-  });
   root.querySelector('[data-guide="sample"]').addEventListener('click', cfg.sample);
   return { sync: function (a, b) {
-    n.value = String(a); m.value = String(b);
     root.classList.toggle('has-model', a > 0 || b > 0);
     root.querySelector('.guide-intro b').textContent = a > 0 || b > 0 ? '题目输入' : '从一道题开始';
   } };
@@ -7451,7 +7431,7 @@ function buildChrome(cfg) {
   var on = (order.indexOf(state.dir) >= 0) ? state.dir : order[0];
   var L = cfg.labels || DEFAULT_LABELS;
 
-  var html = inputGuide.markup(cfg.matrix, cfg.maxN || 6, cfg.maxM || 8)
+  var html = inputGuide.markup(cfg.matrix)
     + '<div class="seg" id="' + cfg.dirSeg + '" role="group" aria-label="优化方向">';
   for (var i = 0; i < order.length; i++) {
     html += '<button type="button" data-dir="' + order[i] + '"'
@@ -7669,7 +7649,6 @@ function createInputPanel(cfg) {
 
   function init() {
     if (cfg.mount) guide = inputGuide.attach(document.getElementById(cfg.mount), {
-      resize: function (n, m) { setN(n); setM(m); },
       sample: function () { if (cfg.example) loadProblem(cfg.example()); }
     });
     Array.prototype.forEach.call(el('dirSeg').querySelectorAll('button'), function (b) {
@@ -9935,6 +9914,7 @@ function scene(m, s, frame) {
   options.dim = loop.length > 0;
   options.theta = frame === thetaFrame;
   options.updated = done ? changedCells(s) : [];
+  if (m.direction === 'max') options.costMatrix = m.working;
   if (frame === 0) {
     title = long ? '整条闭回路' : '从入基格开始';
     note = long
@@ -9955,11 +9935,14 @@ function scene(m, s, frame) {
     note = 'θ = ' + num(s.theta) + '：正负号格同步调整，显示算法记录的调整后方案。';
   }
   h += routeList(s, long ? s.cycle.length : frame);
-  var objective = done ? s.objective : s.objectiveBefore;
+  var maximizing = m.direction === 'max';
+  var before = maximizing ? s.workingObjectiveBefore : s.objectiveBefore;
+  var after = maximizing ? s.workingObjectiveAfter : s.objectiveAfter;
+  var objective = done ? after : before;
   return { html: '<h4 class="tp-scene-title">' + title + '</h4><p>' + note + '</p>' + h
-    + table(m, values, basis, loop, '回路表（左上角费用；＋ 加 θ / − 减 θ）', false, options)
-    + '<p class="tp-player-objective">原目标值 <b>' + num(objective) + '</b>'
-    + (done ? '；' + num(s.objectiveBefore) + ' → ' + num(s.objectiveAfter) + '（变化 ' + num(s.delta) + '）' : '') + '。</p>',
+    + table(m, values, basis, loop, '回路表（左上角' + (maximizing ? '转换后费用 c′' : '费用') + '；＋ 加 θ / − 减 θ）', false, options)
+    + '<p class="tp-player-objective">' + (maximizing ? '最小化工作目标值' : '原目标值') + ' <b>' + num(objective) + '</b>'
+    + (done ? '；' + num(before) + ' → ' + num(after) + '（变化 ' + num(maximizing ? s.workingDelta : s.delta) + '）' : '') + '。</p>',
     loop: loop, closed: closed, animateLast: animateLast };
 }
 function render(m, s, index) {
@@ -10142,7 +10125,9 @@ function balanceNote(m) {
 }
 function vector(a) { return a.map(num).join('，'); }
 function stepContent(m, s, index) {
-  var title, h = '', values = s.allocation, loop = null, options = null;
+  var title, h = '', values = s.allocation, loop = null, options = {};
+  var maximizing = m.direction === 'max';
+  var objectiveLabel = maximizing ? '最小化工作目标' : '原目标';
   if (s.type === 'allocation') {
     title = '最小元素分配 ' + cellName(s.cell);
     options = { selected: s.cell, ties: s.ties, supply: s.remainingSupply, demand: s.remainingDemand, cornerLabel: '—' };
@@ -10172,13 +10157,15 @@ function stepContent(m, s, index) {
     values = s.beforeAllocation; loop = s.cycle;
     h += '<p>θ = 负号格最小运量 = <b>' + num(s.theta) + '</b>；正负格同步加减，同量时下标最小的 '
       + cellName(s.leaving) + ' 离基。' + (s.theta === 0 ? '退化换基：运量不变，只换基。' : '') + '</p>'
-      + '<p>原目标 ' + num(s.objectiveBefore) + ' → ' + num(s.objectiveAfter)
-      + '（θΔ = ' + num(s.workingDelta) + '，变化 ' + num(s.delta) + '）。</p>';
+      + '<p>' + objectiveLabel + ' ' + num(maximizing ? s.workingObjectiveBefore : s.objectiveBefore)
+      + ' → ' + num(maximizing ? s.workingObjectiveAfter : s.objectiveAfter)
+      + '（θΔ = ' + num(s.workingDelta) + '，变化 ' + num(maximizing ? s.workingDelta : s.delta) + '）。</p>';
   }
+  if (maximizing) options.costMatrix = m.working;
   h += s.type === 'pivot' ? player.render(m, s, index)
     : table(m, values, s.basis, loop, title, false, options);
   if (!s.invariant.valid) h += '<p class="sens-note">校验失败：' + esc(s.invariant.errors.join('、')) + '</p>';
-  else if (s.type === 'initial' || s.type === 'potentials') h += '<p class="sens-note">原目标值 ' + num(s.objective) + '</p>';
+  else if (s.type === 'initial' || s.type === 'potentials') h += '<p class="sens-note">' + objectiveLabel + '值 ' + num(maximizing ? s.workingObjective : s.objective) + '</p>';
   return { title: title, html: '<article class="card"><h3>' + (index + 1) + '. ' + esc(title) + '</h3>' + h + '</article>' };
 }
 function render(res) {
@@ -10210,12 +10197,21 @@ function render(res) {
   if (optimal && res.multipleOptimal) h += '<p>存在多重最优（θ = ' + num(res.alternative.theta) + '），下方可查看另一方案。</p>';
   if (res.alternative) h += '<details><summary>查看另一个最优方案</summary>' + table(m, res.alternative.allocation, null, res.alternative.cycle, '另一最优运输方案（原目标 ' + num(res.alternative.objective) + '）', false) + '</details>';
   h += '</div>' + layout.navigation([['transport-derivation', '查看完整推导 / 单步学习']]);
+  var contents = res.steps.map(function (s, i) { return stepContent(m, s, i); });
+  if (m.direction === 'max') contents.push({ title: optimal ? '最大收益还原' : '当前方案收益还原',
+    html: '<article class="card"><h3>' + (contents.length + 1) + '. ' + (optimal ? '最大收益还原' : '当前方案收益还原')
+      + '</h3><p>最小化计算结束，使用原收益计算' + (optimal ? '最大净收益' : '当前净收益（未确认最优）') + '。</p>'
+      + table(m, res.allocation, res.basis, null, '按原收益结算最终运量', false)
+      + '<p>真实总收益 ' + num(res.realObjective) + ' − 处理费 / 罚金 ' + num(res.penalty) + ' = ' + num(res.objective)
+      + '；亦可还原 z = R × Q − 工作目标 = ' + num(m.maxReward) + ' × ' + num(m.total)
+      + ' − ' + num(res.workingObjective) + ' = ' + num(res.objective) + '。</p></article>' });
   h += '<details class="result-work" open><summary>计算过程：初始可行方案 → 位势法最优方案</summary><section data-section="transport-derivation">'
     + '<div class="card"><h2 class="sec">模型平衡与转换</h2><p>' + balanceNote(m) + '</p>'
     + table(m, m.cost, null, null, '平衡后原费用 / 收益矩阵（含虚拟行列）', true)
     + (m.direction === 'max' ? table(m, m.working, null, null, '进入最小化算法的工作费用 c′ᵢⱼ = R − 原收益ᵢⱼ（R = ' + num(m.maxReward) + '）', true) : '')
-    + '<p>禁运格不参与分配、补基、检验和回路。有禁运时先做辅助最大流可行性检查，再按最小元素分配、位势法优化。</p></div>'
-    + study.group(res.steps.map(function (s, i) { return stepContent(m, s, i); }), '运输问题逐步推导') + '</section></details>';
+    + '<p>禁运格不参与分配、补基、检验和回路。有禁运时先做辅助最大流可行性检查，再按最小元素分配、位势法优化。</p>'
+    + (m.direction === 'max' ? '<p>以下分配、位势检验与闭回路表统一使用转换后费用 c′，左上角为 c′，过程目标为最小化工作目标；最后一步再按原收益结算。</p>' : '') + '</div>'
+    + study.group(contents, '运输问题逐步推导') + '</section></details>';
   return h;
 }
 module.exports = { render: render, table: table, balanceNote: balanceNote, num: num };
@@ -10235,6 +10231,7 @@ function cellName(c) { return '(' + (c.i + 1) + ', ' + (c.j + 1) + ')'; }
 function same(a, i, j) { return a && a.i === i && a.j === j; }
 function table(m, values, basis, loop, caption, costs, options) {
   var o = options || {};
+  var costMatrix = o.costMatrix || m.cost;
   var rowMargins = o.rowMargins || o.supply || m.supply;
   var colMargins = o.colMargins || o.demand || m.demand;
   var rowLabel = o.rowLabel || (o.supply ? '剩余供应' : '供应量');
@@ -10278,7 +10275,7 @@ function table(m, values, basis, loop, caption, costs, options) {
       h += '<td data-tp-cell="' + key + '" class="' + cls + '">';
       if (!m.allowed[i][j]) { h += '禁运</td>'; continue; }
       /* 左上角费用角标：只有运量表才写，纯费用/检验数表里中间那个数就是主体。 */
-      if (!costs) h += '<b class="tp-cost">' + num(m.cost[i][j]) + '</b>';
+      if (!costs) h += '<b class="tp-cost">' + num(costMatrix[i][j]) + '</b>';
       if (hit) h += '<i class="tp-anchor"></i>';
       if (hit) h += '<span class="tp-sgn">' + hit.sign + '</span>';
       h += '<span class="mono tp-value">' + num(values[i][j]) + '</span>';
@@ -10346,7 +10343,7 @@ var draft = require('./draft.js');
   }
   function renderInput() {
     var h = '', i, j;
-    if (!state.rows || !state.cols) h = '<tbody><tr><td class="empty-tip">载入示例，或增加产地与销地建立运输表。</td></tr></tbody>';
+    if (!state.rows && !state.cols) h = '<tbody><tr><td class="empty-tip">载入示例，或增加产地与销地建立运输表。</td></tr></tbody>';
     else {
       h = '<caption>中间为单位' + (state.direction === 'max' ? '收益' : '运费') + ' · 右侧供应 · 底部需求</caption><thead><tr><th scope="col">产地 / 销地</th>';
       for (j = 0; j < state.cols; j++) h += '<th scope="col">销地' + (j + 1) + '</th>';
@@ -10415,7 +10412,7 @@ var draft = require('./draft.js');
     b.addEventListener('click', function () { state.direction = b.dataset.dir; invalidate(); renderInput(); });
   });
   guide = require('./input-guide.js').attach($('tpPanel'), {
-    resize: resize, sample: function () {
+    sample: function () {
       loadExample(require('./examples.js').transport());
     }
   });

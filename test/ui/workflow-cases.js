@@ -1,4 +1,5 @@
 'use strict';
+const resizeInput = require('../lib/resize-input');
 
 module.exports = async function workflowCases(sess, check, url) {
   await sess.navigate('about:blank',0);
@@ -9,7 +10,9 @@ module.exports = async function workflowCases(sess, check, url) {
     function q(s){return document.querySelector(s)}
     function click(id){document.getElementById(id).click()}
     function sample(mount){q('#'+mount+' [data-guide=sample]').click()}
-    function size(mount,n,m){q('#'+mount+' [data-guide=n]').value=n;q('#'+mount+' [data-guide=m]').value=m;q('#'+mount+' [data-guide=apply]').click()}
+    ${resizeInput.toString()}
+    function size(mount,n,m){resizeInput(mount,n,m)}
+    expect(!document.querySelector('.guide-size,[data-guide=n],[data-guide=m],[data-guide=apply]'),'所有模块移除自定义题目规模控件');
     sample('simplexPanel');click('solveBtn');
     expect(q('#result .zv').textContent==='14','单纯形示例可直接求解 z=14');
     expect(!!(q('#result .verdict').compareDocumentPosition(q('#result [data-section=iterations]'))&4),'单纯形结论位于迭代之前');
@@ -23,22 +26,22 @@ module.exports = async function workflowCases(sess, check, url) {
     q('#result [data-jump=iterations]').click();
     expect(fold.open && location.hash==='#/simplex','章节跳转展开推导且不破坏路由');
     size('simplexPanel',4,2);
-    expect(q('#inTbl').querySelectorAll('thead th.var').length===4 && q('#inTbl').querySelectorAll('[data-k=b]').length===2,'一键设置变量与约束规模');
+    expect(q('#inTbl').querySelectorAll('thead th.var').length===4 && q('#inTbl').querySelectorAll('[data-k=b]').length===2,'用增减按钮编辑变量与约束');
     expect(q('#inTbl [data-k=c]').value==='2','调整规模保留已有系数');
-    expect(q('#result').classList.contains('stale'),'快捷规模设置使旧结果失效');
-    click('delVar');expect(q('#simplexPanel [data-guide=n]').value==='3','增减按钮同步规模选择器');
+    expect(q('#result').classList.contains('stale'),'增减变量使旧结果失效');
+    click('delVar');expect(q('#inTbl').querySelectorAll('[data-k=c]').length===3,'减变量立即更新输入表');
     sample('sensPanel');click('sSolveBtn');expect(q('#sBase .zv').textContent==='14','灵敏度示例可求基准解');
     click('sensGo');
     expect(!!q('#sensOut .verdict') && !!(q('#sensOut .verdict').compareDocumentPosition(q('#sensOut table'))&4),'灵敏度结论位于继续迭代表之前');
     sample('ipPanel');click('ipSolveBtn');
     expect(/求解摘要/.test(q('#ipOut').textContent) && !!q('#ipOut [data-jump=ip-methods]'),'整数规划提供摘要和方法跳转');
-    size('ipPanel',4,2);expect(q('#ipTypes').querySelectorAll('[data-vt]').length===4,'快捷规模设置立即同步整数变量类型');
+    size('ipPanel',4,2);expect(q('#ipTypes').querySelectorAll('[data-vt]').length===4,'增减变量立即同步整数变量类型');
     sample('asPanel');click('asSolveBtn');
     expect(q('#asOut .zv').textContent==='28','指派示例可直接求解 z=28');
     expect(!!(q('#asOut .verdict').compareDocumentPosition(q('#asOut table.mtxout'))&4),'指派结论位于矩阵过程之前');
-    size('asPanel',2,3);expect(q('#asInTbl').querySelectorAll('input').length===6,'指派支持快捷设置行列规模');
-    expect(!q('#asOut').textContent,'快捷行列设置清除旧结果');
-    expect(q('#asPanel [data-guide=n]').value==='2' && q('#asPanel [data-guide=m]').value==='3','指派规模选择器与实际矩阵一致');
+    size('asPanel',2,3);expect(q('#asInTbl').querySelectorAll('input').length===6,'指派用增减按钮编辑行列');
+    expect(!q('#asOut').textContent,'增减行列清除旧结果');
+    expect(q('#asInTbl').querySelectorAll('tbody th').length===2 && q('#asInTbl').querySelectorAll('thead th.colh').length===3,'指派行列与输入矩阵一致');
     expect(window.__errors.length===0,'新输入与结果流程全程无 JS 错误');
     return rows;
   })()`);

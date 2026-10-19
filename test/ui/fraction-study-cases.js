@@ -1,4 +1,5 @@
 'use strict';
+const resizeInput = require('../lib/resize-input');
 
 module.exports = async function fractionStudyCases(sess, check, url) {
   async function reload() {
@@ -12,7 +13,8 @@ module.exports = async function fractionStudyCases(sess, check, url) {
       function click(id){document.getElementById(id).click()}
       function set(s,value,event){var el=q(s);el.value=value;el.dispatchEvent(new Event(event||'input',{bubbles:true}))}
       function sample(id){q('#'+id+' [data-guide=sample]').click()}
-      function size(id,n,m){q('#'+id+' [data-guide=n]').value=n;q('#'+id+' [data-guide=m]').value=m;q('#'+id+' [data-guide=apply]').click()}
+      ${resizeInput.toString()}
+      function size(id,n,m){resizeInput(id,n,m)}
       function expect(ok,label){rows.push({ok:!!ok,label:label})}
       function visible(box){return box.querySelectorAll('[data-study-step]:not([hidden])').length}
       function single(box){box.querySelector('[data-study-mode=single]').click()}

@@ -75,3 +75,23 @@ test('退化换基不占“同步调整”空帧，末帧直说只换基', () =>
   assert.match(html, /只换基/);
   assert.doesNotMatch(html, /同步调整/, 'θ=0 时不再单独留一帧“同步调整”');
 });
+
+test('最大收益闭回路每帧使用工作费用与工作目标，原快照保持不变', () => {
+  const examples = require('../../src/web/examples');
+  const { solveTransport } = require('../../src');
+  const problem = examples.transport();
+  problem.direction = 'max';
+  problem.cost = problem.cost.map(row => row.map(c => 20 - c));
+  const result = solveTransport(problem), step = result.steps.find(s => s.type === 'pivot');
+  assert.equal(result.objective, 1140);
+  assert.equal(step.workingObjectiveBefore, 280); assert.equal(step.workingObjectiveAfter, 230);
+  const original = JSON.stringify(result);
+  for (let frame = 0; frame < player.frames(step); frame++) {
+    const html = player.scene(result.model, step, frame).html;
+    assert.match(html, /最小化工作目标值/);
+    assert.match(html, /class="tp-cost">4<\/b>/);
+    assert.doesNotMatch(html, /原目标/);
+  }
+  assert.match(player.scene(result.model, step, player.frames(step)-1).html, /280 → 230/);
+  assert.equal(JSON.stringify(result), original);
+});

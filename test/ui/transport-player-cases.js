@@ -13,6 +13,35 @@ module.exports = async function playerCases(sess, run) {
   }
   await sess.cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'no-preference'}]},sess.sessionId);
   await run(`
+    q('#tpPanel [data-guide=sample]').click();
+    var rewards=[[14,4,15,18],[11,18,15,12],[5,7,9,14]];
+    for(var i=0;i<3;i++)for(var j=0;j<4;j++)value('cells',i,j,rewards[i][j]);
+    q('#tpDirSeg [data-dir=max]').click();click('tpSolveBtn');
+    expect(q('#tpOut .zv').textContent==='1140','最大收益题最终还原1140');
+    var steps=q('#tpOut [data-study]'),last=steps.querySelector('.study-step:last-child');
+    var initial=q('#tpOut .study-step[data-step-title^="初始可行"]');
+    expect(initial.querySelector('[data-tp-cell="0-0"] .tp-cost').textContent==='4'
+      && initial.textContent.indexOf('最小化工作目标值 280')>=0,'初始方案角标和目标使用转换后费用');
+    var alloc=q('#tpOut .study-step[data-step-title^="最小元素分配"]');
+    expect(alloc.querySelector('[data-tp-cell="0-3"] .tp-cost').textContent==='0','最小元素分配表使用转换后费用');
+    var p=q('#tpOut [data-kind=pivot]');
+    expect(p.querySelector('[data-tp-cell="0-0"] .tp-cost').textContent==='4'
+      && p.querySelector('.tp-player-objective').textContent.indexOf('最小化工作目标值 280')>=0,'闭回路首帧使用工作费用和工作目标');
+    while(!p.querySelector('[data-tp-next]').disabled)p.querySelector('[data-tp-next]').click();
+    expect(p.querySelector('[data-tp-cell="0-0"] .tp-cost').textContent==='4'
+      && p.querySelector('.tp-player-objective').textContent.indexOf('280 → 230')>=0,'闭回路末帧仍显示最小化目标下降');
+    p.querySelector('[data-tp-prev]').click();
+    expect(p.querySelector('.tp-player-objective').textContent.indexOf('280')>=0,'回退演示恢复调整前工作目标');
+    var pot=q('#tpOut .study-step[data-step-title="位势法：最优性检验"]');
+    expect(pot.textContent.indexOf('最小化工作目标值 210')>=0,'最优性检验使用最终最小化工作目标');
+    expect(last.getAttribute('data-step-title')==='最大收益还原'
+      && last.querySelector('[data-tp-cell="0-0"] .tp-cost').textContent==='14'
+      && last.textContent.indexOf('1140')>=0,'最后一步才切回原收益结算');
+    expect(Array.prototype.every.call(steps.querySelectorAll('.study-step'),function(s){
+      return s===last || s.textContent.indexOf('原目标')===-1;
+    }),'分配、位势和闭回路过程不混用原目标');
+  `);
+  await run(`
     q('#tpDirSeg [data-dir=min]').click();q('#tpPanel [data-guide=sample]').click();click('tpSolveBtn');
     expect(!q('#tpOut [data-kind=allocation]'),'最小元素分配不再有逐帧演示');
     var alloc=q('#tpOut .study-step[data-step-title^="最小元素分配"]');

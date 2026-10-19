@@ -42,7 +42,7 @@ var draft = require('./draft.js');
   }
   function renderInput() {
     var h = '', i, j;
-    if (!state.rows || !state.cols) h = '<tbody><tr><td class="empty-tip">载入示例，或增加产地与销地建立运输表。</td></tr></tbody>';
+    if (!state.rows && !state.cols) h = '<tbody><tr><td class="empty-tip">载入示例，或增加产地与销地建立运输表。</td></tr></tbody>';
     else {
       h = '<caption>中间为单位' + (state.direction === 'max' ? '收益' : '运费') + ' · 右侧供应 · 底部需求</caption><thead><tr><th scope="col">产地 / 销地</th>';
       for (j = 0; j < state.cols; j++) h += '<th scope="col">销地' + (j + 1) + '</th>';
@@ -111,7 +111,7 @@ var draft = require('./draft.js');
     b.addEventListener('click', function () { state.direction = b.dataset.dir; invalidate(); renderInput(); });
   });
   guide = require('./input-guide.js').attach($('tpPanel'), {
-    resize: resize, sample: function () {
+    sample: function () {
       loadExample(require('./examples.js').transport());
     }
   });

@@ -17,7 +17,9 @@ function balanceNote(m) {
 }
 function vector(a) { return a.map(num).join('，'); }
 function stepContent(m, s, index) {
-  var title, h = '', values = s.allocation, loop = null, options = null;
+  var title, h = '', values = s.allocation, loop = null, options = {};
+  var maximizing = m.direction === 'max';
+  var objectiveLabel = maximizing ? '最小化工作目标' : '原目标';
   if (s.type === 'allocation') {
     title = '最小元素分配 ' + cellName(s.cell);
     options = { selected: s.cell, ties: s.ties, supply: s.remainingSupply, demand: s.remainingDemand, cornerLabel: '—' };
@@ -47,13 +49,15 @@ function stepContent(m, s, index) {
     values = s.beforeAllocation; loop = s.cycle;
     h += '<p>θ = 负号格最小运量 = <b>' + num(s.theta) + '</b>；正负格同步加减，同量时下标最小的 '
       + cellName(s.leaving) + ' 离基。' + (s.theta === 0 ? '退化换基：运量不变，只换基。' : '') + '</p>'
-      + '<p>原目标 ' + num(s.objectiveBefore) + ' → ' + num(s.objectiveAfter)
-      + '（θΔ = ' + num(s.workingDelta) + '，变化 ' + num(s.delta) + '）。</p>';
+      + '<p>' + objectiveLabel + ' ' + num(maximizing ? s.workingObjectiveBefore : s.objectiveBefore)
+      + ' → ' + num(maximizing ? s.workingObjectiveAfter : s.objectiveAfter)
+      + '（θΔ = ' + num(s.workingDelta) + '，变化 ' + num(maximizing ? s.workingDelta : s.delta) + '）。</p>';
   }
+  if (maximizing) options.costMatrix = m.working;
   h += s.type === 'pivot' ? player.render(m, s, index)
     : table(m, values, s.basis, loop, title, false, options);
   if (!s.invariant.valid) h += '<p class="sens-note">校验失败：' + esc(s.invariant.errors.join('、')) + '</p>';
-  else if (s.type === 'initial' || s.type === 'potentials') h += '<p class="sens-note">原目标值 ' + num(s.objective) + '</p>';
+  else if (s.type === 'initial' || s.type === 'potentials') h += '<p class="sens-note">' + objectiveLabel + '值 ' + num(maximizing ? s.workingObjective : s.objective) + '</p>';
   return { title: title, html: '<article class="card"><h3>' + (index + 1) + '. ' + esc(title) + '</h3>' + h + '</article>' };
 }
 function render(res) {
@@ -85,12 +89,21 @@ function render(res) {
   if (optimal && res.multipleOptimal) h += '<p>存在多重最优（θ = ' + num(res.alternative.theta) + '），下方可查看另一方案。</p>';
   if (res.alternative) h += '<details><summary>查看另一个最优方案</summary>' + table(m, res.alternative.allocation, null, res.alternative.cycle, '另一最优运输方案（原目标 ' + num(res.alternative.objective) + '）', false) + '</details>';
   h += '</div>' + layout.navigation([['transport-derivation', '查看完整推导 / 单步学习']]);
+  var contents = res.steps.map(function (s, i) { return stepContent(m, s, i); });
+  if (m.direction === 'max') contents.push({ title: optimal ? '最大收益还原' : '当前方案收益还原',
+    html: '<article class="card"><h3>' + (contents.length + 1) + '. ' + (optimal ? '最大收益还原' : '当前方案收益还原')
+      + '</h3><p>最小化计算结束，使用原收益计算' + (optimal ? '最大净收益' : '当前净收益（未确认最优）') + '。</p>'
+      + table(m, res.allocation, res.basis, null, '按原收益结算最终运量', false)
+      + '<p>真实总收益 ' + num(res.realObjective) + ' − 处理费 / 罚金 ' + num(res.penalty) + ' = ' + num(res.objective)
+      + '；亦可还原 z = R × Q − 工作目标 = ' + num(m.maxReward) + ' × ' + num(m.total)
+      + ' − ' + num(res.workingObjective) + ' = ' + num(res.objective) + '。</p></article>' });
   h += '<details class="result-work" open><summary>计算过程：初始可行方案 → 位势法最优方案</summary><section data-section="transport-derivation">'
     + '<div class="card"><h2 class="sec">模型平衡与转换</h2><p>' + balanceNote(m) + '</p>'
     + table(m, m.cost, null, null, '平衡后原费用 / 收益矩阵（含虚拟行列）', true)
     + (m.direction === 'max' ? table(m, m.working, null, null, '进入最小化算法的工作费用 c′ᵢⱼ = R − 原收益ᵢⱼ（R = ' + num(m.maxReward) + '）', true) : '')
-    + '<p>禁运格不参与分配、补基、检验和回路。有禁运时先做辅助最大流可行性检查，再按最小元素分配、位势法优化。</p></div>'
-    + study.group(res.steps.map(function (s, i) { return stepContent(m, s, i); }), '运输问题逐步推导') + '</section></details>';
+    + '<p>禁运格不参与分配、补基、检验和回路。有禁运时先做辅助最大流可行性检查，再按最小元素分配、位势法优化。</p>'
+    + (m.direction === 'max' ? '<p>以下分配、位势检验与闭回路表统一使用转换后费用 c′，左上角为 c′，过程目标为最小化工作目标；最后一步再按原收益结算。</p>' : '') + '</div>'
+    + study.group(contents, '运输问题逐步推导') + '</section></details>';
   return h;
 }
 module.exports = { render: render, table: table, balanceNote: balanceNote, num: num };

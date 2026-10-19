@@ -1,4 +1,5 @@
 'use strict';
+const resizeInput = require('../lib/resize-input');
 module.exports = async function transportCases(sess, check, url) {
   async function run(code) {
     const rows = await sess.evl(`(function(){
@@ -6,7 +7,8 @@ module.exports = async function transportCases(sess, check, url) {
       function click(id){document.getElementById(id).click()}
       function set(s,v){var e=q(s);e.value=String(v);e.dispatchEvent(new Event('input',{bubbles:true}))}
       function value(key,i,j,v){set('#tpPanel [data-key='+key+'][data-i="'+i+'"]'+(j===null?'':'[data-j="'+j+'"]'),v)}
-      function size(m,n){set('#tpPanel [data-guide=n]',m);set('#tpPanel [data-guide=m]',n);q('#tpPanel [data-guide=apply]').click()}
+      ${resizeInput.toString()}
+      function size(m,n){resizeInput('tpPanel',m,n)}
       function expect(ok,label){results.push({ok:!!ok,label:'运输：'+label})}
       ${code}
       return results;
@@ -20,6 +22,20 @@ module.exports = async function transportCases(sess, check, url) {
     expect(q('#mod-transport').classList.contains('on') && !q('#tpOut').textContent,'路由生效，默认空白题目');
     expect(document.querySelectorAll('.tabbar a').length===2,'保持首页与设置双入口底栏');
     click('tpSolveBtn');expect(q('#tpBanners').textContent.indexOf('产地')>=0,'空题给出规模提示');
+    click('tpAddRow');
+    expect(q('#tpInTbl [data-key=supply]') && !q('#tpInTbl [data-key=demand]'),'只添加产地也显示供应量表格');
+    value('supply',0,null,'7/2'); click('tpSolveBtn');
+    expect(q('#tpBanners').textContent && !q('#tpOut').textContent,'缺少销地时保留输入并阻止求解');
+    click('tpAddCol');
+    expect(q('#tpInTbl [data-key=supply]').value==='7/2' && q('#tpInTbl [data-key=cells]'),'后加销地保留先填供应量');
+    click('tpDelRow');
+    expect(q('#tpInTbl [data-key=demand]') && !q('#tpInTbl [data-key=supply]'),'只剩销地时仍显示需求量表格');
+    value('demand',0,null,'5/2'); click('tpAddRow');
+    expect(q('#tpInTbl [data-key=demand]').value==='5/2','后加产地保留先填需求量');
+    click('tpDelRow'); click('tpDelCol'); click('tpAddCol');
+    expect(q('#tpInTbl [data-key=demand]') && !q('#tpInTbl [data-key=supply]'),'从空题先添加销地立即显示需求量');
+    click('tpDelCol');
+    expect(!q('#tpInTbl input') && q('#tpInTbl .empty-tip'),'删空两侧回到空题提示');
     q('#tpPanel [data-guide=sample]').click();click('tpSolveBtn');
     expect(q('#tpOut .zv').textContent==='360','示例最小费用360');
     expect(q('#tpOut').textContent.indexOf('初始可行方案')>=0 && q('#tpOut').textContent.indexOf('430')>=0,'初始费用430与最终360明确分开');

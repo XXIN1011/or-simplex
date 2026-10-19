@@ -52,6 +52,7 @@ function scene(m, s, frame) {
   options.dim = loop.length > 0;
   options.theta = frame === thetaFrame;
   options.updated = done ? changedCells(s) : [];
+  if (m.direction === 'max') options.costMatrix = m.working;
   if (frame === 0) {
     title = long ? '整条闭回路' : '从入基格开始';
     note = long
@@ -72,11 +73,14 @@ function scene(m, s, frame) {
     note = 'θ = ' + num(s.theta) + '：正负号格同步调整，显示算法记录的调整后方案。';
   }
   h += routeList(s, long ? s.cycle.length : frame);
-  var objective = done ? s.objective : s.objectiveBefore;
+  var maximizing = m.direction === 'max';
+  var before = maximizing ? s.workingObjectiveBefore : s.objectiveBefore;
+  var after = maximizing ? s.workingObjectiveAfter : s.objectiveAfter;
+  var objective = done ? after : before;
   return { html: '<h4 class="tp-scene-title">' + title + '</h4><p>' + note + '</p>' + h
-    + table(m, values, basis, loop, '回路表（左上角费用；＋ 加 θ / − 减 θ）', false, options)
-    + '<p class="tp-player-objective">原目标值 <b>' + num(objective) + '</b>'
-    + (done ? '；' + num(s.objectiveBefore) + ' → ' + num(s.objectiveAfter) + '（变化 ' + num(s.delta) + '）' : '') + '。</p>',
+    + table(m, values, basis, loop, '回路表（左上角' + (maximizing ? '转换后费用 c′' : '费用') + '；＋ 加 θ / − 减 θ）', false, options)
+    + '<p class="tp-player-objective">' + (maximizing ? '最小化工作目标值' : '原目标值') + ' <b>' + num(objective) + '</b>'
+    + (done ? '；' + num(before) + ' → ' + num(after) + '（变化 ' + num(maximizing ? s.workingDelta : s.delta) + '）' : '') + '。</p>',
     loop: loop, closed: closed, animateLast: animateLast };
 }
 function render(m, s, index) {

@@ -104,7 +104,7 @@ function buildChrome(cfg) {
   var on = (order.indexOf(state.dir) >= 0) ? state.dir : order[0];
   var L = cfg.labels || DEFAULT_LABELS;
 
-  var html = inputGuide.markup(cfg.matrix, cfg.maxN || 6, cfg.maxM || 8)
+  var html = inputGuide.markup(cfg.matrix)
     + '<div class="seg" id="' + cfg.dirSeg + '" role="group" aria-label="优化方向">';
   for (var i = 0; i < order.length; i++) {
     html += '<button type="button" data-dir="' + order[i] + '"'
@@ -322,7 +322,6 @@ function createInputPanel(cfg) {
 
   function init() {
     if (cfg.mount) guide = inputGuide.attach(document.getElementById(cfg.mount), {
-      resize: function (n, m) { setN(n); setM(m); },
       sample: function () { if (cfg.example) loadProblem(cfg.example()); }
     });
     Array.prototype.forEach.call(el('dirSeg').querySelectorAll('button'), function (b) {

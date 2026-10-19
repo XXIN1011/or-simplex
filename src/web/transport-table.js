@@ -11,6 +11,7 @@ function cellName(c) { return '(' + (c.i + 1) + ', ' + (c.j + 1) + ')'; }
 function same(a, i, j) { return a && a.i === i && a.j === j; }
 function table(m, values, basis, loop, caption, costs, options) {
   var o = options || {};
+  var costMatrix = o.costMatrix || m.cost;
   var rowMargins = o.rowMargins || o.supply || m.supply;
   var colMargins = o.colMargins || o.demand || m.demand;
   var rowLabel = o.rowLabel || (o.supply ? '剩余供应' : '供应量');
@@ -54,7 +55,7 @@ function table(m, values, basis, loop, caption, costs, options) {
       h += '<td data-tp-cell="' + key + '" class="' + cls + '">';
       if (!m.allowed[i][j]) { h += '禁运</td>'; continue; }
       /* 左上角费用角标：只有运量表才写，纯费用/检验数表里中间那个数就是主体。 */
-      if (!costs) h += '<b class="tp-cost">' + num(m.cost[i][j]) + '</b>';
+      if (!costs) h += '<b class="tp-cost">' + num(costMatrix[i][j]) + '</b>';
       if (hit) h += '<i class="tp-anchor"></i>';
       if (hit) h += '<span class="tp-sgn">' + hit.sign + '</span>';
       h += '<span class="mono tp-value">' + num(values[i][j]) + '</span>';

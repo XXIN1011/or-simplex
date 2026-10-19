@@ -386,7 +386,6 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
   });
 
   var guide = require('./input-guide.js').attach($('asPanel'), {
-    resize: setSize,
     sample: function () {
       var p = require('./examples.js').assignment();
       $('asDirSeg').querySelector('[data-dir="' + p.direction + '"]').click();

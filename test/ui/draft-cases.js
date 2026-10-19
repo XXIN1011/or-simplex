@@ -75,8 +75,8 @@ module.exports = async function draftCases(sess, check, url) {
     q('#sensTabs [data-t=param]').click();q('#pKind [data-k=b]').click();set('#sensForm [data-f=pe][data-i="2"]','−3');
     sample('simplexPanel');click('solveBtn');expect(q('#result .zv').textContent==='14','恢复后可载入另一题并求解');
     var theme=localStorage.getItem('or-theme');clear('simplexPanel');
-    expect(!q('#result').textContent && q('#simplexPanel [data-guide=n]').value==='0'
-      && q('#simplexPanel [data-guide=m]').value==='0','清空当前题目同时清除旧结果');
+    expect(!q('#result').textContent && !q('#inTbl [data-k=c]')
+      && !q('#inTbl [data-k=b]'),'清空当前题目同时清除旧结果');
     expect(localStorage.getItem('or-simplex-draft:simplex')===null
       && !!localStorage.getItem('or-simplex-draft:ip') && localStorage.getItem('or-theme')===theme,
       '清空只删除本模块草稿，其他模块与主题保持各自状态');
@@ -84,7 +84,7 @@ module.exports = async function draftCases(sess, check, url) {
   `);
   await reload();
   await checks(`
-    expect(q('#simplexPanel [data-guide=n]').value==='0','清空后刷新不会重新出现旧题');
+    expect(!q('#inTbl [data-k=c]') && !q('#inTbl [data-k=b]'),'清空后刷新不会重新出现旧题');
     click('sSolveBtn');expect(q('#sensTabs .on').dataset.t==='param'
       && q('#pKind .on').dataset.k==='b' && q('#sensForm [data-f=pe][data-i="2"]').value==='−3',
       '参数分析恢复右端项方向和参数系数');
