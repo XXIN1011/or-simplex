@@ -73,6 +73,39 @@
    闭回路的正负号写在运量前，连线从费用角标下方的节点穿过。
    ========================================================================= */
 #mod-transport{max-width:1000px;margin:0 auto}
+#mod-transport>header{margin-bottom:16px}
+/* 原始输入直接融入表格；仅在编辑或错误时标出当前输入。 */
+#tpInTbl input.num{border:0;border-radius:0;background:transparent;box-shadow:none}
+#tpInTbl input.num:focus{outline:2px solid var(--accent);outline-offset:-2px;background:var(--accent-soft);box-shadow:none}
+#tpInTbl input.num[aria-invalid="true"]{outline:2px solid var(--err);outline-offset:-2px;background:var(--err-soft);box-shadow:none}
+#tpPanel .input-guide{margin-bottom:12px;padding-bottom:12px}
+#tpPanel .guide-intro{flex-wrap:wrap;gap:8px}
+#tpPanel .guide-intro b{font-size:15px}
+#tpPanel .guide-intro p{max-width:32em}
+#tpPanel .guide-actions{flex-wrap:wrap}
+#tpPanel .ctrls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;max-width:560px;margin-inline:auto}
+#tpPanel .ctrls .btn{padding:8px 4px;min-width:0}
+.tp-input-tools{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;margin-top:12px}
+.tp-input-tools .sens-note{margin:0;flex:1;min-width:160px}
+.tp-input-tools .btn{flex-shrink:0}
+.tp-extra>summary{min-height:44px;display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--fg2);font-size:13px;font-weight:600}
+.tp-extra>summary::before{content:'＋';color:var(--accent)}
+.tp-extra[open]>summary::before{content:'−'}
+.tp-extra>p{font-size:13px;line-height:1.7;color:var(--fg2);margin:4px 0 12px}
+.tp-help{margin-top:8px;border-top:1px solid var(--line)}
+.tp-fee-options{margin-top:8px}
+.tp-result-overview{display:grid;gap:12px;margin-bottom:16px}
+.tp-result-overview .verdict{margin:0}
+.tp-result-facts{display:flex;flex-wrap:wrap;gap:12px 24px;margin:0;align-content:center}
+.tp-result-facts div{flex:1;min-width:110px}
+.tp-result-facts dt{font-size:13px;color:var(--fg2)}
+.tp-result-facts dd{font:600 18px/1.6 var(--mono);margin:2px 0 0;color:var(--fg);overflow-wrap:anywhere}
+#tpOut .tp-step-lead{margin:4px 0 10px;font-size:14px;line-height:1.8}
+#tpOut .tp-step-guard{color:var(--warn);font-size:13px;line-height:1.7}
+#tpOut .tp-step-total{margin:12px 0 0;font-size:14px;font-weight:600}
+#tpOut .tp-formula{font-size:14px;line-height:1.9;margin:10px 0;overflow-wrap:anywhere}
+@media(min-width:768px){.tp-result-overview{grid-template-columns:minmax(200px,1fr) 1fr;gap:24px;align-items:center}}
+@media(max-width:480px){#tpPanel .guide-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}#tpPanel .guide-actions .btn{padding:8px}}
 .transport-table caption,.transport-input caption,.tp-caption{text-align:left;color:var(--fg2);font-size:13px;padding:12px 0;white-space:normal}
 .tp-caption{margin:0;line-height:1.6}
 /* 单元格网格：每格只画右边和下边，相邻格各画一遍也不会叠成 4px；整张表再补上边
@@ -125,8 +158,8 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
 .tp-fee-options>summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:650}
 .tp-fee-options>summary::before{content:'＋';margin-right:8px;color:var(--accent)}
 .tp-fee-options[open]>summary::before{content:'−'}
-.tp-fee-fields{display:flex;flex-wrap:wrap;gap:12px;padding:8px 0}
-.tp-fee-fields label{display:flex;align-items:center;gap:8px;font-size:13px}
+.tp-fee-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;padding:8px 0}
+.tp-fee-fields label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px}
 .transport-table tfoot,.transport-input tfoot{font-weight:650}
 #tpOut h3{margin:0 0 12px;font-size:18px;line-height:1.5}
 #tpOut p{overflow-wrap:anywhere}

@@ -24,12 +24,13 @@ var draft = require('./draft.js');
     var b = transport.balance(problem());
     $('tpBalance').textContent = b.ok ? '总供应 ' + report.num(b.supplyTotal) + '；总需求 ' + report.num(b.demandTotal)
       + (b.difference > 0 ? ' · 供大于求，剩余 ' + report.num(b.difference) : b.difference < 0 ? ' · 供小于求，缺货 ' + report.num(-b.difference) : ' · 供需平衡')
-      : state.rows && state.cols ? '请填写有效的非负供需量后检查平衡状态。' : '请设置至少 1 个产地与 1 个销地。';
-    if (m.ok && m.forbiddenCount) $('tpBalance').textContent += '；已设置 ' + m.forbiddenCount + ' 条禁运路线，总量平衡不代表路线可达。';
+      : state.rows && state.cols ? '供需量须为非负数。' : '请添加产地和销地。';
+    if (m.ok && m.forbiddenCount) $('tpBalance').textContent += '；' + m.forbiddenCount + ' 条禁运路线，需另验可行性。';
     /* 虚拟线路在求解前就可检查：原输入保留，平衡表由 core 生成。 */
+    var preview = $('tpVirtual').querySelector('details'), previewOpen = preview && preview.open;
     $('tpVirtual').innerHTML = m.ok && (m.virtual || m.balanceAdjustment)
-      ? '<p class="sens-note">' + report.balanceNote(m) + '</p>'
-        + report.table(m, m.cost, null, null, '自动平衡运输表（原费用 / 收益，含虚拟线路）', true) : '';
+      ? '<details class="tp-extra"' + (previewOpen ? ' open' : '') + '><summary>查看补齐后的运输表</summary><p class="sens-note">' + report.balanceNote(m) + '</p>'
+        + report.table(m, m.cost, null, null, '平衡后原费用 / 收益', true) + '</details>' : '';
     panels.addScrollHints($('tpPanel'));
   }
   function input(key, i, j, label) {
@@ -42,9 +43,9 @@ var draft = require('./draft.js');
   }
   function renderInput() {
     var h = '', i, j;
-    if (!state.rows && !state.cols) h = '<tbody><tr><td class="empty-tip">载入示例，或增加产地与销地建立运输表。</td></tr></tbody>';
+    if (!state.rows && !state.cols) h = '<tbody><tr><td class="empty-tip">载入示例，或用下方按钮添加产地、销地。</td></tr></tbody>';
     else {
-      h = '<caption>中间为单位' + (state.direction === 'max' ? '收益' : '运费') + ' · 右侧供应 · 底部需求</caption><thead><tr><th scope="col">产地 / 销地</th>';
+      h = '<caption>单位' + (state.direction === 'max' ? '收益' : '运费') + '</caption><thead><tr><th scope="col">产地 / 销地</th>';
       for (j = 0; j < state.cols; j++) h += '<th scope="col">销地' + (j + 1) + '</th>';
       h += '<th scope="col">供应量</th></tr></thead><tbody>';
       for (i = 0; i < state.rows; i++) {
@@ -54,12 +55,12 @@ var draft = require('./draft.js');
       }
       h += '</tbody><tfoot><tr><th scope="row">需求量</th>';
       for (j = 0; j < state.cols; j++) h += '<td class="tp-margin">' + input('demand', j, undefined, '销地' + (j + 1) + '需求量') + '</td>';
-      h += '<td>合计↓</td></tr></tfoot>';
+      h += '<td>—</td></tr></tfoot>';
     }
     $('tpInTbl').innerHTML = h;
     var fees = '<div class="tp-fee-fields">';
-    for (i = 0; i < state.rows; i++) fees += '<label>产地' + (i + 1) + '剩余处理费 ' + input('surplusCost', i, undefined, '产地' + (i + 1) + '单位剩余处理费') + '</label>';
-    for (j = 0; j < state.cols; j++) fees += '<label>销地' + (j + 1) + '缺货罚金 ' + input('shortageCost', j, undefined, '销地' + (j + 1) + '单位缺货罚金') + '</label>';
+    for (i = 0; i < state.rows; i++) fees += '<label>产地' + (i + 1) + '处理费 ' + input('surplusCost', i, undefined, '产地' + (i + 1) + '单位剩余处理费') + '</label>';
+    for (j = 0; j < state.cols; j++) fees += '<label>销地' + (j + 1) + '罚金 ' + input('shortageCost', j, undefined, '销地' + (j + 1) + '单位缺货罚金') + '</label>';
     $('tpFees').innerHTML = fees + '</div>';
     $('tpAddRow').disabled = state.rows >= MAX; $('tpDelRow').disabled = !state.rows;
     $('tpAddCol').disabled = state.cols >= MAX; $('tpDelCol').disabled = !state.cols;
@@ -91,13 +92,15 @@ var draft = require('./draft.js');
     addVar: 'tpAddRow', delVar: 'tpDelRow', addCon: 'tpAddCol', delCon: 'tpDelCol',
     labels: { addVar: '+ 产地', delVar: '− 产地', addCon: '+ 销地', delCon: '− 销地' } });
   var extras = document.createElement('div');
-  extras.innerHTML = '<p class="sens-note">费用格填 M 表示禁运（也接受 X、×、“禁运”）；改回数字即可恢复运输。</p>'
-    + '<button type="button" class="btn" data-transport-forbidden-sample>载入禁运示例</button>'
+  extras.innerHTML = '<div class="tp-input-tools"><p class="sens-note">空白=0 · 支持分数 · M 禁运</p>'
+    + '<button type="button" class="btn" data-transport-forbidden-sample>禁运示例</button></div>'
     + '<p class="tp-balance" id="tpBalance" role="status" aria-live="polite"></p>'
-    + '<details class="tp-fee-options"><summary>剩余处理费用 / 缺货罚金</summary>'
-    + '<p class="sens-note">按单位计费，默认 0；最大收益会从总收益中扣除。</p>'
+    + '<details class="tp-fee-options"><summary>处理费与缺货罚金</summary>'
+    + '<p class="sens-note">每单位计费，默认 0；最大化时扣除。</p>'
     + '<div id="tpFees"></div></details><div id="tpVirtual"></div>';
   $('tpPanel').appendChild(extras);
+  /* 主操作紧接供需状态，费用和补齐表作为后续可选配置。 */
+  extras.insertBefore($('tpSolveBtn').parentNode, extras.querySelector('.tp-fee-options'));
   function loadExample(p) {
     load({ direction: p.direction, rows: p.supply.length, cols: p.demand.length,
       cells: p.cost.map(function (r) { return r.map(String); }), supply: p.supply.map(String), demand: p.demand.map(String),

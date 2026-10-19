@@ -127,7 +127,7 @@ module.exports = async function playerCases(sess, run) {
   await sess.cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'no-preference'}]},sess.sessionId);
   await run(`
     q('#tpPanel [data-transport-forbidden-sample]').click();click('tpSolveBtn');
-    expect(q('#tpOut').textContent.indexOf('剩余网络将有 5')>=0,'防堵路解释留在静态分配步骤');
+    expect(q('#tpOut .tp-step-guard').textContent.indexOf('5 单位无法匹配')>=0,'防堵路解释留在静态分配步骤');
     var alloc=q('#tpOut .study-step[data-step-title^="最小元素分配"]');
     expect(alloc.querySelector('[data-tp-cell="0-0"] .tp-value').textContent==='0' && !alloc.querySelector('[data-tp-cell="0-0"] .tp-basis'),'禁运保护跳过零分配格且不伪造基身份');
     value('cells',0,1,'M');value('cells',1,1,'M');click('tpSolveBtn');

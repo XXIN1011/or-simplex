@@ -22,7 +22,7 @@ function table(m, values, basis, loop, caption, costs, options) {
   var at = {}, changed = {};
   (loop || []).forEach(function (c, k) { at[c.i + '-' + c.j] = { sign: c.sign > 0 ? '+' : '−' }; });
   (o.updated || []).forEach(function (c) { changed[c.i + '-' + c.j] = 1; });
-  var h = '<p class="tp-caption">' + esc(caption) + '</p>'
+  var h = (o.hideCaption ? '' : '<p class="tp-caption">' + esc(caption) + '</p>')
     + '<div class="scroll"><div class="tp-stage"><table class="tb transport-table' + (costs ? ' tp-plain' : '')
     + '" aria-label="' + esc(caption) + '"><thead><tr>'
     + '<th scope="col" class="tp-corner"><span class="tp-corner-x">销地</span><span class="tp-corner-y">产地</span></th>', i, j;

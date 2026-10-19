@@ -36,7 +36,16 @@ module.exports = async function transportCases(sess, check, url) {
     expect(q('#tpInTbl [data-key=demand]') && !q('#tpInTbl [data-key=supply]'),'从空题先添加销地立即显示需求量');
     click('tpDelCol');
     expect(!q('#tpInTbl input') && q('#tpInTbl .empty-tip'),'删空两侧回到空题提示');
-    q('#tpPanel [data-guide=sample]').click();click('tpSolveBtn');
+    q('#tpPanel [data-guide=sample]').click();
+    var raw=q('#tpInTbl [data-key=cells]'),rawStyle=getComputedStyle(raw);
+    expect(rawStyle.borderTopWidth==='0px' && rawStyle.boxShadow==='none','原始表数字无独立输入方框');
+    raw.focus();
+    expect(getComputedStyle(raw).outlineWidth==='2px','无边框输入仍有清晰焦点');
+    var focusColor=getComputedStyle(raw).outlineColor;
+    value('cells',0,0,'1/0');
+    expect(raw.getAttribute('aria-invalid')==='true' && getComputedStyle(raw).outlineWidth==='2px'
+      && getComputedStyle(raw).outlineColor!==focusColor,'无边框输入仍以错误色标出非法数值');
+    value('cells',0,0,6);raw.blur();click('tpSolveBtn');
     expect(q('#tpOut .zv').textContent==='360','示例最小费用360');
     expect(q('#tpOut').textContent.indexOf('初始可行方案')>=0 && q('#tpOut').textContent.indexOf('430')>=0,'初始费用430与最终360明确分开');
     expect(q('#tpInTbl tfoot [data-key=demand]') && q('#tpInTbl tbody [data-key=supply]'),'运输表右侧供应、底部需求');
@@ -103,10 +112,10 @@ module.exports = async function transportCases(sess, check, url) {
     value('cells',0,0,'X');
     expect(q('#tpBalance').textContent.indexOf('2 条禁运路线')>=0,'旧的 X 标记仍算禁运');
     value('cells',0,0,1);
-    expect(q('#tpBalance').textContent.indexOf('总量平衡不代表路线可达')>=0,'平衡提示说明禁运可行性另行检查');
+    expect(q('#tpBalance').textContent.indexOf('需另验可行性')>=0,'平衡提示说明禁运可行性另行检查');
     click('tpSolveBtn');
     expect(q('#tpOut .zv').textContent==='25','禁运示例最优费用25');
-    expect(q('#tpOut').textContent.indexOf('可行性检查发现按上限分配会堵住后续路线')>=0,'逐步解释防堵路分配');
+    expect(q('#tpOut .tp-step-guard').textContent.indexOf('防堵路')>=0 && q('#tpOut .tp-step-guard').textContent.indexOf('单位无法匹配')>=0,'逐步解释防堵路分配');
     expect(q('#tpOut .tp-blocked').textContent.indexOf('禁运')>=0 && q('#tpOut').textContent.indexOf('不参与检验')>=0,'结果、检验数及过程明确标记禁运');
     value('cells',1,1,1);expect(!q('#tpOut').textContent && !q('#tpPanel [data-key=cells][data-i="1"][data-j="1"]').parentNode.classList.contains('tp-blocked'),'数字恢复线路并立即清除旧结果');
     click('tpSolveBtn');expect(q('#tpOut .zv').textContent==='10','放开线路后重新优化');

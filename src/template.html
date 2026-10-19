@@ -205,7 +205,10 @@
     <section class="card">
       <div id="tpPanel"></div>
       <div class="actions"><button type="button" class="btn primary" id="tpSolveBtn">求　解</button></div>
-      <p class="sens-note">最小元素法生成初始可行方案，再用位势法检验并沿闭回路调整。空白按 0；费用填 M 表示禁运，供需量须非负。暂不支持线路容量和中转运输。</p>
+      <details class="tp-extra tp-help"><summary>输入与算法说明</summary>
+        <p>供需量须非负；费用可为负数。禁运也接受 X、× 或“禁运”。</p>
+        <p>最小元素法给出初始方案，位势法检验并沿闭回路调整。仅支持直达运输，无线路容量限制。</p>
+      </details>
     </section>
     <div id="tpBanners" role="status" aria-live="polite"></div>
     <section id="tpOut" aria-label="运输问题结果"></section>
