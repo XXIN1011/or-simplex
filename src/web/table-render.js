@@ -14,37 +14,44 @@ var fmtNum = format.fmtNum;
 var fmtPair = format.fmtPair;
 
   /* ---------------- 迭代表渲染 ---------------- */
-  function renderTable(res, step) {
+  function renderTable(res, step, options) {
+    options = options || {};
+    /* 可选的只读对照视图不沿用快照自带的下一轮选择标记。默认输出保持原样。 */
+    var entering = options.unmarked ? null : step.entering;
+    var leaving = options.unmarked ? null : step.leaving;
+    function position(row, col) {
+      return options.positions ? ' data-pivot-row="' + row + '" data-pivot-col="' + col + '"' : '';
+    }
     var names = res.vars.map(function (v) { return v.name; });
     var N = names.length;
-    var leaveCol = (step.leaving === null || step.leaving === undefined) ? -1 : step.basis[step.leaving];
+    var leaveCol = (leaving === null || leaving === undefined) ? -1 : step.basis[leaving];
     var h = '<thead><tr><th>基</th>';
     for (var j = 0; j < N; j++) {
       var thc = [];
-      if (step.entering === j) thc.push('enter');
+      if (entering === j) thc.push('enter');
       if (leaveCol === j) thc.push('leave');
-      h += '<th class="' + thc.join(' ') + '">' + names[j] + '</th>';
+      h += '<th' + position('head', j) + ' class="' + thc.join(' ') + '">' + names[j] + '</th>';
     }
-    h += '<th class="bcol">b</th></tr></thead><tbody>';
+    h += '<th' + position('head', N) + ' class="bcol">b</th></tr></thead><tbody>';
 
     for (var i = 0; i < res.mConstraints; i++) {
       h += '<tr><td class="rowlbl base">' + names[step.basis[i]] + '</td>';
       for (var j2 = 0; j2 < N; j2++) {
         var cls = [];
-        if (step.entering === j2) cls.push('enter');
-        if (step.leaving === i) cls.push('leave');
-        if (step.leaving === i && step.entering === j2) cls.push('pivot');
-        h += '<td class="cell ' + cls.join(' ') + '">' + fmtNum(step.rows[i][j2]) + '</td>';
+        if (entering === j2) cls.push('enter');
+        if (leaving === i) cls.push('leave');
+        if (leaving === i && entering === j2) cls.push('pivot');
+        h += '<td' + position(i, j2) + ' class="cell ' + cls.join(' ') + '">' + fmtNum(step.rows[i][j2]) + '</td>';
       }
-      h += '<td class="bcol">' + fmtNum(step.rows[i][N]) + '</td></tr>';
+      h += '<td' + position(i, N) + ' class="bcol">' + fmtNum(step.rows[i][N]) + '</td></tr>';
     }
 
     h += '<tr class="objrow"><td class="rowlbl">σ</td>';
     for (var j3 = 0; j3 < N; j3++) {
-      h += '<td class="cell ' + (step.entering === j3 ? 'enter' : '') + '">'
+      h += '<td' + position('obj', j3) + ' class="cell ' + (entering === j3 ? 'enter' : '') + '">'
         + fmtPair(step.obj[j3]) + '</td>';
     }
-    h += '<td class="bcol">' + fmtPair(step.obj[N]) + '</td></tr>';
+    h += '<td' + position('obj', N) + ' class="bcol">' + fmtPair(step.obj[N]) + '</td></tr>';
 
     return '<div class="scroll"><table class="tb">' + h + '</tbody></table></div>';
   }

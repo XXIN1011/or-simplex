@@ -149,6 +149,8 @@ const AUDIT = `(function(){
               '.graph','.help','.empty-tip','.scroll-hint','.iter-head','.hint','header p',
               /* 灵敏度分析模块与首页新增的部分 */
               '.judge','.sens-note','.sens-warn','.sens-h','a.modcard .md','a.back','.fl','.fe','.fx',
+              '.ip-tree-summary','.ip-tree-meta','.ip-tree-bound','.ip-tree-branch','.ip-tree-integer','.ip-tree-prune','.ip-tree-best-label','.ip-tree-edge',
+              '.ip-tree-controls output','.ip-tree-zoom-note','.ip-tree-short-action','.ip-tree-short-best',
               /* 通用 */
               '.muted','.verdict .vtitle','.tp-player-progress','.tp-scene-title','.tp-route-visited','.tp-cut-label','.tp-player-objective',
               /* 玻璃主题新增：主按钮（玻璃描边）与底部导航标签 */
@@ -218,7 +220,8 @@ const AUDIT = `(function(){
     ? "document.querySelector('#tpPanel [data-guide=sample]').click();document.getElementById('tpSolveBtn').click();document.querySelector('#tpOut [data-study-mode=single]').click();var p=document.querySelector('[data-kind=pivot]'),sel=document.querySelector('#tpOut [data-study-select]');sel.value=p.getAttribute('data-transport-player');sel.dispatchEvent(new Event('change',{bubbles:true}));for(var k=0;k<5;k++)p.querySelector('[data-tp-next]').click();"
     : "document.querySelector('#tpPanel [data-transport-forbidden-sample]').click();document.getElementById('tpSolveBtn').click();document.querySelector('[data-kind=pivot] [data-tp-next]').click();";
   await cdp.send('Runtime.evaluate',
-    { expression: wantHash === '#/transport' ? transportSetup : wantHash === '#/sens' ? SENS_SETUP : SETUP }, sessionId);
+    { expression: wantHash === '#/transport' ? transportSetup : wantHash === '#/sens' ? SENS_SETUP
+      : wantHash === '#/ip' ? "document.querySelector('#ipPanel [data-guide=sample]').click();document.getElementById('ipSolveBtn').click();" : SETUP }, sessionId);
   await sleep(isRemote ? 1400 : 900);
 
   const r = await cdp.send('Runtime.evaluate', { expression: AUDIT, returnByValue: true }, sessionId);

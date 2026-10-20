@@ -11,6 +11,7 @@ var dom = require('./dom.js');
 var $ = dom.$, esc = dom.esc, subs = dom.subs;
 var resultLayout = require('./result-layout.js');
 var study = require('./study-view.js');
+var integerTree = require('./integer-tree.js');
 var TYPE_NAMES = { cont: '连续', int: '整数', bin: '0-1' };
 var MAX_ENUM_POINTS = 4096, MAX_SHOW_ROWS = 300;
 function num(v) { return fmtNum(v); }
@@ -146,6 +147,7 @@ function renderMethods(prob, r) {
   if (!box) return;
   box.innerHTML = buildMethods(prob, r);
   study.wire(box);
+  integerTree.wire(box, r.methods.filter(function (m) { return m.key === 'bnb'; })[0]);
   addScrollHints(document);
 }
 
@@ -294,12 +296,13 @@ function viewBnb(prob, r, m) {
                     + '）提前中止，下面给出的是「目前找到的最好整数解」，不能保证是全局最优。</b></span>')
     + '</div>';
 
+  h += integerTree.render(m);
   var many = m.nodes.length > 25;
   if (many) {
     h += '<details class="help"><summary>展开全部 ' + m.nodes.length + ' 个结点（默认折叠：结点较多）</summary>';
   }
   m.nodes.forEach(function (nd) {
-    h += '<div class="judge"><span class="row blk">结点 ' + nd.id
+    h += '<div class="judge"><span class="row blk ip-node-title" tabindex="-1" data-integer-node-title="' + esc(nd.id) + '">结点 ' + esc(nd.id)
       + (nd.parent ? '（由结点 ' + nd.parent + ' 分出）' : '（根结点）')
       + '　深度 ' + nd.depth + '</span>';
     h += '<span class="row">· 附加约束：'
@@ -316,9 +319,11 @@ function viewBnb(prob, r, m) {
         }).join('　') + '　　z = <b>' + num(nd.objective) + '</b>'
         + (nd.action === 'branch' ? '（加粗的是非整数分量，就是它要分枝）' : '') + '</span>';
     } else {
-      h += '<span class="row">· 松弛问题' + (nd.res.status === 'infeasible' ? '无可行解' : '无界') + '</span>';
+      h += '<span class="row">· 松弛问题' + (nd.res.status === 'infeasible' ? '无可行解'
+        : nd.res.status === 'unbounded' ? '无界' : '状态未确认（未收敛或异常）') + '</span>';
     }
     h += '<span class="row">· <b>' + esc(nd.actionName) + '</b>：' + esc(nd.note) + '</span>';
+    h += '<button type="button" class="btn ip-tree-return" data-integer-tree-return="' + esc(nd.id) + '">返回树图</button>';
     h += '</div>';
     /* 每个结点的单纯形迭代也留着，需要时展开 */
     h += '<details class="help"><summary>结点 ' + nd.id + ' 的单纯形法迭代</summary>'

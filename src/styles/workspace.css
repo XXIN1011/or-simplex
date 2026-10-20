@@ -307,3 +307,85 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
 @media(max-width:480px){
   .transport-input td{padding:1px 0}
 }
+
+/* 分枝定界树按缩放档位调整布局与信息量，文字保留至少 12px，始终在自身滚动。 */
+.ip-tree{min-width:0;margin:24px 0;padding:16px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.ip-tree .sens-h{margin-top:0}
+.ip-tree-summary{font-size:14px;font-weight:650;margin:8px 0;overflow-wrap:anywhere}
+.ip-tree-legend{display:flex;flex-wrap:wrap;gap:8px 16px;list-style:none;padding:0;margin:12px 0;font-size:12px}
+.ip-tree-legend li:before{content:"";display:inline-block;width:10px;height:10px;border:2px solid currentColor;border-radius:3px;margin-right:5px}
+.ip-tree-legend .ip-tree-open:before{border-style:dashed}
+.ip-tree-branch{color:var(--accent-text)}
+.ip-tree-integer,.ip-tree-best{color:var(--ok)}
+.ip-tree-prune,.ip-tree-open,.ip-tree-unknown{color:var(--fg2)}
+.ip-tree .ip-tree-scroll{max-width:100%;max-height:560px;max-height:min(560px,68vh);overflow:auto;margin:12px 0 0;padding:0;border:1px solid var(--control-line);border-radius:var(--r-sm);background:var(--soft);scroll-padding:16px;scrollbar-color:var(--control-line) var(--soft)}
+.ip-tree-canvas{position:relative;margin:0 auto}
+.ip-tree-lines{position:absolute;left:0;top:0;pointer-events:none}
+.ip-tree-lines path{fill:none;stroke:var(--fg3);stroke-width:1.5;stroke-linejoin:round}
+.ip-tree-node{position:absolute;width:var(--ip-tree-width,208px);height:var(--ip-tree-height,132px);min-width:44px;min-height:44px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;padding:var(--ip-tree-padding,10px 12px);border:1px solid var(--control-line);border-radius:var(--r-default,10px);background:var(--card);text-align:left;font-family:inherit;font-size:var(--ip-tree-font,13px);line-height:1.4;cursor:pointer;overflow-wrap:anywhere;scroll-margin:16px}
+.ip-tree-node strong{color:var(--fg);font-size:var(--ip-tree-title-font,14px)}
+.ip-tree-meta{color:var(--fg2);font-size:var(--ip-tree-label-font,12px)}
+.ip-tree-bound{color:var(--fg);font-variant-numeric:tabular-nums}
+.ip-tree-action,.ip-tree-best-label{font-size:var(--ip-tree-label-font,12px)}
+.ip-tree-best-label{color:var(--ok);font-weight:700}
+.ip-tree-node.ip-tree-best{border:2px solid var(--ok);background:var(--ok-soft)}
+.ip-tree-node.ip-tree-open{border-style:dashed;background:var(--soft)}
+.ip-tree-node[aria-pressed="true"]{outline:2px solid var(--accent);outline-offset:3px}
+.ip-tree-node:focus-visible{outline:3px solid var(--accent-text);outline-offset:3px}
+.ip-tree-node:hover{background:var(--accent-soft)}
+.ip-tree-edge{position:absolute;width:var(--ip-tree-width,208px);padding:2px 4px;text-align:center;font-size:var(--ip-tree-label-font,12px);line-height:var(--ip-tree-edge-line,20px);color:var(--fg2);background:var(--soft);overflow-wrap:anywhere;pointer-events:none}
+.ip-tree .scroll-hint{opacity:1}
+.ip-tree-feedback:empty{display:none}
+.ip-tree-return{margin-top:8px}
+.ip-node-title{scroll-margin-block:24px 110px}
+.ip-node-title:focus{outline:2px solid var(--accent);outline-offset:4px;border-radius:4px}
+.ip-tree-controls{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:12px}
+.ip-tree-controls .btn{min-width:44px;min-height:44px;padding:8px;font-size:13px;line-height:1.4}
+.ip-tree-controls output{min-width:68px;text-align:center;color:var(--fg2);font-size:12px;font-variant-numeric:tabular-nums}
+.ip-tree-zoom-note{margin:8px 0}
+.ip-tree-short-action,.ip-tree-short-best{display:none}
+.ip-tree-short-best{color:var(--ok);font-weight:700}
+.ip-tree[data-integer-tree-density="structure"] .ip-tree-node{padding:6px;gap:2px;font-size:12px}
+.ip-tree[data-integer-tree-density="structure"] .ip-tree-node strong{font-size:12px}
+.ip-tree[data-integer-tree-density="structure"] .ip-tree-meta,
+.ip-tree[data-integer-tree-density="structure"] .ip-tree-bound,
+.ip-tree[data-integer-tree-density="structure"] .ip-tree-best-label,
+.ip-tree[data-integer-tree-density="structure"] .ip-tree-node:not(.ip-tree-open) .ip-tree-action,
+.ip-tree[data-integer-tree-density="structure"] .ip-tree-edge{display:none}
+.ip-tree[data-integer-tree-density="structure"] .ip-tree-short-action,
+.ip-tree[data-integer-tree-density="structure"] .ip-tree-short-best,
+.ip-tree[data-integer-tree-density="summary"] .ip-tree-short-action,
+.ip-tree[data-integer-tree-density="summary"] .ip-tree-short-best{display:block;font-size:12px}
+.ip-tree[data-integer-tree-density="summary"] .ip-tree-node{padding:8px 10px;gap:3px}
+.ip-tree[data-integer-tree-density="summary"] .ip-tree-bound,
+.ip-tree[data-integer-tree-density="summary"] .ip-tree-best-label,
+.ip-tree[data-integer-tree-density="summary"] .ip-tree-node:not(.ip-tree-open) .ip-tree-action{display:none}
+
+/* 单纯形换表讲解：局部状态只作用于这两张只读快照。 */
+.simplex-pivot{margin-top:16px;border-top:1px solid var(--line);min-width:0}
+.simplex-pivot>summary{min-height:44px;padding:12px 0;cursor:pointer;color:var(--accent-text);font-size:14px;font-weight:650}
+.simplex-pivot [data-pivot-body]{min-width:0;padding:0 0 8px}
+.simplex-pivot p{font-size:13px;line-height:1.75;margin:8px 0;overflow-wrap:anywhere}
+.simplex-pivot-controls{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:4px 0 12px}
+.simplex-pivot-controls [data-pivot-progress]{margin:0;font-weight:650}
+.simplex-pivot-actions{display:flex;flex-wrap:wrap;gap:8px}
+.simplex-pivot-actions .btn{min-width:44px;min-height:44px;font-size:13px}
+.simplex-pivot-picker{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:13px;margin:8px 0}
+.simplex-pivot-picker[hidden]{display:none}
+.simplex-pivot-picker select{min-height:44px;min-width:88px;max-width:100%;background:var(--input);color:var(--fg);border:1px solid var(--control-line);border-radius:var(--r-sm);padding:8px;font:inherit}
+.simplex-pivot .simplex-pivot-formula{font-family:var(--mono);font-size:13px;color:var(--fg);background:var(--soft);padding:8px 10px;border-radius:var(--r-sm)}
+.simplex-pivot-explanation{min-width:0}
+.simplex-pivot-legend{color:var(--fg2)}
+.simplex-pivot-tables{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;margin-top:12px;min-width:0}
+.simplex-pivot-tables figure{min-width:0;margin:0}
+.simplex-pivot-tables figcaption{font-size:13px;font-weight:650;margin-bottom:8px}
+.simplex-pivot-tables .scroll{max-width:100%;overflow-x:auto;scroll-margin-block:24px 110px;scrollbar-color:var(--control-line) var(--soft)}
+.simplex-pivot-tables table.tb{min-width:400px;font-size:13px}
+.simplex-pivot-tables table.tb .simplex-pivot-row-mark{background:var(--leave-soft);box-shadow:inset 0 1px var(--warn),inset 0 -1px var(--warn)}
+.simplex-pivot-tables table.tb .simplex-pivot-col-mark{background:var(--accent-soft);box-shadow:inset 1px 0 var(--accent-text),inset -1px 0 var(--accent-text)}
+.simplex-pivot-tables table.tb .simplex-pivot-cell-mark{background:var(--pivot-soft);outline:2px solid var(--warn);outline-offset:-2px;color:var(--fg);font-weight:700}
+.simplex-pivot :focus-visible{outline:2px solid var(--accent-text);outline-offset:2px}
+.simplex-pivot-unavailable{font-size:13px;line-height:1.75;color:var(--fg2);margin:16px 0 0}
+.simplex-pivot-stale-note{display:none}
+#result.stale .simplex-pivot-stale-note{display:block;font-weight:650}
+@media(min-width:1100px){.simplex-pivot-tables{grid-template-columns:repeat(2,minmax(0,1fr))}}

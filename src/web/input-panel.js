@@ -66,7 +66,7 @@ function addScrollHints(root) {
     if (next && next.classList.contains('scroll-hint')) return;
     var hint = document.createElement('div');
     hint.className = 'scroll-hint';
-    hint.textContent = '← 左右滑动查看完整表格 →';
+    hint.textContent = box.getAttribute('data-scroll-label') || '← 左右滑动查看完整表格 →';
     box.parentNode.insertBefore(hint, box.nextSibling);
     box.addEventListener('scroll', function () {
       hint.classList.toggle('hide', box.scrollLeft > 6);

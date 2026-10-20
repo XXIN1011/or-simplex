@@ -24,6 +24,7 @@ var graphCard = report.graphCard;
 var resultLayout = require('./result-layout.js');
 var study = require('./study-view.js');
 var interaction = require('./interaction.js');
+var pivotView = require('./simplex-pivot-view.js');
 
 (function () {
   'use strict';
@@ -86,19 +87,20 @@ var interaction = require('./interaction.js');
     html += '<section data-section="standard">' + standardCard(prob, res) + '</section>';
     html += graphCard(prob, res);
 
-    html += '<section data-section="iterations"><h2 class="sec">迭代过程（共 ' + (res.steps.length - 1) + ' 次迭代）</h2>';
+    html += '<section data-section="iterations"><h2 class="sec">迭代过程（共 ' + res.steps.length + ' 张快照）</h2>';
     var studySteps = res.steps.map(function (step, idx) {
       var title = idx === 0 ? '初始表' : '第 ' + idx + ' 次迭代';
       var isLast = (idx === res.steps.length - 1);
       var tag = '';
-      if (isLast && res.status === 'optimal') tag = '<span class="tag done">最优</span>';
-      else if (isLast) tag = '<span class="tag stop">终止</span>';
+      if (isLast && res.status === 'optimal' && step.entering === null && step.leaving === null) tag = '<span class="tag done">最优</span>';
+      else if (isLast) tag = '<span class="tag stop">' + (pivotView.inspect(res, idx).reason === 'missing' ? '后表未记录' : '终止') + '</span>';
       else tag = '<span class="tag">' + (idx === 0 ? '起点' : '迭代 ' + idx) + '</span>';
 
       var card = '<div class="card">'
         + '<div class="iter-head"><span class="name">' + title + '</span>' + tag + '</div>'
         + renderTable(res, step)
         + explain(res, step)
+        + pivotView.render(res, idx)
         + '</div>';
       return { title: title, html: card };
     });
@@ -113,6 +115,7 @@ var interaction = require('./interaction.js');
     $('mod-simplex').classList.add('has-result');
     addScrollHints(box);
     resultLayout.wire(box);
+    pivotView.wire(box, res);
     box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 

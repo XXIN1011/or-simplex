@@ -35,6 +35,8 @@ const SELECTORS = [
   '.btag', '.btag.on',
   /* 整数规划模块 */
   '.meth-n', '.meth-c', '.meth-body', '.pick', 'table.sens.en td',
+  '.ip-tree-summary', '.ip-tree-meta', '.ip-tree-bound', '.ip-tree-action', '.ip-tree-best-label', '.ip-tree-edge',
+  '.ip-tree-controls output', '.ip-tree-zoom-note', '.ip-tree-short-action', '.ip-tree-short-best',
   '.std-h', '.std-line', '.std-note',
   /* 设置页（显示模式的三段控件 + 说明文字） */
   '.muted', '#themeSeg button.on', '#themeSeg button:not(.on)',

@@ -1106,6 +1106,88 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
   .transport-input td{padding:1px 0}
 }
 
+/* 分枝定界树按缩放档位调整布局与信息量，文字保留至少 12px，始终在自身滚动。 */
+.ip-tree{min-width:0;margin:24px 0;padding:16px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.ip-tree .sens-h{margin-top:0}
+.ip-tree-summary{font-size:14px;font-weight:650;margin:8px 0;overflow-wrap:anywhere}
+.ip-tree-legend{display:flex;flex-wrap:wrap;gap:8px 16px;list-style:none;padding:0;margin:12px 0;font-size:12px}
+.ip-tree-legend li:before{content:"";display:inline-block;width:10px;height:10px;border:2px solid currentColor;border-radius:3px;margin-right:5px}
+.ip-tree-legend .ip-tree-open:before{border-style:dashed}
+.ip-tree-branch{color:var(--accent-text)}
+.ip-tree-integer,.ip-tree-best{color:var(--ok)}
+.ip-tree-prune,.ip-tree-open,.ip-tree-unknown{color:var(--fg2)}
+.ip-tree .ip-tree-scroll{max-width:100%;max-height:560px;max-height:min(560px,68vh);overflow:auto;margin:12px 0 0;padding:0;border:1px solid var(--control-line);border-radius:var(--r-sm);background:var(--soft);scroll-padding:16px;scrollbar-color:var(--control-line) var(--soft)}
+.ip-tree-canvas{position:relative;margin:0 auto}
+.ip-tree-lines{position:absolute;left:0;top:0;pointer-events:none}
+.ip-tree-lines path{fill:none;stroke:var(--fg3);stroke-width:1.5;stroke-linejoin:round}
+.ip-tree-node{position:absolute;width:var(--ip-tree-width,208px);height:var(--ip-tree-height,132px);min-width:44px;min-height:44px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;padding:var(--ip-tree-padding,10px 12px);border:1px solid var(--control-line);border-radius:var(--r-default,10px);background:var(--card);text-align:left;font-family:inherit;font-size:var(--ip-tree-font,13px);line-height:1.4;cursor:pointer;overflow-wrap:anywhere;scroll-margin:16px}
+.ip-tree-node strong{color:var(--fg);font-size:var(--ip-tree-title-font,14px)}
+.ip-tree-meta{color:var(--fg2);font-size:var(--ip-tree-label-font,12px)}
+.ip-tree-bound{color:var(--fg);font-variant-numeric:tabular-nums}
+.ip-tree-action,.ip-tree-best-label{font-size:var(--ip-tree-label-font,12px)}
+.ip-tree-best-label{color:var(--ok);font-weight:700}
+.ip-tree-node.ip-tree-best{border:2px solid var(--ok);background:var(--ok-soft)}
+.ip-tree-node.ip-tree-open{border-style:dashed;background:var(--soft)}
+.ip-tree-node[aria-pressed="true"]{outline:2px solid var(--accent);outline-offset:3px}
+.ip-tree-node:focus-visible{outline:3px solid var(--accent-text);outline-offset:3px}
+.ip-tree-node:hover{background:var(--accent-soft)}
+.ip-tree-edge{position:absolute;width:var(--ip-tree-width,208px);padding:2px 4px;text-align:center;font-size:var(--ip-tree-label-font,12px);line-height:var(--ip-tree-edge-line,20px);color:var(--fg2);background:var(--soft);overflow-wrap:anywhere;pointer-events:none}
+.ip-tree .scroll-hint{opacity:1}
+.ip-tree-feedback:empty{display:none}
+.ip-tree-return{margin-top:8px}
+.ip-node-title{scroll-margin-block:24px 110px}
+.ip-node-title:focus{outline:2px solid var(--accent);outline-offset:4px;border-radius:4px}
+.ip-tree-controls{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:12px}
+.ip-tree-controls .btn{min-width:44px;min-height:44px;padding:8px;font-size:13px;line-height:1.4}
+.ip-tree-controls output{min-width:68px;text-align:center;color:var(--fg2);font-size:12px;font-variant-numeric:tabular-nums}
+.ip-tree-zoom-note{margin:8px 0}
+.ip-tree-short-action,.ip-tree-short-best{display:none}
+.ip-tree-short-best{color:var(--ok);font-weight:700}
+.ip-tree[data-integer-tree-density="structure"] .ip-tree-node{padding:6px;gap:2px;font-size:12px}
+.ip-tree[data-integer-tree-density="structure"] .ip-tree-node strong{font-size:12px}
+.ip-tree[data-integer-tree-density="structure"] .ip-tree-meta,
+.ip-tree[data-integer-tree-density="structure"] .ip-tree-bound,
+.ip-tree[data-integer-tree-density="structure"] .ip-tree-best-label,
+.ip-tree[data-integer-tree-density="structure"] .ip-tree-node:not(.ip-tree-open) .ip-tree-action,
+.ip-tree[data-integer-tree-density="structure"] .ip-tree-edge{display:none}
+.ip-tree[data-integer-tree-density="structure"] .ip-tree-short-action,
+.ip-tree[data-integer-tree-density="structure"] .ip-tree-short-best,
+.ip-tree[data-integer-tree-density="summary"] .ip-tree-short-action,
+.ip-tree[data-integer-tree-density="summary"] .ip-tree-short-best{display:block;font-size:12px}
+.ip-tree[data-integer-tree-density="summary"] .ip-tree-node{padding:8px 10px;gap:3px}
+.ip-tree[data-integer-tree-density="summary"] .ip-tree-bound,
+.ip-tree[data-integer-tree-density="summary"] .ip-tree-best-label,
+.ip-tree[data-integer-tree-density="summary"] .ip-tree-node:not(.ip-tree-open) .ip-tree-action{display:none}
+
+/* 单纯形换表讲解：局部状态只作用于这两张只读快照。 */
+.simplex-pivot{margin-top:16px;border-top:1px solid var(--line);min-width:0}
+.simplex-pivot>summary{min-height:44px;padding:12px 0;cursor:pointer;color:var(--accent-text);font-size:14px;font-weight:650}
+.simplex-pivot [data-pivot-body]{min-width:0;padding:0 0 8px}
+.simplex-pivot p{font-size:13px;line-height:1.75;margin:8px 0;overflow-wrap:anywhere}
+.simplex-pivot-controls{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:4px 0 12px}
+.simplex-pivot-controls [data-pivot-progress]{margin:0;font-weight:650}
+.simplex-pivot-actions{display:flex;flex-wrap:wrap;gap:8px}
+.simplex-pivot-actions .btn{min-width:44px;min-height:44px;font-size:13px}
+.simplex-pivot-picker{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:13px;margin:8px 0}
+.simplex-pivot-picker[hidden]{display:none}
+.simplex-pivot-picker select{min-height:44px;min-width:88px;max-width:100%;background:var(--input);color:var(--fg);border:1px solid var(--control-line);border-radius:var(--r-sm);padding:8px;font:inherit}
+.simplex-pivot .simplex-pivot-formula{font-family:var(--mono);font-size:13px;color:var(--fg);background:var(--soft);padding:8px 10px;border-radius:var(--r-sm)}
+.simplex-pivot-explanation{min-width:0}
+.simplex-pivot-legend{color:var(--fg2)}
+.simplex-pivot-tables{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;margin-top:12px;min-width:0}
+.simplex-pivot-tables figure{min-width:0;margin:0}
+.simplex-pivot-tables figcaption{font-size:13px;font-weight:650;margin-bottom:8px}
+.simplex-pivot-tables .scroll{max-width:100%;overflow-x:auto;scroll-margin-block:24px 110px;scrollbar-color:var(--control-line) var(--soft)}
+.simplex-pivot-tables table.tb{min-width:400px;font-size:13px}
+.simplex-pivot-tables table.tb .simplex-pivot-row-mark{background:var(--leave-soft);box-shadow:inset 0 1px var(--warn),inset 0 -1px var(--warn)}
+.simplex-pivot-tables table.tb .simplex-pivot-col-mark{background:var(--accent-soft);box-shadow:inset 1px 0 var(--accent-text),inset -1px 0 var(--accent-text)}
+.simplex-pivot-tables table.tb .simplex-pivot-cell-mark{background:var(--pivot-soft);outline:2px solid var(--warn);outline-offset:-2px;color:var(--fg);font-weight:700}
+.simplex-pivot :focus-visible{outline:2px solid var(--accent-text);outline-offset:2px}
+.simplex-pivot-unavailable{font-size:13px;line-height:1.75;color:var(--fg2);margin:16px 0 0}
+.simplex-pivot-stale-note{display:none}
+#result.stale .simplex-pivot-stale-note{display:block;font-weight:650}
+@media(min-width:1100px){.simplex-pivot-tables{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 </style>
 </head>
 <body>
@@ -7439,7 +7521,7 @@ function addScrollHints(root) {
     if (next && next.classList.contains('scroll-hint')) return;
     var hint = document.createElement('div');
     hint.className = 'scroll-hint';
-    hint.textContent = '← 左右滑动查看完整表格 →';
+    hint.textContent = box.getAttribute('data-scroll-label') || '← 左右滑动查看完整表格 →';
     box.parentNode.insertBefore(hint, box.nextSibling);
     box.addEventListener('scroll', function () {
       hint.classList.toggle('hide', box.scrollLeft > 6);
@@ -7744,6 +7826,7 @@ var dom = require('./dom.js');
 var $ = dom.$, esc = dom.esc, subs = dom.subs;
 var resultLayout = require('./result-layout.js');
 var study = require('./study-view.js');
+var integerTree = require('./integer-tree.js');
 var TYPE_NAMES = { cont: '连续', int: '整数', bin: '0-1' };
 var MAX_ENUM_POINTS = 4096, MAX_SHOW_ROWS = 300;
 function num(v) { return fmtNum(v); }
@@ -7879,6 +7962,7 @@ function renderMethods(prob, r) {
   if (!box) return;
   box.innerHTML = buildMethods(prob, r);
   study.wire(box);
+  integerTree.wire(box, r.methods.filter(function (m) { return m.key === 'bnb'; })[0]);
   addScrollHints(document);
 }
 
@@ -8027,12 +8111,13 @@ function viewBnb(prob, r, m) {
                     + '）提前中止，下面给出的是「目前找到的最好整数解」，不能保证是全局最优。</b></span>')
     + '</div>';
 
+  h += integerTree.render(m);
   var many = m.nodes.length > 25;
   if (many) {
     h += '<details class="help"><summary>展开全部 ' + m.nodes.length + ' 个结点（默认折叠：结点较多）</summary>';
   }
   m.nodes.forEach(function (nd) {
-    h += '<div class="judge"><span class="row blk">结点 ' + nd.id
+    h += '<div class="judge"><span class="row blk ip-node-title" tabindex="-1" data-integer-node-title="' + esc(nd.id) + '">结点 ' + esc(nd.id)
       + (nd.parent ? '（由结点 ' + nd.parent + ' 分出）' : '（根结点）')
       + '　深度 ' + nd.depth + '</span>';
     h += '<span class="row">· 附加约束：'
@@ -8049,9 +8134,11 @@ function viewBnb(prob, r, m) {
         }).join('　') + '　　z = <b>' + num(nd.objective) + '</b>'
         + (nd.action === 'branch' ? '（加粗的是非整数分量，就是它要分枝）' : '') + '</span>';
     } else {
-      h += '<span class="row">· 松弛问题' + (nd.res.status === 'infeasible' ? '无可行解' : '无界') + '</span>';
+      h += '<span class="row">· 松弛问题' + (nd.res.status === 'infeasible' ? '无可行解'
+        : nd.res.status === 'unbounded' ? '无界' : '状态未确认（未收敛或异常）') + '</span>';
     }
     h += '<span class="row">· <b>' + esc(nd.actionName) + '</b>：' + esc(nd.note) + '</span>';
+    h += '<button type="button" class="btn ip-tree-return" data-integer-tree-return="' + esc(nd.id) + '">返回树图</button>';
     h += '</div>';
     /* 每个结点的单纯形迭代也留着，需要时展开 */
     h += '<details class="help"><summary>结点 ' + nd.id + ' 的单纯形法迭代</summary>'
@@ -8230,6 +8317,323 @@ function viewEnum(prob, r, m) {
 
 
 module.exports = { render: render };
+});
+
+__define__("src/web/integer-tree.js", function (module, exports, require) {
+/* 分枝定界总览：只读快照；编号、访问顺序与左右位置分别取自各自的字段。 */
+'use strict';
+var dom = require('./dom.js');
+var esc = dom.esc, subs = dom.subs;
+var fmtNum = require('../core/format.js').fmtNum;
+var addScrollHints = require('./input-panel.js').addScrollHints;
+var WIDTH = 208, HEIGHT = 132, GAP = 32, PAD = 20;
+var ZOOM_STEPS = [40, 50, 60, 75, 100, 125, 150, 175, 200];
+
+function finite(v) { return typeof v === 'number' && isFinite(v); }
+function sameBound(a, b) { return a && b && a.j === b.j && a.rel === b.rel && a.val === b.val; }
+
+/* 只接受子结点确实记录的新增约束，不用最后的界或父结点的小数推测。 */
+function edgeText(parent, child, side) {
+  var prefix = side === 0 ? '左支' : side === 1 ? '右支' : '分支';
+  var before = parent.bounds, after = child && child.bounds;
+  if (!before || !after || after.length <= before.length) return prefix + ' · 条件未记录';
+  for (var i = 0; i < before.length; i++) {
+    if (!sameBound(before[i], after[i])) return prefix + ' · 新增条件未确认';
+  }
+  var added = after.slice(before.length);
+  if (added.some(function (b) {
+    return !b || !finite(b.j) || b.j < 0 || Math.floor(b.j) !== b.j
+      || !finite(b.val) || (b.rel !== '<=' && b.rel !== '>=');
+  })) return prefix + ' · 条件未记录';
+  return prefix + ' · ' + added.map(function (b) {
+    return 'x' + subs(b.j + 1) + (b.rel === '<=' ? ' ≤ ' : ' ≥ ') + fmtNum(b.val);
+  }).join('，');
+}
+
+function nodeText(nd, m) {
+  var status = nd.res && nd.res.status;
+  var bound = status === 'optimal' && finite(nd.objective)
+    ? '松弛' + (m.sense === 'max' ? '上界' : m.sense === 'min' ? '下界' : '目标') + ' z = ' + fmtNum(nd.objective)
+    : status === 'infeasible' ? '松弛无可行解'
+    : status === 'unbounded' ? '松弛无界'
+    : status === 'iteration-limit' ? '松弛未收敛' : '松弛状态未确认';
+  var kind = 'unknown', action = '处理结果未确认';
+  if (nd.action === 'branch') { kind = 'branch'; action = '继续分枝'; }
+  if (nd.action === 'incumbent') { kind = 'integer'; action = '整数解 · 当时更新最好解'; }
+  if (nd.action === 'prune') {
+    kind = 'prune';
+    action = status === 'infeasible' ? '剪枝（无可行解）'
+      : status === 'unbounded' ? '剪枝（松弛无界）'
+      : status === 'optimal' ? '剪枝（界限不优）' : '剪枝（原因未确认）';
+  }
+  return {bound:bound, kind:kind, action:action,
+    best:!!m.best && nd.id === m.bestNode,
+    bestLabel:m.complete === true ? '最终最好结点' : '当前最好结点'};
+}
+
+/* 语义缩放先减少信息和留白，再放大文字；结构档仍保留可读字号及触摸面积。 */
+function zoomView(value, edgeChars) {
+  var zoom = finite(value) ? Math.max(40, Math.min(200, value)) : 100;
+  var scale = zoom / 100, mode = zoom <= 60 ? 'structure' : zoom < 100 ? 'summary' : 'detail';
+  var textScale = Math.max(1, scale);
+  var width = mode === 'structure' ? Math.max(64, Math.round(WIDTH * scale - 24)) : Math.round(WIDTH * scale);
+  var height = mode === 'structure' ? Math.max(76, Math.round(HEIGHT * scale))
+    : mode === 'summary' ? 104 : Math.round(HEIGHT * scale);
+  var lines = Math.max(1, Math.ceil((edgeChars || 0) / Math.max(8, 18 * width / (WIDTH * textScale))));
+  return {zoom:zoom, mode:mode, name:mode === 'structure' ? '结构' : mode === 'summary' ? '概览' : '详情',
+    width:width, height:height, gap:mode === 'structure' ? (zoom <= 40 ? 8 : 12) : Math.round(GAP * scale),
+    pad:mode === 'structure' ? (zoom <= 40 ? 8 : 12) : PAD, textScale:textScale,
+    lane:mode === 'structure' ? 36 : (60 + (lines - 1) * 20) * textScale};
+}
+
+function pathOf(item, view) {
+  var p = item.parent, x1 = p.x + view.width / 2, x2 = item.x + view.width / 2;
+  var y1 = p.y + view.height, mid = y1 + Math.min(view.lane / 2, 24 * view.textScale);
+  return 'M' + x1 + ' ' + y1 + ' V' + mid + ' H' + x2 + ' V' + item.y;
+}
+
+function model(m, zoom) {
+  var items = [], byId = {}, roots = [], unattached = [];
+  (m.nodes || []).forEach(function (nd, i) {
+    var item = {id:nd.id, data:nd, visit:i + 1, children:[], parent:null, text:nodeText(nd, m)};
+    byId['n' + nd.id] = item;
+    items.push(item);
+  });
+  (m.openLeft || []).forEach(function (id) {
+    if (byId['n' + id]) return;
+    var item = {id:id, data:null, children:[], parent:null};
+    byId['n' + id] = item;
+    items.push(item);
+  });
+  /* 多个父结点声称同一个子结点时，不把无法确认的关系画成事实。 */
+  var claims = {};
+  items.forEach(function (p) {
+    if (!p.data) return;
+    (p.data.children || []).forEach(function (id) { claims['n' + id] = (claims['n' + id] || 0) + 1; });
+  });
+  items.forEach(function (p) {
+    if (!p.data) return;
+    (p.data.children || []).forEach(function (id, side) {
+      var child = byId['n' + id], ancestor = p;
+      if (!child || claims['n' + id] !== 1 || (child.data && child.data.parent !== p.id)) return;
+      while (ancestor) { if (ancestor === child) return; ancestor = ancestor.parent; }
+      child.parent = p;
+      child.edge = edgeText(p.data, child.data, side);
+      p.children.push(child);
+    });
+  });
+  items.forEach(function (item) {
+    if (item.parent) return;
+    if (item.data) roots.push(item);
+    else unattached.push(item.id);
+  });
+  var laid = [], leaves = 0, maxDepth = 0, edgeChars = 0;
+  function place(item, depth) {
+    item.level = depth;
+    laid.push(item);
+    maxDepth = Math.max(maxDepth, depth);
+    if (item.edge) edgeChars = Math.max(edgeChars, item.edge.length);
+    if (!item.children.length) item.column = leaves++;
+    else {
+      item.children.forEach(function (child) { place(child, depth + 1); });
+      item.column = (item.children[0].column + item.children[item.children.length - 1].column) / 2;
+    }
+  }
+  roots.forEach(function (root) { place(root, 0); });
+  var view = zoomView(zoom, edgeChars);
+  laid.forEach(function (item) {
+    item.x = view.pad + item.column * (view.width + view.gap);
+    item.y = view.pad + item.level * (view.height + view.lane);
+  });
+  return {items:laid, roots:roots, unattached:unattached, view:view,
+    width:Math.max(1, leaves) * (view.width + view.gap) - view.gap + view.pad * 2,
+    height:laid.length ? view.pad * 2 + view.height + maxDepth * (view.height + view.lane) : 0};
+}
+
+function render(m) {
+  if (!m.applicable) return '<p class="sens-note">分枝定界树不适用：' + esc(m.reason || '未提供原因') + '</p>';
+  var tree = model(m), count = (m.nodes || []).length;
+  var summary = m.complete === true ? '搜索已完成' : '搜索未完成';
+  if (m.best) summary += ' · ' + (m.complete === true ? '最好整数解' : '当前最好整数解，未确认最优')
+    + (m.bestNode !== null && m.bestNode !== undefined ? '；来自结点 ' + m.bestNode : '（所在结点未记录）') + '，z = ' + fmtNum(m.bestZ);
+  else summary += m.complete === true ? ' · 未找到整数解' : ' · 尚未找到整数解，不能判定无可行整数解';
+  var h = '<section class="ip-tree" data-integer-tree aria-label="分枝定界树形总览">'
+    + '<h3 class="sens-h">分枝定界树形总览</h3><p class="ip-tree-summary">' + esc(summary) + '</p>'
+    + '<p class="sens-note">已处理 ' + count + ' 个结点，未展开 ' + (m.openLeft || []).length
+    + ' 个。编号表示结点身份；访问序号按实际处理顺序排列。点击结点查看原有推导。</p>'
+    + '<ul class="ip-tree-legend" aria-label="结点状态说明"><li class="ip-tree-branch">继续分枝</li>'
+    + '<li class="ip-tree-integer">整数解：当时更新最好解</li><li class="ip-tree-best">最终 / 当前最好结点</li>'
+    + '<li class="ip-tree-prune">剪枝：见结点原因</li><li class="ip-tree-open">未展开</li></ul>';
+  if (count) h += '<button type="button" class="btn" data-integer-tree-details>查看全部原始结点过程</button>';
+  if (tree.items.length) {
+    h += '<div class="ip-tree-controls" role="group" aria-label="树图缩放">'
+      + '<button type="button" class="btn" data-integer-tree-zoom="out" aria-label="缩小树图">−</button>'
+      + '<output data-integer-tree-zoom-output aria-live="polite" aria-atomic="true" aria-label="树图缩放比例与信息量">100% · 详情</output>'
+      + '<button type="button" class="btn" data-integer-tree-zoom="in" aria-label="放大树图">+</button>'
+      + '<button type="button" class="btn" data-integer-tree-zoom="reset">重置</button></div>'
+      + '<p class="sens-note ip-tree-zoom-note" data-integer-tree-zoom-note>缩小看结构，放大看访问序号、分枝条件和松弛界值；仍可在图内滑动。</p>'
+      + '<div class="scroll ip-tree-scroll" data-scroll-label="← 在树图区域内左右、上下滚动查看全部结点 →" tabindex="0" role="region" aria-label="分枝定界树，可在区域内上下左右滚动">'
+      + '<div class="ip-tree-canvas" style="width:' + tree.width + 'px;height:' + tree.height + 'px">'
+      + '<svg class="ip-tree-lines" width="' + tree.width + '" height="' + tree.height + '" aria-hidden="true" focusable="false">';
+    tree.items.forEach(function (item) {
+      if (!item.parent) return;
+      h += '<path data-integer-tree-link="' + esc(item.id) + '" d="' + pathOf(item, tree.view) + '"/>';
+    });
+    h += '</svg>';
+    /* DOM 顺序沿用真实访问顺序；占位在后，不把空间位置当作访问次序。 */
+    tree.items.slice().sort(function (a, b) { return (a.visit || Infinity) - (b.visit || Infinity); }).forEach(function (item) {
+      var t = item.text, body = '<strong>结点 ' + esc(item.id)
+        + (t && t.best ? ' <span class="ip-tree-best-label">· ' + esc(t.bestLabel) + '</span>' : '') + '</strong>';
+      var label = '结点 ' + item.id;
+      if (item.parent) h += '<span class="ip-tree-edge" data-integer-tree-edge="' + esc(item.id) + '" style="left:' + item.x + 'px;bottom:'
+        + (tree.height - item.y + 8) + 'px">' + esc(item.edge) + '</span>';
+      if (item.data) {
+        var relation = item.data.parent === null ? '根结点'
+          : item.parent ? '由结点 ' + item.parent.id + ' 分出' : '父子关系未确认';
+        body += '<span class="ip-tree-meta">第 ' + item.visit + ' 个访问' + (item.data.parent === null ? ' · 根结点' : '') + '</span>'
+          + '<span class="ip-tree-bound">' + esc(t.bound) + '</span>'
+          + '<span class="ip-tree-action">' + esc(t.action) + '</span>'
+          + '<span class="ip-tree-short-action">' + (t.kind === 'branch' ? '继续分枝' : t.kind === 'integer' ? '整数解'
+            : t.kind === 'prune' ? '剪枝' : '未确认') + '</span>'
+          + (t.best ? '<span class="ip-tree-short-best">' + (m.complete === true ? '最终最好' : '当前最好') + '</span>' : '');
+        label += '，第 ' + item.visit + ' 个访问，' + relation + '，' + t.bound + '，' + t.action
+          + (t.best ? '，' + t.bestLabel : '') + (item.edge ? '，' + item.edge : '') + '，查看详细过程';
+      } else {
+        body += '<span class="ip-tree-action">未展开</span><span class="ip-tree-meta">尚无松弛结果和访问序号</span>';
+        label += '，未展开，' + item.edge + '，查看未展开说明';
+      }
+      h += '<button type="button" class="ip-tree-node ip-tree-' + (t ? t.kind : 'open') + (t && t.best ? ' ip-tree-best' : '')
+        + '" data-integer-tree-node="' + esc(item.id) + '"' + (item.data ? '' : ' data-integer-tree-open')
+        + ' aria-pressed="false" aria-label="' + esc(label) + '" style="left:' + item.x + 'px;top:' + item.y + 'px">' + body + '</button>';
+    });
+    h += '</div></div>';
+  } else h += '<p class="sens-note">没有可展示的已处理结点。</p>';
+  if ((m.openLeft || []).length) h += '<p class="sens-note">未展开结点仅记录编号；不提供松弛解、目标值、访问序号或剪枝原因。边上未记录的条件不作推测。</p>';
+  if (tree.unattached.length) h += '<p class="sens-note">无法可靠关联父结点的未展开编号：' + esc(tree.unattached.join('、')) + '。</p>';
+  return h + '<p class="sens-note ip-tree-feedback" role="status" aria-live="polite" data-integer-tree-feedback></p></section>';
+}
+
+function wire(root, method) {
+  Array.prototype.forEach.call(root.querySelectorAll('[data-integer-tree]'), function (tree) {
+    if (tree.getAttribute('data-integer-tree-ready')) return;
+    if (!method) return;
+    tree.setAttribute('data-integer-tree-ready', 'true');
+    var scope = tree.parentNode, selected = null;
+    var buttons = tree.querySelectorAll('[data-integer-tree-node]');
+    var scroll = tree.querySelector('.ip-tree-scroll');
+    var canvas = tree.querySelector('.ip-tree-canvas'), svg = tree.querySelector('.ip-tree-lines');
+    var nodesById = {}, edgesById = {}, linksById = {};
+    Array.prototype.forEach.call(buttons, function (button) { nodesById['n' + button.getAttribute('data-integer-tree-node')] = button; });
+    Array.prototype.forEach.call(tree.querySelectorAll('[data-integer-tree-edge]'), function (edge) { edgesById['n' + edge.getAttribute('data-integer-tree-edge')] = edge; });
+    Array.prototype.forEach.call(tree.querySelectorAll('[data-integer-tree-link]'), function (link) { linksById['n' + link.getAttribute('data-integer-tree-link')] = link; });
+    var zoomOut = tree.querySelector('[data-integer-tree-zoom="out"]');
+    var zoomIn = tree.querySelector('[data-integer-tree-zoom="in"]');
+    var zoomIndex = ZOOM_STEPS.indexOf(100);
+    function resetZoom() { return window.innerWidth <= 360 ? 40 : window.innerWidth <= 600 ? 50 : 100; }
+    function applyZoom(value, reset) {
+      if (!canvas) return;
+      /* 先读当前视口，再批量写布局；缩放围绕眼前的结点，避免跳回根结点。 */
+      var anchor = null, oldRect = null, distance = Infinity, viewport = scroll.getBoundingClientRect();
+      var oldWidth = parseFloat(canvas.style.width), oldHeight = parseFloat(canvas.style.height);
+      var oldX = scroll.scrollLeft + scroll.clientWidth / 2, oldY = scroll.scrollTop + scroll.clientHeight / 2;
+      if (!reset) Array.prototype.forEach.call(buttons, function (button) {
+        var r = button.getBoundingClientRect();
+        if (r.right < viewport.left || r.left > viewport.right || r.bottom < viewport.top || r.top > viewport.bottom) return;
+        var dx = (r.left + r.right - viewport.left - viewport.right) / 2;
+        var dy = (r.top + r.bottom - viewport.top - viewport.bottom) / 2;
+        var d = dx * dx + dy * dy;
+        if (d < distance) { distance = d; anchor = button; oldRect = r; }
+      });
+      var layout = model(method, value), view = layout.view;
+      zoomIndex = ZOOM_STEPS.indexOf(view.zoom);
+      tree.setAttribute('data-integer-tree-zoom', String(view.zoom));
+      tree.setAttribute('data-integer-tree-density', view.mode);
+      tree.style.setProperty('--ip-tree-width', view.width + 'px');
+      tree.style.setProperty('--ip-tree-height', view.height + 'px');
+      tree.style.setProperty('--ip-tree-font', (13 * view.textScale) + 'px');
+      tree.style.setProperty('--ip-tree-title-font', (14 * view.textScale) + 'px');
+      tree.style.setProperty('--ip-tree-label-font', (12 * view.textScale) + 'px');
+      tree.style.setProperty('--ip-tree-edge-line', (20 * view.textScale) + 'px');
+      tree.style.setProperty('--ip-tree-padding', (10 * view.textScale) + 'px ' + (12 * view.textScale) + 'px');
+      canvas.style.width = layout.width + 'px'; canvas.style.height = layout.height + 'px';
+      svg.setAttribute('width', String(layout.width)); svg.setAttribute('height', String(layout.height));
+      layout.items.forEach(function (item) {
+        var node = nodesById['n' + item.id], edge = edgesById['n' + item.id];
+        node.style.left = item.x + 'px'; node.style.top = item.y + 'px';
+        if (edge) {
+          edge.style.left = item.x + 'px';
+          edge.style.bottom = (layout.height - item.y + 8 * view.textScale) + 'px';
+          linksById['n' + item.id].setAttribute('d', pathOf(item, view));
+        }
+      });
+      tree.querySelector('[data-integer-tree-zoom-output]').textContent = view.zoom + '% · ' + view.name;
+      tree.querySelector('[data-integer-tree-zoom-note]').textContent = view.mode === 'structure'
+        ? '结构档：显示编号、处理状态与最好标记。放大可看分枝条件和更多数据；仍可滑动。'
+        : view.mode === 'summary' ? '概览档：增加访问序号与分枝条件。继续放大可看松弛界值；仍可滑动。'
+        : '详情档：显示访问序号、松弛界值、处理结果与分枝条件；仍可滑动。';
+      zoomOut.disabled = zoomIndex === 0; zoomIn.disabled = zoomIndex === ZOOM_STEPS.length - 1;
+      if (reset) {
+        var first = buttons[0].getBoundingClientRect(), box = scroll.getBoundingClientRect();
+        scroll.scrollLeft += (first.left + first.right - box.left - box.right) / 2;
+        scroll.scrollTop = 0;
+      } else if (anchor) {
+        var next = anchor.getBoundingClientRect();
+        scroll.scrollLeft += (next.left + next.right - oldRect.left - oldRect.right) / 2;
+        scroll.scrollTop += (next.top + next.bottom - oldRect.top - oldRect.bottom) / 2;
+      } else {
+        scroll.scrollLeft = oldX * layout.width / oldWidth - scroll.clientWidth / 2;
+        scroll.scrollTop = oldY * layout.height / oldHeight - scroll.clientHeight / 2;
+      }
+      if (zoomOut.disabled && document.activeElement === zoomOut) zoomIn.focus({preventScroll:true});
+      if (zoomIn.disabled && document.activeElement === zoomIn) zoomOut.focus({preventScroll:true});
+      addScrollHints(scope);
+    }
+    function find(attr, id) {
+      var found = null;
+      Array.prototype.forEach.call(scope.querySelectorAll('[' + attr + ']'), function (el) {
+        if (el.getAttribute(attr) === id) found = el;
+      });
+      return found;
+    }
+    function locate(el) {
+      if (!el) return;
+      var p = el.parentNode;
+      while (p) { if (p.tagName === 'DETAILS') p.open = true; p = p.parentNode; }
+      el.focus({preventScroll:true});
+      el.scrollIntoView({behavior:'instant', block:'center', inline:'center'});
+      addScrollHints(scope);
+    }
+    Array.prototype.forEach.call(buttons, function (button) {
+      button.addEventListener('click', function () {
+        if (selected) selected.setAttribute('aria-pressed', 'false');
+        selected = button;
+        button.setAttribute('aria-pressed', 'true');
+        if (button.hasAttribute('data-integer-tree-open')) {
+          tree.querySelector('[data-integer-tree-feedback]').textContent = '结点 '
+            + button.getAttribute('data-integer-tree-node') + ' 未展开：没有详细推导，尚未计算松弛问题。';
+          return;
+        }
+        tree.querySelector('[data-integer-tree-feedback]').textContent = '';
+        locate(find('data-integer-node-title', button.getAttribute('data-integer-tree-node')));
+      });
+    });
+    Array.prototype.forEach.call(scope.querySelectorAll('[data-integer-tree-return]'), function (button) {
+      button.addEventListener('click', function () {
+        locate(selected || find('data-integer-tree-node', button.getAttribute('data-integer-tree-return')));
+      });
+    });
+    var all = tree.querySelector('[data-integer-tree-details]');
+    if (all) all.addEventListener('click', function () { locate(scope.querySelector('[data-integer-node-title]')); });
+    if (zoomOut) {
+      zoomOut.addEventListener('click', function () { if (zoomIndex > 0) applyZoom(ZOOM_STEPS[zoomIndex - 1], false); });
+      zoomIn.addEventListener('click', function () { if (zoomIndex < ZOOM_STEPS.length - 1) applyZoom(ZOOM_STEPS[zoomIndex + 1], false); });
+      tree.querySelector('[data-integer-tree-zoom="reset"]').addEventListener('click', function () { applyZoom(resetZoom(), true); });
+      applyZoom(resetZoom(), true);
+    }
+  });
+}
+
+module.exports = {render:render, wire:wire, model:model};
 });
 
 __define__("src/web/interaction.js", function (module, exports, require) {
@@ -9410,6 +9814,208 @@ module.exports = {
 };
 });
 
+__define__("src/web/simplex-pivot-view.js", function (module, exports, require) {
+/* 单纯形主页面的相邻快照讲解。只读展示；不求解、不推演中间表、不保存状态。 */
+'use strict';
+var format = require('../core/format.js');
+var EPS = require('../core/util.js').EPS;
+var esc = require('./dom.js').esc;
+var renderTable = require('./table-render.js').renderTable;
+var addScrollHints = require('./input-panel.js').addScrollHints;
+var fmtNum = format.fmtNum, fmtPair = format.fmtPair;
+
+function finite(value) { return typeof value === 'number' && isFinite(value); }
+function index(value, length) { return finite(value) && Math.floor(value) === value && value >= 0 && value < length; }
+function shape(step, m, n) {
+  if (!step || !index(step.iter, Infinity) || !Array.isArray(step.rows) || step.rows.length !== m
+      || !Array.isArray(step.basis) || step.basis.length !== m
+      || !Array.isArray(step.obj) || step.obj.length !== n + 1) return false;
+  var used = [], i, j;
+  for (i = 0; i < m; i++) {
+    if (!index(step.basis[i], n) || used.indexOf(step.basis[i]) >= 0
+        || !Array.isArray(step.rows[i]) || step.rows[i].length !== n + 1) return false;
+    used.push(step.basis[i]);
+    for (j = 0; j <= n; j++) if (!finite(step.rows[i][j])) return false;
+  }
+  for (j = 0; j <= n; j++) {
+    if (!step.obj[j] || !finite(step.obj[j].a) || !finite(step.obj[j].b)) return false;
+  }
+  return true;
+}
+
+/* 核对记录关系和单位列，不在表现层重做消元来猜测或修补后表。 */
+function inspect(res, k) {
+  if (!res || !res.ok || !Array.isArray(res.steps) || !index(k, res.steps.length)
+      || !Array.isArray(res.vars) || !index(res.mConstraints, Infinity)) return { reason: 'invalid' };
+  var a = res.steps[k], b = res.steps[k + 1], m = res.mConstraints, n = res.vars.length;
+  for (var v = 0; v < n; v++) if (!res.vars[v] || typeof res.vars[v].name !== 'string') return { reason: 'invalid' };
+  if (!shape(a, m, n)) return { reason: 'invalid' };
+  if ((a.entering === null || index(a.entering, n)) && a.leaving === null && a.pivot === null) return { reason: 'terminal' };
+  if (!index(a.entering, n) || !index(a.leaving, m) || !finite(a.pivot)
+      || Math.abs(a.pivot) <= EPS || a.pivot !== a.rows[a.leaving][a.entering]
+      || a.basis.indexOf(a.entering) >= 0) return { reason: 'invalid' };
+  if (!b) return { reason: 'missing' };
+  if (!shape(b, m, n) || b.iter !== a.iter + 1) return { reason: 'mismatch' };
+  for (var i = 0; i < m; i++) {
+    if (b.basis[i] !== (i === a.leaving ? a.entering : a.basis[i])
+        || Math.abs(b.rows[i][a.entering] - (i === a.leaving ? 1 : 0)) > EPS) return { reason: 'mismatch' };
+  }
+  if (Math.abs(b.obj[a.entering].a) > EPS || Math.abs(b.obj[a.entering].b) > EPS) return { reason: 'mismatch' };
+  return { reason: '', before: a, after: b, e: a.entering, r: a.leaving, n: n, m: m };
+}
+
+function render(res, k) {
+  var pair = inspect(res, k);
+  if (pair.reason === 'terminal') return '';
+  if (pair.reason) {
+    var message = pair.reason === 'missing'
+      ? '缺少下一表快照，无法逐项对照。最后一次枢轴可能已执行，但没有记录后续完整表；这里不补算。'
+      : '快照缺失或前后表关系不匹配，无法逐项对照。';
+    return '<p class="simplex-pivot-unavailable">换表讲解：' + message + '</p>';
+  }
+  return '<details class="simplex-pivot" data-simplex-pivot="' + k + '"><summary>这一步怎样换表</summary>'
+    + '<div data-pivot-body></div></details>';
+}
+
+function phases(pair) {
+  return pair.m > 1 ? ['locate', 'normalize', 'eliminate', 'objective', 'finish']
+    : ['locate', 'normalize', 'objective', 'finish'];
+}
+var titles = { locate: '定位枢轴', normalize: '主行归一化', eliminate: '其他约束行消元', objective: '目标行更新', finish: '完成换基' };
+function formula(text) { return '<p class="simplex-pivot-formula">' + esc(text) + '</p>'; }
+function par(value) { return '(' + fmtNum(value) + ')'; }
+function pairPar(value) { return '(' + fmtPair(value) + ')'; }
+
+/* 具体操作数与等号右边的结果全部读取快照；此处只连接文字。 */
+function explanation(res, pair, phase, row, col) {
+  var a = pair.before, b = pair.after, r = pair.r, e = pair.e, n = pair.n;
+  var enter = esc(res.vars[e].name), leave = esc(res.vars[a.basis[r]].name);
+  var rr = 'R' + (r + 1), ri = 'R' + (row + 1), h = '';
+  if (phase === 'locate') {
+    return '<p>本次 ' + enter + ' 入基，' + leave + ' 出基。枢轴在第 ' + (r + 1) + ' 行、第 '
+      + (e + 1) + ' 列（' + enter + '），原值 p = ' + fmtNum(a.pivot)
+      + '。选择依据见上方入基与比值说明。</p>'
+      + (a.degenerate ? '<p>本次为退化换基（θ = 0）；目标值不变仍会换基，继续按真实快照查看。</p>' : '');
+  }
+  if (phase === 'normalize') {
+    h = formula(rr + '′ = ' + rr + ' / p');
+    h += '<p>' + (a.pivot === 1 ? '枢轴已经是 1，无需缩放，主行数值保持不变。' : '整条主行（含右端项）除以原枢轴，使枢轴成为 1。')
+      + '两表轮廓标出第 ' + (r + 1) + ' 行。</p>';
+    return h + formula('右端项：' + fmtNum(a.rows[r][n]) + ' ÷ ' + par(a.pivot) + ' = ' + fmtNum(b.rows[r][n]));
+  }
+  if (phase === 'eliminate') {
+    h = formula(ri + '′ = ' + ri + ' − a' + (row + 1) + ',' + (e + 1) + ' × ' + rr + '′');
+    if (a.rows[row][e] === 0) h += '<p>变换前入基列系数为 0，无需消元，此行保持不变。</p>';
+    else h += '<p>用变换前第 ' + (row + 1) + ' 行系数 ' + fmtNum(a.rows[row][e])
+      + '，乘变换后已归一化的第 ' + (r + 1) + ' 行，再从旧行减去。轮廓标出参与的两行。</p>';
+    return h + formula('右端项：' + par(a.rows[row][n]) + ' − ' + par(a.rows[row][e]) + ' × '
+      + par(b.rows[r][n]) + ' = ' + fmtNum(b.rows[row][n]));
+  }
+  if (phase === 'objective') {
+    h = formula('σj′ = σj − σe × a' + (r + 1) + ',j′');
+    h += '<p>σe = ' + esc(pairPar(a.obj[e])) + ' 取自旧目标行，主行取自变换后表；每格的 M 项和常数项一起更新。</p>';
+    h += formula(res.vars[col].name + ' 列：' + pairPar(a.obj[col]) + ' − ' + pairPar(a.obj[e]) + ' × '
+      + par(b.rows[r][col]) + ' = ' + pairPar(b.obj[col]));
+    h += formula('目标行常数项：' + pairPar(a.obj[n]) + ' − ' + pairPar(a.obj[e]) + ' × '
+      + par(b.rows[r][n]) + ' = ' + pairPar(b.obj[n]));
+    return h + '<p>末格记录内部最大化目标的 ' + (res.swapped ? '−z′（原题 min 已取负）' : '−z')
+      + '，不能直接当作原题目标值；原题目标值仍见求解结论。</p>';
+  }
+  h = '<p>第 ' + (r + 1) + ' 行基变量：' + leave + ' → ' + enter
+    + '。入基列已形成单位列：主行是 1，其余约束行是 0，目标行对应检验数为 0。</p>';
+  if (index(b.entering, n)) h += '<p>这次换表已完成；下一张表仍有入基选择，整个求解尚未完成，还需继续判定或迭代。</p>';
+  else if (res.status === 'optimal' && b === res.steps[res.steps.length - 1]) h += '<p>这次换表已完成；下一张真实快照记录了最优终止判定，原题结论见上方。</p>';
+  else h += '<p>这次换表已完成；整个问题的终止状态以求解结论为准。</p>';
+  return h;
+}
+
+function content(res, pair) {
+  var list = phases(pair), rows = '', cols = '';
+  for (var i = 0; i < pair.m; i++) if (i !== pair.r) rows += '<option value="' + i + '">第 ' + (i + 1) + ' 行（' + esc(res.vars[pair.before.basis[i]].name) + '）</option>';
+  for (var j = 0; j < pair.n; j++) cols += '<option value="' + j + '">' + esc(res.vars[j].name) + '</option>';
+  var opts = { unmarked: true, positions: true };
+  return '<p class="simplex-pivot-stale-note">这份讲解对应修改前的题目，请重新求解以查看当前输入。</p>'
+    + '<div class="simplex-pivot-controls"><p data-pivot-progress role="status" aria-live="polite" aria-atomic="true">第 1 / '
+    + list.length + ' 环节 · 定位枢轴</p><div class="simplex-pivot-actions">'
+    + '<button type="button" class="btn" data-pivot-prev disabled>上一环节</button>'
+    + '<button type="button" class="btn" data-pivot-next>下一环节</button></div></div>'
+    + (rows ? '<label class="simplex-pivot-picker" data-pivot-row-picker hidden>查看约束行<select data-pivot-row-select>' + rows + '</select></label>' : '')
+    + '<label class="simplex-pivot-picker" data-pivot-col-picker hidden>查看目标列<select data-pivot-col-select>' + cols + '</select></label>'
+    + '<div class="simplex-pivot-explanation" data-pivot-explanation></div>'
+    + '<p class="simplex-pivot-legend">两表均为已记录的完整快照；轮廓与底色标出本环节涉及的位置，不表示中间表或下一轮选择。</p>'
+    + '<div class="simplex-pivot-tables"><figure data-pivot-before><figcaption>换表前 · 第 ' + pair.before.iter + ' 张表</figcaption>'
+    + renderTable(res, pair.before, opts) + '</figure><figure data-pivot-after><figcaption>换表后 · 第 ' + pair.after.iter + ' 张表</figcaption>'
+    + renderTable(res, pair.after, opts) + '</figure></div>';
+}
+
+function wire(root, res) {
+  Array.prototype.forEach.call(root.querySelectorAll('[data-simplex-pivot]'), function (details) {
+    if (details.getAttribute('data-pivot-ready')) return;
+    details.setAttribute('data-pivot-ready', 'true');
+    var pair = inspect(res, Number(details.getAttribute('data-simplex-pivot')));
+    if (pair.reason) return;
+    var initialized = false;
+    details.addEventListener('toggle', function () {
+      if (!details.open) return;
+      if (!initialized) {
+        initialized = true;
+        initialize(details, res, pair);
+      }
+      addScrollHints(details);
+    });
+  });
+}
+
+function initialize(details, res, pair) {
+  details.querySelector('[data-pivot-body]').innerHTML = content(res, pair);
+  var list = phases(pair), phaseIndex = 0, row = pair.r === 0 ? 1 : 0, col = pair.e;
+  var prev = details.querySelector('[data-pivot-prev]'), next = details.querySelector('[data-pivot-next]');
+  var rowSelect = details.querySelector('[data-pivot-row-select]'), colSelect = details.querySelector('[data-pivot-col-select]');
+  if (rowSelect) row = Number(rowSelect.value);
+  colSelect.value = String(col);
+  Array.prototype.forEach.call(details.querySelectorAll('.scroll'), function (scroll, i) {
+    scroll.setAttribute('tabindex', '0');
+    scroll.setAttribute('role', 'region');
+    scroll.setAttribute('aria-label', (i ? '换表后' : '换表前') + '单纯形表，可横向滚动');
+  });
+  function show() {
+    var phase = list[phaseIndex];
+    details.setAttribute('data-pivot-phase', phase);
+    details.querySelector('[data-pivot-progress]').textContent = '第 ' + (phaseIndex + 1) + ' / ' + list.length + ' 环节 · ' + titles[phase];
+    details.querySelector('[data-pivot-explanation]').innerHTML = explanation(res, pair, phase, row, col);
+    if (rowSelect) rowSelect.parentNode.hidden = phase !== 'eliminate';
+    colSelect.parentNode.hidden = phase !== 'objective';
+    prev.disabled = phaseIndex === 0;
+    next.disabled = phaseIndex === list.length - 1;
+    Array.prototype.forEach.call(details.querySelectorAll('[data-pivot-row]'), function (cell) {
+      var r = cell.getAttribute('data-pivot-row'), c = Number(cell.getAttribute('data-pivot-col'));
+      var after = !!cell.closest('[data-pivot-after]');
+      var rowMark = (phase === 'normalize' && r === String(pair.r))
+        || (phase === 'eliminate' && (r === String(row) || (after && r === String(pair.r))))
+        || (phase === 'objective' && (r === 'obj' || (after && r === String(pair.r))));
+      cell.classList.toggle('simplex-pivot-row-mark', rowMark);
+      cell.classList.toggle('simplex-pivot-col-mark', (phase === 'locate' || phase === 'finish') && c === pair.e);
+      cell.classList.toggle('simplex-pivot-cell-mark', (phase === 'locate' && r === String(pair.r) && c === pair.e)
+        || (phase === 'normalize' && r === String(pair.r) && c === pair.n)
+        || (phase === 'eliminate' && ((!after && r === String(row) && c === pair.e) || (after && r === String(pair.r) && c === pair.n)))
+        || (phase === 'objective' && (r === 'obj' || (after && r === String(pair.r))) && (c === col || c === pair.n)));
+    });
+  }
+  function move(delta, button) {
+    phaseIndex = Math.max(0, Math.min(list.length - 1, phaseIndex + delta));
+    show();
+    if (button.disabled && document.activeElement === button) (delta > 0 ? prev : next).focus();
+  }
+  prev.addEventListener('click', function () { move(-1, prev); });
+  next.addEventListener('click', function () { move(1, next); });
+  if (rowSelect) rowSelect.addEventListener('change', function () { row = Number(rowSelect.value); show(); });
+  colSelect.addEventListener('change', function () { col = Number(colSelect.value); show(); });
+  show();
+}
+
+module.exports = { inspect: inspect, render: render, phases: phases, explanation: explanation, content: content, wire: wire };
+});
+
 __define__("src/web/simplex-report.js", function (module, exports, require) {
 /* 单纯形结果的 HTML 生成；不持有页面状态。 */
 'use strict';
@@ -9926,37 +10532,44 @@ var fmtNum = format.fmtNum;
 var fmtPair = format.fmtPair;
 
   /* ---------------- 迭代表渲染 ---------------- */
-  function renderTable(res, step) {
+  function renderTable(res, step, options) {
+    options = options || {};
+    /* 可选的只读对照视图不沿用快照自带的下一轮选择标记。默认输出保持原样。 */
+    var entering = options.unmarked ? null : step.entering;
+    var leaving = options.unmarked ? null : step.leaving;
+    function position(row, col) {
+      return options.positions ? ' data-pivot-row="' + row + '" data-pivot-col="' + col + '"' : '';
+    }
     var names = res.vars.map(function (v) { return v.name; });
     var N = names.length;
-    var leaveCol = (step.leaving === null || step.leaving === undefined) ? -1 : step.basis[step.leaving];
+    var leaveCol = (leaving === null || leaving === undefined) ? -1 : step.basis[leaving];
     var h = '<thead><tr><th>基</th>';
     for (var j = 0; j < N; j++) {
       var thc = [];
-      if (step.entering === j) thc.push('enter');
+      if (entering === j) thc.push('enter');
       if (leaveCol === j) thc.push('leave');
-      h += '<th class="' + thc.join(' ') + '">' + names[j] + '</th>';
+      h += '<th' + position('head', j) + ' class="' + thc.join(' ') + '">' + names[j] + '</th>';
     }
-    h += '<th class="bcol">b</th></tr></thead><tbody>';
+    h += '<th' + position('head', N) + ' class="bcol">b</th></tr></thead><tbody>';
 
     for (var i = 0; i < res.mConstraints; i++) {
       h += '<tr><td class="rowlbl base">' + names[step.basis[i]] + '</td>';
       for (var j2 = 0; j2 < N; j2++) {
         var cls = [];
-        if (step.entering === j2) cls.push('enter');
-        if (step.leaving === i) cls.push('leave');
-        if (step.leaving === i && step.entering === j2) cls.push('pivot');
-        h += '<td class="cell ' + cls.join(' ') + '">' + fmtNum(step.rows[i][j2]) + '</td>';
+        if (entering === j2) cls.push('enter');
+        if (leaving === i) cls.push('leave');
+        if (leaving === i && entering === j2) cls.push('pivot');
+        h += '<td' + position(i, j2) + ' class="cell ' + cls.join(' ') + '">' + fmtNum(step.rows[i][j2]) + '</td>';
       }
-      h += '<td class="bcol">' + fmtNum(step.rows[i][N]) + '</td></tr>';
+      h += '<td' + position(i, N) + ' class="bcol">' + fmtNum(step.rows[i][N]) + '</td></tr>';
     }
 
     h += '<tr class="objrow"><td class="rowlbl">σ</td>';
     for (var j3 = 0; j3 < N; j3++) {
-      h += '<td class="cell ' + (step.entering === j3 ? 'enter' : '') + '">'
+      h += '<td' + position('obj', j3) + ' class="cell ' + (entering === j3 ? 'enter' : '') + '">'
         + fmtPair(step.obj[j3]) + '</td>';
     }
-    h += '<td class="bcol">' + fmtPair(step.obj[N]) + '</td></tr>';
+    h += '<td' + position('obj', N) + ' class="bcol">' + fmtPair(step.obj[N]) + '</td></tr>';
 
     return '<div class="scroll"><table class="tb">' + h + '</tbody></table></div>';
   }
@@ -10627,6 +11240,7 @@ var graphCard = report.graphCard;
 var resultLayout = require('./result-layout.js');
 var study = require('./study-view.js');
 var interaction = require('./interaction.js');
+var pivotView = require('./simplex-pivot-view.js');
 
 (function () {
   'use strict';
@@ -10689,19 +11303,20 @@ var interaction = require('./interaction.js');
     html += '<section data-section="standard">' + standardCard(prob, res) + '</section>';
     html += graphCard(prob, res);
 
-    html += '<section data-section="iterations"><h2 class="sec">迭代过程（共 ' + (res.steps.length - 1) + ' 次迭代）</h2>';
+    html += '<section data-section="iterations"><h2 class="sec">迭代过程（共 ' + res.steps.length + ' 张快照）</h2>';
     var studySteps = res.steps.map(function (step, idx) {
       var title = idx === 0 ? '初始表' : '第 ' + idx + ' 次迭代';
       var isLast = (idx === res.steps.length - 1);
       var tag = '';
-      if (isLast && res.status === 'optimal') tag = '<span class="tag done">最优</span>';
-      else if (isLast) tag = '<span class="tag stop">终止</span>';
+      if (isLast && res.status === 'optimal' && step.entering === null && step.leaving === null) tag = '<span class="tag done">最优</span>';
+      else if (isLast) tag = '<span class="tag stop">' + (pivotView.inspect(res, idx).reason === 'missing' ? '后表未记录' : '终止') + '</span>';
       else tag = '<span class="tag">' + (idx === 0 ? '起点' : '迭代 ' + idx) + '</span>';
 
       var card = '<div class="card">'
         + '<div class="iter-head"><span class="name">' + title + '</span>' + tag + '</div>'
         + renderTable(res, step)
         + explain(res, step)
+        + pivotView.render(res, idx)
         + '</div>';
       return { title: title, html: card };
     });
@@ -10716,6 +11331,7 @@ var interaction = require('./interaction.js');
     $('mod-simplex').classList.add('has-result');
     addScrollHints(box);
     resultLayout.wire(box);
+    pivotView.wire(box, res);
     box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
