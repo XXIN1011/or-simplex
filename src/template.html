@@ -126,7 +126,7 @@
     </ul>
   </details>
 
-  <div id="banners"></div>
+  <div id="banners" role="status" aria-live="polite"></div>
   <section id="result"></section>
   </div><!-- /mod-simplex -->
 
@@ -145,7 +145,7 @@
       </div>
     </section>
 
-    <div id="sBanners"></div>
+    <div id="sBanners" role="status" aria-live="polite"></div>
     <section id="sBase"></section>
     <div id="sScenario"></div>
   </div>
@@ -166,7 +166,7 @@
       </div>
     </section>
 
-    <div id="ipBanners"></div>
+    <div id="ipBanners" role="status" aria-live="polite"></div>
     <section id="ipOut"></section>
   </div>
 
@@ -188,7 +188,7 @@
         「− 行 / − 列」删掉的是最后一行 / 最后一列。人数与工作数不一样也能算，程序会自动补虚拟行列。</div>
     </section>
 
-    <div id="asBanners"></div>
+    <div id="asBanners" role="status" aria-live="polite"></div>
     <!-- 符号说明：内容由 src/web/assign-ui.js 从 core/assignment.js 的 assignSymbols()
          渲染进来（文案只有一份），放在求解结果之前，随时可查 -->
     <div id="asSym"></div>
@@ -231,6 +231,7 @@
         <button type="button" data-mode="light">浅色</button>
         <button type="button" data-mode="dark">深色</button>
       </div>
+      <p class="guide-note" id="themeSaveNote" role="status" aria-live="polite"></p>
       <p class="muted">选择记在这台设备上，下次打开仍是这一档；「跟随系统」会随系统外观自动切换。</p>
     </section>
   </div>

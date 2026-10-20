@@ -61,7 +61,8 @@ function attach(cfg) {
     if (next === previous) return;
     if (store.save(data)) {
       previous = next;
-      message('当前题目已自动保存在此浏览器。');
+      /* 成功状态保持稳定，逐字落盘不重复播报；失败转成功时仍能听到恢复。 */
+      message('当前题目会自动保存在此浏览器。');
     } else message('题目未能保存，请保持页面打开。');
   }
   clear.addEventListener('click', function (event) {
@@ -69,6 +70,7 @@ function attach(cfg) {
     cfg.reset();
     previous = JSON.stringify(cfg.read());
     message(store.clear() ? '已清空题目，可重新输入。' : '无法清除已保存的题目，刷新后可能恢复旧题。');
+    clear.focus();
   });
   /* 在冒泡阶段保存，等目标控件先完成更新；小规模输入立即落盘，刷新不丢最后一格。 */
   [cfg.mount].concat(cfg.watch || []).forEach(function (id) {

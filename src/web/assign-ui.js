@@ -29,6 +29,7 @@ var addScrollHints = inputPanel.addScrollHints;
 
 var dom = require('./dom.js');
 var $ = dom.$, esc = dom.esc, subs = dom.subs;
+var interaction = require('./interaction.js');
 
 (function () {
   'use strict';
@@ -43,7 +44,12 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
   var state = { dir: 'min', rows: 0, cols: 0, cells: [] };
 
   function banner(msg) {
-    $('asBanners').innerHTML = msg ? '<div class="banner err">' + esc(msg) + '</div>' : '';
+    interaction.message($('asBanners'), msg, 'err');
+    if (msg) interaction.invalid($('asPanel'));
+  }
+  function invalidate() {
+    if ($('asOut').textContent) interaction.message($('asBanners'), interaction.STALE);
+    $('asOut').innerHTML = '';
   }
 
   /* 一格输入 → 数字 / null（禁止指派）/ 0（空） */
@@ -97,7 +103,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
         if (!state.cells[i]) state.cells[i] = [];
         state.cells[i][j] = inp.value;
         validateCell(inp);
-        $('asOut').innerHTML = '';          // 一改输入就把上一次的结果收掉，免得对不上
+        invalidate();
       });
     });
   }
@@ -110,6 +116,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
   function rowName(i, m) { return i < m ? '人员' + (i + 1) : '虚拟人员' + (i - m + 1); }
 
   function setSize(rows, cols) {
+    var focused = document.activeElement;
     rows = Math.max(0, Math.min(MAX_ROW, rows));
     cols = Math.max(0, Math.min(MAX_COL, cols));
     var cells = [], i, j;
@@ -120,8 +127,9 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
       cells.push(row);
     }
     state.rows = rows; state.cols = cols; state.cells = cells;
-    $('asOut').innerHTML = '';
+    invalidate();
     renderInput();
+    interaction.recoverFocus(focused, $('asAddRow').disabled ? $('asDelRow') : $('asAddRow'));
   }
 
   function readCost() {
@@ -402,7 +410,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
         x.classList.toggle('on', x === b);
         x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
       });
-      $('asOut').innerHTML = '';
+      invalidate();
     });
   });
   $('asAddRow').addEventListener('click', function () { setSize(state.rows + 1, state.cols ? state.cols : 1); });

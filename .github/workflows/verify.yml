@@ -4,7 +4,7 @@
 #  背景：以前这些验证全靠「读 HANDOFF 的 agent 记得手跑」，没有任何自动兜底。
 #  这里把最重要的几条固化成门禁：
 #    · 构建产物与源码一致（改了 src/ 忘了 npm run build 会被抓）
-#    · 注册一致性 / 无 DP 残留
+#    · 维护保护（ES5 / 依赖边界 / 循环依赖）/ 注册一致性 / 无 DP 残留
 #    · 单元测试 + 8 套算法回归
 #    · 无头 Chrome 的 UI 回归（runner 自带 google-chrome，lib/chrome.js 自动找得到）
 #  scipy 对拍与无障碍检查均为必过门禁；已知求解器分歧由脚本复核并单独记录。
@@ -35,10 +35,8 @@ jobs:
       - name: 构建 + 产物一致性（忘记 npm run build 会在这里暴露）
         run: node src/build.js && git diff --exit-code -- index.html
 
-      - name: 静态检查（注册一致性 / 无 DP 残留）
-        run: |
-          node tools/check-registry.js
-          node tools/check-no-dp.js
+      - name: 静态检查（维护保护 / 注册一致性 / 无 DP 残留）
+        run: npm run check
 
       - name: 单元测试 + 算法回归
         run: node test/run-all.js

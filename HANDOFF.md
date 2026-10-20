@@ -54,6 +54,7 @@
 ## 5. 界面与模型约定
 
 - 视觉规范见 [DESIGN.md](DESIGN.md)：系统字体、实色分组面板和语义颜色，兼顾手机与桌面。
+- 交互行为见 [交互约定](docs/交互约定.md)；开发样板执行 `npm run build` 后运行 `node tools/ui/component-states.js`，生成 `preview/component-states.html`。
 - 底栏为首页与设置；五个算法模块从首页进入。向下滚动阅读时底栏自动收起、向上滚动 10px 以上恢复，顶部 24px 内始终露出，路由切页必定恢复；实现见 `src/web/tabbar-hide.js`。
 - 主题提供跟随系统、浅色和深色三档，通过 `html[data-theme]` 驱动。
 - 初始输入保持空白；零维输入可用于搭建模型，求解前按各算法要求校验。
@@ -74,6 +75,8 @@ npm run build
 npm run check
 npm run verify
 ```
+
+`npm run check` 包含严格 ES5、依赖边界、循环依赖和 core 宿主 API 直接引用检查；可用 `npm run check:maintenance` 单独执行。开发期解析器固定源码不进入网页产物，规则见[架构与约定](docs/架构与约定.md#8-维护保护检查)。
 
 算法逻辑改动须补充相关 SciPy 对拍和计算快照；界面改动须检查手机视口，颜色及材质改动须运行视觉量测。具体命令见 [验证手册](docs/验证手册.md)。
 

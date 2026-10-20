@@ -172,7 +172,7 @@ function buildMethods(prob, r) {
 function chipOf(prob, r, m) {
   if (m.key === 'graph') {
     var best = ipSolutionOf(r);
-    return best ? '最优 z = ' + num(ipObjective(prob, best)) : '';
+    return best ? (confirmed(r) ? '最优 z = ' : '当前 z = ') + num(ipObjective(prob, best)) : '';
   }
   if (m.key === 'bnb') {
     if (!m.complete) return '未跑完（' + m.nodes.length + ' 个结点）';
@@ -235,12 +235,12 @@ function viewGraph(prob, r, m) {
     + '<span class="row">· <b>整数规划的解只能从灰点里挑</b> —— 这就是它与普通线性规划的全部区别。</span>'
     + '<span class="row">· 橙点 = 松弛问题的最优解（等值线平移到蓝区边界时取到）。'
     + '它常常落在边界上、不是灰点。</span>'
-    + '<span class="row">· 绿点 = 在灰点里让目标函数最大的那个，就是整数最优解。</span>'
+    + '<span class="row">· 绿点 = 当前找到的整数解；是否已确认最优见结论。</span>'
     + '<span class="row">· 橙点和绿点一般不重合 —— 所以「把松弛解四舍五入」是错的：'
     + '四舍五入后的点可能根本不在蓝区里（不可行），也可能不是灰点里最好的（不是最优）。</span>'
     + '</div>';
   if (ipBest) {
-    h += resultVerdict(prob, ipBest, ipObjective(prob, ipBest), '图解法');
+    h += resultVerdict(prob, ipBest, ipObjective(prob, ipBest), '图解法', confirmed(r));
   }
   return h + '</div>';
 }
@@ -259,8 +259,18 @@ function ipObjective(prob, x) {
   for (var j = 0; j < prob.c.length; j++) z += prob.c[j] * x[j];
   return z;
 }
-function resultVerdict(prob, x, z, who) {
-  return '<div class="verdict opt"><div class="vtitle">最优整数解（' + esc(who) + '）</div>'
+function confirmed(r) {
+  /* ipSolutionOf 优先展示分枝候选；其他方法完成不能替这个候选背书。 */
+  var bnb = r.methods.filter(function (m) { return m.key === 'bnb'; })[0];
+  if (bnb && bnb.best) return !!bnb.complete;
+  return r.methods.some(function (m) {
+    return m.key === 'cut' && m.converged && m.integral
+      || m.key === 'enum' && m.applicable && !m.tooBig && m.best;
+  });
+}
+function resultVerdict(prob, x, z, who, complete) {
+  return '<div class="verdict ' + (complete === false ? 'unb' : 'opt') + '"><div class="vtitle">'
+    + (complete === false ? '当前整数解，未确认最优' : '最优整数解') + '（' + esc(who) + '）</div>'
     + '<div class="sol">' + x.map(function (v, j) {
         return 'x' + subs(j + 1) + ' = <span class="v">' + num(v) + '</span>';
       }).join('　　') + '</div>'
@@ -317,7 +327,9 @@ function viewBnb(prob, r, m) {
   if (many) h += '</details>';
 
   if (m.best) {
-    h += resultVerdict(prob, m.best, m.bestZ, m.complete ? '分枝定界法' : '分枝定界法·未跑完');
+    h += resultVerdict(prob, m.best, m.bestZ, '分枝定界法', m.complete);
+  } else if (!m.complete) {
+    h += '<div class="verdict unb"><div class="vtitle">尚未找到整数解</div><div class="vsum">搜索未完成，不能判定无可行整数解。</div></div>';
   } else {
     h += '<div class="verdict no"><div class="vtitle">无可行整数解</div>'
       + '<div class="vsum">所有分支都被剪掉了，说明这道整数规划没有可行解。</div></div>';

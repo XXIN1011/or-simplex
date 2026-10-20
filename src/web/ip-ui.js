@@ -14,6 +14,7 @@ var createInputPanel = require('./input-panel.js').createInputPanel;
 var render = require('./integer-report.js').render;
 var dom = require('./dom.js');
 var $ = dom.$, esc = dom.esc, subs = dom.subs;
+var interaction = require('./interaction.js');
 
 (function () {
   'use strict';
@@ -39,12 +40,12 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
     var hadResult = !!$('ipOut').textContent;
     last = null;
     $('ipOut').innerHTML = '';
-    banner(hadResult ? '输入已修改，请重新求解。' : '', '');
+    if (hadResult) banner(interaction.STALE, '');
   }
 
   function banner(msg, kind) {
-    $('ipBanners').innerHTML = msg
-      ? '<div class="banner ' + (kind || 'err') + '">' + esc(msg) + '</div>' : '';
+    interaction.message($('ipBanners'), msg, kind === undefined ? 'err' : kind);
+    if (msg && kind === undefined) interaction.invalid($('ipPanel'));
   }
 
   /* ===================== 变量类型选择器 ===================== */
@@ -61,10 +62,10 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
       + '<b>整数</b>要求取整，<b>0-1</b>要求只能取 0 或 1。</div>';
     for (var j = 0; j < n; j++) {
       h += '<div class="fh"><span class="fl">x' + subs(j + 1) + '</span>'
-        + '<div class="seg sm" data-vt="' + j + '">'
+        + '<div class="seg sm" data-vt="' + j + '" role="group" aria-label="x' + (j + 1) + ' 变量类型">'
         + ['cont', 'int', 'bin'].map(function (t) {
             return '<button type="button" data-t="' + t + '" class="'
-              + (vtypes[j] === t ? 'on' : '') + '">' + TYPE_NAMES[t] + '</button>';
+              + (vtypes[j] === t ? 'on' : '') + '" aria-pressed="' + (vtypes[j] === t) + '">' + TYPE_NAMES[t] + '</button>';
           }).join('')
         + '</div></div>';
     }
@@ -75,6 +76,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
         b.addEventListener('click', function () {
           Array.prototype.forEach.call(box.querySelectorAll('button'), function (x) {
             x.classList.toggle('on', x === b);
+            x.setAttribute('aria-pressed', String(x === b));
           });
           vtypes[j] = b.dataset.t;
           invalidate();
@@ -120,7 +122,8 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
   renderTypes();
   var savedProblems = require('./draft.js').attachLinear({
     key: 'ip', mount: 'ipPanel', panel: panel, maxN: 8, watch: ['ipTypes'],
-    readExtra: function (p) { syncVtypes(); p.vtypes = vtypes.slice(); }
+    readExtra: function (p) { syncVtypes(); p.vtypes = vtypes.slice(); },
+    clearExtra: function () { banner(''); }
   });
   /* 供回归脚本与截图脚本使用：变量增删后类型选择器是延时渲染的，
      脚本没法等，所以把重绘入口挂出来让它们同步触发（真人手点用不到）。 */

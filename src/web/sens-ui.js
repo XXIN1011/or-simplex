@@ -31,6 +31,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
 var parseNumber = require('../core/number-input.js').parseNumber;
 var resultLayout = require('./result-layout.js');
 var study = require('./study-view.js');
+var interaction = require('./interaction.js');
 
 (function () {
   'use strict';
@@ -64,7 +65,7 @@ var study = require('./study-view.js');
     clearAnalysis();
     $('sBase').innerHTML = '';
     $('sScenario').innerHTML = '';
-    banner(hadBase ? '基准题已修改，请重新求基准最优解。' : '');
+    if (hadBase) banner('基准题已修改，请重新求基准最优解。', '');
   }
 
   /* ---------------- 基准题求解 ---------------- */
@@ -80,7 +81,7 @@ var study = require('./study-view.js');
     var res = simplexSolve(prob);
     if (res.ok === false) { banner(res.message); return; }
     if (res.status !== 'optimal') {
-      banner('基准问题没有最优解（' + statusName(res.status) + '），灵敏度分析是在最优解上做的，换一道题再试。');
+      banner('基准问题状态：' + statusName(res.status) + '。灵敏度分析需要已确认的基准最优解。', 'warn');
       base = null; baseProb = null;
       $('sBase').innerHTML = '';
       $('sScenario').innerHTML = '';
@@ -134,14 +135,16 @@ var study = require('./study-view.js');
       b.addEventListener('click', function () {
         Array.prototype.forEach.call($('sensTabs').querySelectorAll('button'), function (x) {
           x.classList.toggle('on', x === b);
+          x.setAttribute('aria-pressed', String(x === b));
         });
+        invalidateAnalysis();
         renderForm(b.dataset.t);
       });
     });
     renderForm('c');
   }
   function scenTab(t, label) {
-    return '<button type="button" data-t="' + t + '" class="' + (t === 'c' ? 'on' : '') + '">'
+    return '<button type="button" data-t="' + t + '" class="' + (t === 'c' ? 'on' : '') + '" aria-pressed="' + (t === 'c') + '">'
       + label + '</button>';
   }
 
@@ -203,8 +206,8 @@ var study = require('./study-view.js');
       h += '<div class="sens-note">把某个系数写成含参数 λ 的形式，求「λ 在什么范围内最优基不变」，'
         + '以及越过临界值之后最优解怎么接着变。先选参数加在哪一类系数上。</div>'
         + '<div class="scen-tabs" id="pKind">'
-        + '<button type="button" data-k="c" class="on">变量系数 c<sub>j</sub>(λ)</button>'
-        + '<button type="button" data-k="b">右边系数 b<sub>i</sub>(λ)</button>'
+        + '<button type="button" data-k="c" class="on" aria-pressed="true">变量系数 c<sub>j</sub>(λ)</button>'
+        + '<button type="button" data-k="b" aria-pressed="false">右边系数 b<sub>i</sub>(λ)</button>'
         + '</div><div id="pBody"></div>';
     } else {
       h += '<div class="sens-note">新增一个变量 x' + (n + 1) + '，填入它的目标系数与在各约束中的系数。</div>'
@@ -234,8 +237,10 @@ var study = require('./study-view.js');
         b.addEventListener('click', function () {
           Array.prototype.forEach.call($('pKind').querySelectorAll('button'), function (x) {
             x.classList.toggle('on', x === b);
+            x.setAttribute('aria-pressed', String(x === b));
           });
           paramKind = b.dataset.k;
+          invalidateAnalysis();
           renderParamBody();
         });
       });
@@ -463,10 +468,10 @@ var study = require('./study-view.js');
         + '<div class="vsum">最优基：' + r.result.basisNames.join('、')
         + '　　（基准最优基：' + r.base.basisNames.join('、') + '）</div></div>';
     } else {
-      h += '<div class="verdict ' + (r.status === 'unbounded' ? 'unb' : 'no') + '">'
+      h += '<div class="verdict ' + (r.status === 'infeasible' ? 'no' : 'unb') + '">'
         + '<div class="vtitle">' + statusName(r.status) + '</div>'
-        + '<div class="vsum">按新的条件，问题' + (r.status === 'infeasible' ? '不存在可行解' : '目标值无界')
-        + '，因此没有最优解。</div></div>';
+        + '<div class="vsum">' + (r.status === 'infeasible' ? '按新的条件，问题不存在可行解。'
+          : r.status === 'unbounded' ? '按新的条件，目标值无界。' : '求解未完成，无法确认最优。') + '</div></div>';
     }
 
     h += resultLayout.navigation([['sensitivity-work','查看判断与迭代']])
@@ -484,9 +489,9 @@ var study = require('./study-view.js');
     box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  function banner(msg) {
-    $('sBanners').innerHTML = msg
-      ? '<div class="banner err">' + esc(msg) + '</div>' : '';
+  function banner(msg, kind) {
+    interaction.message($('sBanners'), msg, kind === undefined ? 'err' : kind);
+    if (msg && kind === undefined) interaction.invalid($('mod-sens'));
   }
 
   function readScenario() {
@@ -516,12 +521,14 @@ var study = require('./study-view.js');
   function restoreScenario(s) {
     Array.prototype.forEach.call($('sensTabs').querySelectorAll('button'), function (button) {
       button.classList.toggle('on', button.dataset.t === s.kind);
+      button.setAttribute('aria-pressed', String(button.dataset.t === s.kind));
     });
     renderForm(s.kind);
     if (s.kind === 'param') {
       paramKind = s.paramKind;
       Array.prototype.forEach.call($('pKind').querySelectorAll('button'), function (button) {
         button.classList.toggle('on', button.dataset.k === paramKind);
+        button.setAttribute('aria-pressed', String(button.dataset.k === paramKind));
       });
       renderParamBody();
     }
@@ -536,18 +543,24 @@ var study = require('./study-view.js');
   /* ---------------- 启动 ---------------- */
   panel.init();
   $('sScenario').addEventListener('input', function (e) {
-    clearAnalysis();
+    invalidateAnalysis();
     if (e.target.tagName === 'INPUT') {
       e.target.setAttribute('aria-invalid', isFinite(parseNumber(e.target.value, true)) ? 'false' : 'true');
     }
   });
-  $('sScenario').addEventListener('change', clearAnalysis);
+  function invalidateAnalysis() {
+    var had = !!$('sensOut');
+    clearAnalysis();
+    if (had) banner('分析条件已修改，请重新分析。', '');
+  }
+  $('sScenario').addEventListener('change', invalidateAnalysis);
   $('sSolveBtn').addEventListener('click', solveBase);
   var savedProblems = require('./draft.js').attachLinear({
     key: 'sens', mount: 'sensPanel', panel: panel, watch: ['sScenario', 'sSolveBtn'],
     validExtra: validScenario,
     readExtra: function (p) { p.scenario = readScenario(); },
-    restoreExtra: function (p) { pendingScenario = p.scenario || null; }
+    restoreExtra: function (p) { pendingScenario = p.scenario || null; },
+    clearExtra: function () { banner(''); }
   });
 })();
 

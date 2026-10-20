@@ -126,6 +126,14 @@ function init() {
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', onResize);
   bar.addEventListener('focusin', reveal);
+  document.addEventListener('focusin', function (event) {
+    if (bar.contains(event.target)) return;
+    requestAnimationFrame(function () {
+      if (document.activeElement !== event.target || hidden) return;
+      var rect = event.target.getBoundingClientRect(), top = bar.getBoundingClientRect().top;
+      if (rect.bottom > top && rect.top < window.innerHeight) window.scrollBy(0, rect.bottom - top + 16);
+    });
+  });
 }
 
 init();

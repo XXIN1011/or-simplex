@@ -105,7 +105,6 @@ body{
   font-size:16px;line-height:1.65;
   padding:0 0 env(safe-area-inset-bottom);
 }
-::selection{background:var(--accent-soft);color:var(--fg)}
 
 /* 上下标：浏览器默认缩到 0.83em，13px 的正文里只剩 10.8px —— 低于本项目自己定的
    12px 下限（审查脚本会报「字号 < 12px」）。
@@ -113,8 +112,6 @@ body{
 sub,sup{font-size:max(12px,.83em)}
 /* 键盘聚焦时才画焦点环：鼠标点击不画，手指点更不画 */
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
-input:focus-visible,select:focus-visible{outline:none}
-input[aria-invalid="true"]{border-color:var(--err)!important;box-shadow:0 0 0 1px var(--err)}
 
 /* 底部有固定的模块导航条，正文要给它让出位置，否则最后一屏会被压住 */
 .wrap{max-width:820px;margin:0 auto;padding:24px 20px calc(108px + env(safe-area-inset-bottom))}
@@ -167,17 +164,17 @@ header p{margin:8px 0 0;font-size:14px;color:var(--fg2);letter-spacing:.01em}
 /* ---------- 分段控件 ---------- */
 .seg{
   display:inline-flex;background:var(--soft);border:1px solid var(--line);
-  border-radius:var(--r);padding:3px;gap:2px;margin-bottom:12px;
+  border-radius:var(--r);padding:4px;gap:4px;margin-bottom:12px;
 }
 .seg button{
   border:0;background:transparent;color:var(--fg2);
   font:inherit;font-size:14px;font-weight:600;
-  padding:6px 20px;border-radius:10px;cursor:pointer;
+  padding:6px 20px;border-radius:7px;cursor:pointer;
   transition:background .15s,color .15s,box-shadow .15s;
   /* max/min 是手机上最高频的开关，原来只有 34px 高，补到 44px 才好点 */
   min-height:44px;display:inline-flex;align-items:center;justify-content:center;
 }
-.seg button.on{background:var(--card);color:var(--accent);box-shadow:var(--shadow-1);font-weight:700}
+.seg button.on{font-weight:700}
 
 /* ---------- 输入表 ---------- */
 /* 滚动区左右各出血到卡片内边距的外沿，表格才能贴着卡片边缘滑动。
@@ -253,8 +250,9 @@ button.btn{
   min-height:44px;display:inline-flex;align-items:center;justify-content:center;
 }
 button.btn:active{background:var(--soft);transform:translateY(1px)}
-button.btn:disabled{opacity:.38;cursor:default}
+button.btn:disabled{cursor:default}
 button.btn.primary{
+  min-height:48px;
   flex:1;background-color:var(--button-bg);border-color:transparent;color:var(--button-fg);
   font-size:16px;font-weight:650;letter-spacing:.06em;padding:12px 16px;
   box-shadow:none;
@@ -354,7 +352,7 @@ html[data-theme="dark"] .graph .g-ipoptlbl{fill:#4ade80}
 /* ---------- 结果 ---------- */
 #result{display:none}
 #result.show{display:block}
-#result.stale{opacity:.38;transition:opacity .15s}
+#result.stale{filter:grayscale(1)}
 /* 章节靠字号与留白建立层级，避免用重复装饰抢走公式的注意力。 */
 h2.sec{
   display:flex;align-items:center;gap:8px;
@@ -758,14 +756,12 @@ input,select,textarea{caret-color:var(--accent);accent-color:var(--accent)}
 a{text-underline-offset:4px}
 button,summary,a,input,select{scroll-margin-block:24px 110px}
 input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input.num[aria-invalid="true"]{border-color:var(--err);box-shadow:0 0 0 1px var(--err)}
 button:disabled{transform:none}
 
 /* 保留原有选择状态与底栏指示器，仅统一视觉语言。 */
-.seg{background:var(--soft);border-color:var(--line);padding:4px;gap:4px}
-.seg button{border-radius:7px}
 .seg button.on{background:var(--card);color:var(--accent-text);box-shadow:0 1px 3px rgba(15,22,35,.12)}
 button.btn{border-radius:var(--r);box-shadow:none;transition:background var(--duration-fast),border-color var(--duration-fast),color var(--duration-fast)}
-button.btn.primary{min-height:48px}
 button.btn:disabled{opacity:.45}
 button.btn.primary:disabled{filter:none}
 .tabbar{background:var(--card);border-color:var(--line);border-radius:16px;box-shadow:0 6px 24px -12px rgba(15,22,35,.32);padding:5px;gap:4px}
@@ -854,7 +850,7 @@ button.btn.primary:disabled{filter:none}
 #asPanel .draft-tools,#asPanel .problem-history{margin-top:4px}
 .result-nav{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 18px}
 .result-nav .btn{min-height:44px}
-.study-toolbar{padding:12px!important}
+.study-toolbar{--card-pad:12px}
 .study-toolbar .seg{display:inline-flex}
 .study-controls{margin-top:12px}
 .study-progress{font-size:13px;font-weight:650;line-height:1.6;margin-bottom:8px;overflow-wrap:anywhere}
@@ -1220,7 +1216,7 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
     </ul>
   </details>
 
-  <div id="banners"></div>
+  <div id="banners" role="status" aria-live="polite"></div>
   <section id="result"></section>
   </div><!-- /mod-simplex -->
 
@@ -1239,7 +1235,7 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
       </div>
     </section>
 
-    <div id="sBanners"></div>
+    <div id="sBanners" role="status" aria-live="polite"></div>
     <section id="sBase"></section>
     <div id="sScenario"></div>
   </div>
@@ -1260,7 +1256,7 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
       </div>
     </section>
 
-    <div id="ipBanners"></div>
+    <div id="ipBanners" role="status" aria-live="polite"></div>
     <section id="ipOut"></section>
   </div>
 
@@ -1282,7 +1278,7 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
         「− 行 / − 列」删掉的是最后一行 / 最后一列。人数与工作数不一样也能算，程序会自动补虚拟行列。</div>
     </section>
 
-    <div id="asBanners"></div>
+    <div id="asBanners" role="status" aria-live="polite"></div>
     <!-- 符号说明：内容由 src/web/assign-ui.js 从 core/assignment.js 的 assignSymbols()
          渲染进来（文案只有一份），放在求解结果之前，随时可查 -->
     <div id="asSym"></div>
@@ -1325,6 +1321,7 @@ table.transport-table th:first-child,table.transport-table th:last-child{border-
         <button type="button" data-mode="light">浅色</button>
         <button type="button" data-mode="dark">深色</button>
       </div>
+      <p class="guide-note" id="themeSaveNote" role="status" aria-live="polite"></p>
       <p class="muted">选择记在这台设备上，下次打开仍是这一档；「跟随系统」会随系统外观自动切换。</p>
     </section>
   </div>
@@ -6387,6 +6384,7 @@ var addScrollHints = inputPanel.addScrollHints;
 
 var dom = require('./dom.js');
 var $ = dom.$, esc = dom.esc, subs = dom.subs;
+var interaction = require('./interaction.js');
 
 (function () {
   'use strict';
@@ -6401,7 +6399,12 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
   var state = { dir: 'min', rows: 0, cols: 0, cells: [] };
 
   function banner(msg) {
-    $('asBanners').innerHTML = msg ? '<div class="banner err">' + esc(msg) + '</div>' : '';
+    interaction.message($('asBanners'), msg, 'err');
+    if (msg) interaction.invalid($('asPanel'));
+  }
+  function invalidate() {
+    if ($('asOut').textContent) interaction.message($('asBanners'), interaction.STALE);
+    $('asOut').innerHTML = '';
   }
 
   /* 一格输入 → 数字 / null（禁止指派）/ 0（空） */
@@ -6455,7 +6458,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
         if (!state.cells[i]) state.cells[i] = [];
         state.cells[i][j] = inp.value;
         validateCell(inp);
-        $('asOut').innerHTML = '';          // 一改输入就把上一次的结果收掉，免得对不上
+        invalidate();
       });
     });
   }
@@ -6468,6 +6471,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
   function rowName(i, m) { return i < m ? '人员' + (i + 1) : '虚拟人员' + (i - m + 1); }
 
   function setSize(rows, cols) {
+    var focused = document.activeElement;
     rows = Math.max(0, Math.min(MAX_ROW, rows));
     cols = Math.max(0, Math.min(MAX_COL, cols));
     var cells = [], i, j;
@@ -6478,8 +6482,9 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
       cells.push(row);
     }
     state.rows = rows; state.cols = cols; state.cells = cells;
-    $('asOut').innerHTML = '';
+    invalidate();
     renderInput();
+    interaction.recoverFocus(focused, $('asAddRow').disabled ? $('asDelRow') : $('asAddRow'));
   }
 
   function readCost() {
@@ -6760,7 +6765,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
         x.classList.toggle('on', x === b);
         x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
       });
-      $('asOut').innerHTML = '';
+      invalidate();
     });
   });
   $('asAddRow').addEventListener('click', function () { setSize(state.rows + 1, state.cols ? state.cols : 1); });
@@ -6954,7 +6959,8 @@ function attach(cfg) {
     if (next === previous) return;
     if (store.save(data)) {
       previous = next;
-      message('当前题目已自动保存在此浏览器。');
+      /* 成功状态保持稳定，逐字落盘不重复播报；失败转成功时仍能听到恢复。 */
+      message('当前题目会自动保存在此浏览器。');
     } else message('题目未能保存，请保持页面打开。');
   }
   clear.addEventListener('click', function (event) {
@@ -6962,6 +6968,7 @@ function attach(cfg) {
     cfg.reset();
     previous = JSON.stringify(cfg.read());
     message(store.clear() ? '已清空题目，可重新输入。' : '无法清除已保存的题目，刷新后可能恢复旧题。');
+    clear.focus();
   });
   /* 在冒泡阶段保存，等目标控件先完成更新；小规模输入立即落盘，刷新不丢最后一格。 */
   [cfg.mount].concat(cfg.watch || []).forEach(function (id) {
@@ -7377,6 +7384,7 @@ var dom = require('./dom.js');
 var esc = dom.esc;
 var parseNumber = require('../core/number-input.js').parseNumber;
 var inputGuide = require('./input-guide.js');
+var interaction = require('./interaction.js');
 
 /* 表格横向溢出时给一句提示：手机上看不见滚动条，不说一声用户不知道右边还有内容。
    只在真的溢出（scrollWidth > clientWidth）时才插入，且不重复插入。
@@ -7610,6 +7618,8 @@ function createInputPanel(cfg) {
         state.m--;
         render();
         onChange();
+        var next = t.querySelector('button.delvar[data-i="' + Math.min(+b.dataset.i, state.m - 1) + '"]');
+        (next || el('addCon')).focus();
       });
     });
   }
@@ -7693,7 +7703,11 @@ function createInputPanel(cfg) {
     Array.prototype.forEach.call(el('dirSeg').querySelectorAll('button'), function (b) {
       b.addEventListener('click', function () { setDir(b.dataset.dir); });
     });
-    var wire = function (key, fn) { el(key).addEventListener('click', fn); };
+    var wire = function (key, fn) { el(key).addEventListener('click', function () {
+      var focused = document.activeElement;
+      fn();
+      interaction.recoverFocus(focused, el(key.indexOf('Var') >= 0 ? (state.n ? 'delVar' : 'addVar') : (state.m ? 'delCon' : 'addCon')));
+    }); };
     wire('addVar', function () { setN(state.n + 1); });
     wire('delVar', function () { setN(state.n - 1); });
     wire('addCon', function () { setM(state.m + 1); });
@@ -7891,7 +7905,7 @@ function buildMethods(prob, r) {
 function chipOf(prob, r, m) {
   if (m.key === 'graph') {
     var best = ipSolutionOf(r);
-    return best ? '最优 z = ' + num(ipObjective(prob, best)) : '';
+    return best ? (confirmed(r) ? '最优 z = ' : '当前 z = ') + num(ipObjective(prob, best)) : '';
   }
   if (m.key === 'bnb') {
     if (!m.complete) return '未跑完（' + m.nodes.length + ' 个结点）';
@@ -7954,12 +7968,12 @@ function viewGraph(prob, r, m) {
     + '<span class="row">· <b>整数规划的解只能从灰点里挑</b> —— 这就是它与普通线性规划的全部区别。</span>'
     + '<span class="row">· 橙点 = 松弛问题的最优解（等值线平移到蓝区边界时取到）。'
     + '它常常落在边界上、不是灰点。</span>'
-    + '<span class="row">· 绿点 = 在灰点里让目标函数最大的那个，就是整数最优解。</span>'
+    + '<span class="row">· 绿点 = 当前找到的整数解；是否已确认最优见结论。</span>'
     + '<span class="row">· 橙点和绿点一般不重合 —— 所以「把松弛解四舍五入」是错的：'
     + '四舍五入后的点可能根本不在蓝区里（不可行），也可能不是灰点里最好的（不是最优）。</span>'
     + '</div>';
   if (ipBest) {
-    h += resultVerdict(prob, ipBest, ipObjective(prob, ipBest), '图解法');
+    h += resultVerdict(prob, ipBest, ipObjective(prob, ipBest), '图解法', confirmed(r));
   }
   return h + '</div>';
 }
@@ -7978,8 +7992,18 @@ function ipObjective(prob, x) {
   for (var j = 0; j < prob.c.length; j++) z += prob.c[j] * x[j];
   return z;
 }
-function resultVerdict(prob, x, z, who) {
-  return '<div class="verdict opt"><div class="vtitle">最优整数解（' + esc(who) + '）</div>'
+function confirmed(r) {
+  /* ipSolutionOf 优先展示分枝候选；其他方法完成不能替这个候选背书。 */
+  var bnb = r.methods.filter(function (m) { return m.key === 'bnb'; })[0];
+  if (bnb && bnb.best) return !!bnb.complete;
+  return r.methods.some(function (m) {
+    return m.key === 'cut' && m.converged && m.integral
+      || m.key === 'enum' && m.applicable && !m.tooBig && m.best;
+  });
+}
+function resultVerdict(prob, x, z, who, complete) {
+  return '<div class="verdict ' + (complete === false ? 'unb' : 'opt') + '"><div class="vtitle">'
+    + (complete === false ? '当前整数解，未确认最优' : '最优整数解') + '（' + esc(who) + '）</div>'
     + '<div class="sol">' + x.map(function (v, j) {
         return 'x' + subs(j + 1) + ' = <span class="v">' + num(v) + '</span>';
       }).join('　　') + '</div>'
@@ -8036,7 +8060,9 @@ function viewBnb(prob, r, m) {
   if (many) h += '</details>';
 
   if (m.best) {
-    h += resultVerdict(prob, m.best, m.bestZ, m.complete ? '分枝定界法' : '分枝定界法·未跑完');
+    h += resultVerdict(prob, m.best, m.bestZ, '分枝定界法', m.complete);
+  } else if (!m.complete) {
+    h += '<div class="verdict unb"><div class="vtitle">尚未找到整数解</div><div class="vsum">搜索未完成，不能判定无可行整数解。</div></div>';
   } else {
     h += '<div class="verdict no"><div class="vtitle">无可行整数解</div>'
       + '<div class="vsum">所有分支都被剪掉了，说明这道整数规划没有可行解。</div></div>';
@@ -8206,6 +8232,26 @@ function viewEnum(prob, r, m) {
 module.exports = { render: render };
 });
 
+__define__("src/web/interaction.js", function (module, exports, require) {
+/* 只管理反馈与焦点，不解析错误文案或推断数学状态。 */
+'use strict';
+var esc = require('./dom.js').esc;
+var STALE = '输入已修改，请重新求解。';
+function message(root, text, kind) {
+  var html = text ? '<div class="banner' + (kind ? ' ' + kind : '') + '">' + esc(text) + '</div>' : '';
+  if (root.innerHTML !== html) root.innerHTML = html;
+}
+function invalid(root) {
+  var field = root.querySelector('[aria-invalid="true"]');
+  if (field) field.focus();
+}
+/* 重绘删除了焦点节点，或规模上限禁用了当前按钮时，退回同一组的可用入口。 */
+function recoverFocus(previous, fallback) {
+  if (previous && (!document.documentElement.contains(previous) || previous.disabled) && fallback) fallback.focus();
+}
+module.exports = { STALE: STALE, message: message, invalid: invalid, recoverFocus: recoverFocus };
+});
+
 __define__("src/web/ip-ui.js", function (module, exports, require) {
 /* =========================================================================
    整数规划模块界面
@@ -8223,6 +8269,7 @@ var createInputPanel = require('./input-panel.js').createInputPanel;
 var render = require('./integer-report.js').render;
 var dom = require('./dom.js');
 var $ = dom.$, esc = dom.esc, subs = dom.subs;
+var interaction = require('./interaction.js');
 
 (function () {
   'use strict';
@@ -8248,12 +8295,12 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
     var hadResult = !!$('ipOut').textContent;
     last = null;
     $('ipOut').innerHTML = '';
-    banner(hadResult ? '输入已修改，请重新求解。' : '', '');
+    if (hadResult) banner(interaction.STALE, '');
   }
 
   function banner(msg, kind) {
-    $('ipBanners').innerHTML = msg
-      ? '<div class="banner ' + (kind || 'err') + '">' + esc(msg) + '</div>' : '';
+    interaction.message($('ipBanners'), msg, kind === undefined ? 'err' : kind);
+    if (msg && kind === undefined) interaction.invalid($('ipPanel'));
   }
 
   /* ===================== 变量类型选择器 ===================== */
@@ -8270,10 +8317,10 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
       + '<b>整数</b>要求取整，<b>0-1</b>要求只能取 0 或 1。</div>';
     for (var j = 0; j < n; j++) {
       h += '<div class="fh"><span class="fl">x' + subs(j + 1) + '</span>'
-        + '<div class="seg sm" data-vt="' + j + '">'
+        + '<div class="seg sm" data-vt="' + j + '" role="group" aria-label="x' + (j + 1) + ' 变量类型">'
         + ['cont', 'int', 'bin'].map(function (t) {
             return '<button type="button" data-t="' + t + '" class="'
-              + (vtypes[j] === t ? 'on' : '') + '">' + TYPE_NAMES[t] + '</button>';
+              + (vtypes[j] === t ? 'on' : '') + '" aria-pressed="' + (vtypes[j] === t) + '">' + TYPE_NAMES[t] + '</button>';
           }).join('')
         + '</div></div>';
     }
@@ -8284,6 +8331,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
         b.addEventListener('click', function () {
           Array.prototype.forEach.call(box.querySelectorAll('button'), function (x) {
             x.classList.toggle('on', x === b);
+            x.setAttribute('aria-pressed', String(x === b));
           });
           vtypes[j] = b.dataset.t;
           invalidate();
@@ -8329,7 +8377,8 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
   renderTypes();
   var savedProblems = require('./draft.js').attachLinear({
     key: 'ip', mount: 'ipPanel', panel: panel, maxN: 8, watch: ['ipTypes'],
-    readExtra: function (p) { syncVtypes(); p.vtypes = vtypes.slice(); }
+    readExtra: function (p) { syncVtypes(); p.vtypes = vtypes.slice(); },
+    clearExtra: function () { banner(''); }
   });
   /* 供回归脚本与截图脚本使用：变量增删后类型选择器是延时渲染的，
      脚本没法等，所以把重绘入口挂出来让它们同步触发（真人手点用不到）。 */
@@ -8639,6 +8688,7 @@ var tabbar = require('./tabbar-hide.js');
   window.addEventListener('load', movePill);
 
   function show(name) {
+    var focused = document.activeElement;
     MODULES.forEach(function (m) {
       var el = document.getElementById('mod-' + m);
       if (el) el.classList.toggle('on', m === name);
@@ -8652,6 +8702,10 @@ var tabbar = require('./tabbar-hide.js');
     /* 切页回到顶部，底栏必须露出来：上一页可能是在页面底部读表时被滑走的，
        到了新页面还藏着一整条导航，会让人以为入口没了。 */
     tabbar.reveal();
+    if (focused && focused.closest && focused.closest('.mod:not(.on)')) {
+      var heading = document.querySelector('#mod-' + name + ' h1');
+      if (heading) { heading.setAttribute('tabindex', '-1'); heading.focus({ preventScroll: true }); }
+    }
     /* 表格是否溢出要等它可见之后才量得准，所以切页后再补一次「左右滑动」提示 */
     if (typeof addScrollHints === 'function') {
       setTimeout(function () { addScrollHints(document); }, 0);
@@ -8700,6 +8754,7 @@ var $ = dom.$, esc = dom.esc, subs = dom.subs;
 var parseNumber = require('../core/number-input.js').parseNumber;
 var resultLayout = require('./result-layout.js');
 var study = require('./study-view.js');
+var interaction = require('./interaction.js');
 
 (function () {
   'use strict';
@@ -8733,7 +8788,7 @@ var study = require('./study-view.js');
     clearAnalysis();
     $('sBase').innerHTML = '';
     $('sScenario').innerHTML = '';
-    banner(hadBase ? '基准题已修改，请重新求基准最优解。' : '');
+    if (hadBase) banner('基准题已修改，请重新求基准最优解。', '');
   }
 
   /* ---------------- 基准题求解 ---------------- */
@@ -8749,7 +8804,7 @@ var study = require('./study-view.js');
     var res = simplexSolve(prob);
     if (res.ok === false) { banner(res.message); return; }
     if (res.status !== 'optimal') {
-      banner('基准问题没有最优解（' + statusName(res.status) + '），灵敏度分析是在最优解上做的，换一道题再试。');
+      banner('基准问题状态：' + statusName(res.status) + '。灵敏度分析需要已确认的基准最优解。', 'warn');
       base = null; baseProb = null;
       $('sBase').innerHTML = '';
       $('sScenario').innerHTML = '';
@@ -8803,14 +8858,16 @@ var study = require('./study-view.js');
       b.addEventListener('click', function () {
         Array.prototype.forEach.call($('sensTabs').querySelectorAll('button'), function (x) {
           x.classList.toggle('on', x === b);
+          x.setAttribute('aria-pressed', String(x === b));
         });
+        invalidateAnalysis();
         renderForm(b.dataset.t);
       });
     });
     renderForm('c');
   }
   function scenTab(t, label) {
-    return '<button type="button" data-t="' + t + '" class="' + (t === 'c' ? 'on' : '') + '">'
+    return '<button type="button" data-t="' + t + '" class="' + (t === 'c' ? 'on' : '') + '" aria-pressed="' + (t === 'c') + '">'
       + label + '</button>';
   }
 
@@ -8872,8 +8929,8 @@ var study = require('./study-view.js');
       h += '<div class="sens-note">把某个系数写成含参数 λ 的形式，求「λ 在什么范围内最优基不变」，'
         + '以及越过临界值之后最优解怎么接着变。先选参数加在哪一类系数上。</div>'
         + '<div class="scen-tabs" id="pKind">'
-        + '<button type="button" data-k="c" class="on">变量系数 c<sub>j</sub>(λ)</button>'
-        + '<button type="button" data-k="b">右边系数 b<sub>i</sub>(λ)</button>'
+        + '<button type="button" data-k="c" class="on" aria-pressed="true">变量系数 c<sub>j</sub>(λ)</button>'
+        + '<button type="button" data-k="b" aria-pressed="false">右边系数 b<sub>i</sub>(λ)</button>'
         + '</div><div id="pBody"></div>';
     } else {
       h += '<div class="sens-note">新增一个变量 x' + (n + 1) + '，填入它的目标系数与在各约束中的系数。</div>'
@@ -8903,8 +8960,10 @@ var study = require('./study-view.js');
         b.addEventListener('click', function () {
           Array.prototype.forEach.call($('pKind').querySelectorAll('button'), function (x) {
             x.classList.toggle('on', x === b);
+            x.setAttribute('aria-pressed', String(x === b));
           });
           paramKind = b.dataset.k;
+          invalidateAnalysis();
           renderParamBody();
         });
       });
@@ -9132,10 +9191,10 @@ var study = require('./study-view.js');
         + '<div class="vsum">最优基：' + r.result.basisNames.join('、')
         + '　　（基准最优基：' + r.base.basisNames.join('、') + '）</div></div>';
     } else {
-      h += '<div class="verdict ' + (r.status === 'unbounded' ? 'unb' : 'no') + '">'
+      h += '<div class="verdict ' + (r.status === 'infeasible' ? 'no' : 'unb') + '">'
         + '<div class="vtitle">' + statusName(r.status) + '</div>'
-        + '<div class="vsum">按新的条件，问题' + (r.status === 'infeasible' ? '不存在可行解' : '目标值无界')
-        + '，因此没有最优解。</div></div>';
+        + '<div class="vsum">' + (r.status === 'infeasible' ? '按新的条件，问题不存在可行解。'
+          : r.status === 'unbounded' ? '按新的条件，目标值无界。' : '求解未完成，无法确认最优。') + '</div></div>';
     }
 
     h += resultLayout.navigation([['sensitivity-work','查看判断与迭代']])
@@ -9153,9 +9212,9 @@ var study = require('./study-view.js');
     box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  function banner(msg) {
-    $('sBanners').innerHTML = msg
-      ? '<div class="banner err">' + esc(msg) + '</div>' : '';
+  function banner(msg, kind) {
+    interaction.message($('sBanners'), msg, kind === undefined ? 'err' : kind);
+    if (msg && kind === undefined) interaction.invalid($('mod-sens'));
   }
 
   function readScenario() {
@@ -9185,12 +9244,14 @@ var study = require('./study-view.js');
   function restoreScenario(s) {
     Array.prototype.forEach.call($('sensTabs').querySelectorAll('button'), function (button) {
       button.classList.toggle('on', button.dataset.t === s.kind);
+      button.setAttribute('aria-pressed', String(button.dataset.t === s.kind));
     });
     renderForm(s.kind);
     if (s.kind === 'param') {
       paramKind = s.paramKind;
       Array.prototype.forEach.call($('pKind').querySelectorAll('button'), function (button) {
         button.classList.toggle('on', button.dataset.k === paramKind);
+        button.setAttribute('aria-pressed', String(button.dataset.k === paramKind));
       });
       renderParamBody();
     }
@@ -9205,18 +9266,24 @@ var study = require('./study-view.js');
   /* ---------------- 启动 ---------------- */
   panel.init();
   $('sScenario').addEventListener('input', function (e) {
-    clearAnalysis();
+    invalidateAnalysis();
     if (e.target.tagName === 'INPUT') {
       e.target.setAttribute('aria-invalid', isFinite(parseNumber(e.target.value, true)) ? 'false' : 'true');
     }
   });
-  $('sScenario').addEventListener('change', clearAnalysis);
+  function invalidateAnalysis() {
+    var had = !!$('sensOut');
+    clearAnalysis();
+    if (had) banner('分析条件已修改，请重新分析。', '');
+  }
+  $('sScenario').addEventListener('change', invalidateAnalysis);
   $('sSolveBtn').addEventListener('click', solveBase);
   var savedProblems = require('./draft.js').attachLinear({
     key: 'sens', mount: 'sensPanel', panel: panel, watch: ['sScenario', 'sSolveBtn'],
     validExtra: validScenario,
     readExtra: function (p) { p.scenario = readScenario(); },
-    restoreExtra: function (p) { pendingScenario = p.scenario || null; }
+    restoreExtra: function (p) { pendingScenario = p.scenario || null; },
+    clearExtra: function () { banner(''); }
   });
 })();
 
@@ -9267,9 +9334,11 @@ function readMode() {
 function saveMode(mode) {
   try {
     localStorage.setItem(KEY, mode);
+    return true;
   } catch (e) {
     /* 存不下就算了：本次仍然生效，只是下次打开回到默认 */
   }
+  return false;
 }
 
 /* 把「用户选的档位」解析成真正生效的 light / dark */
@@ -9298,14 +9367,18 @@ function paint(mode) {
 }
 
 function selectMode(mode) {
-  saveMode(mode);
+  activeMode = mode;
+  var saved = saveMode(mode);
   paint(mode);
+  var note = document.getElementById('themeSaveNote');
+  if (note) note.textContent = saved ? '显示模式已保存在此浏览器。' : '显示模式本次生效，但未能保存；刷新后可能恢复原设置。';
 }
+
+var activeMode = readMode();
 
 (function () {
   /* 开屏先按已存的档位落属性（早于首次绘制，见文件头注释） */
-  var mode = readMode();
-  paint(mode);
+  paint(activeMode);
 
   var seg = document.getElementById('themeSeg');
   if (seg) {
@@ -9323,7 +9396,7 @@ function selectMode(mode) {
   /* 系统外观变化时实时跟随：另外两档在 resolve() 里会忽略系统值，
      但仍然无条件重绘一次 —— 省一次判断，代价只是一次属性写入。 */
   if (mq) {
-    var onSysChange = function () { paint(readMode()); };
+    var onSysChange = function () { paint(activeMode); };
     if (mq.addEventListener) mq.addEventListener('change', onSysChange);
     else if (mq.addListener) mq.addListener(onSysChange);   /* 老 WebView 只有这个 */
   }
@@ -9817,6 +9890,14 @@ function init() {
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', onResize);
   bar.addEventListener('focusin', reveal);
+  document.addEventListener('focusin', function (event) {
+    if (bar.contains(event.target)) return;
+    requestAnimationFrame(function () {
+      if (document.activeElement !== event.target || hidden) return;
+      var rect = event.target.getBoundingClientRect(), top = bar.getBoundingClientRect().top;
+      if (rect.bottom > top && rect.top < window.innerHeight) window.scrollBy(0, rect.bottom - top + 16);
+    });
+  });
 }
 
 init();
@@ -10376,11 +10457,16 @@ var player = require('./transport-player.js');
 var panels = require('./input-panel.js');
 var layout = require('./result-layout.js');
 var draft = require('./draft.js');
+var interaction = require('./interaction.js');
 (function () {
   var MAX = 8, guide, saved;
   var state = { direction: 'min', rows: 0, cols: 0, cells: [], supply: [], demand: [], surplusCost: [], shortageCost: [] };
   var disposePlayer = function () {};
-  function invalidate() { disposePlayer(); disposePlayer = function () {}; $('tpOut').innerHTML = ''; $('tpBanners').innerHTML = ''; }
+  function invalidate() {
+    var hadResult = !!$('tpOut').textContent;
+    disposePlayer(); disposePlayer = function () {}; $('tpOut').innerHTML = '';
+    if (hadResult) interaction.message($('tpBanners'), interaction.STALE);
+  }
   function number(raw) { return parseNumber(raw, true); }
   function problem() {
     return { direction: state.direction, cost: state.cells.map(function (r) { return r.map(function (v) { return transport.isForbidden(v) ? v : number(v); }); }),
@@ -10435,6 +10521,7 @@ var draft = require('./draft.js');
     syncBalance();
   }
   function resize(rows, cols) {
+    var focused = document.activeElement;
     function size(a, n) { var out = []; for (var i = 0; i < n; i++) out[i] = a[i] === undefined ? '' : a[i]; return out; }
     state.supply = size(state.supply, rows); state.demand = size(state.demand, cols);
     state.surplusCost = size(state.surplusCost, rows); state.shortageCost = size(state.shortageCost, cols);
@@ -10442,6 +10529,7 @@ var draft = require('./draft.js');
     for (var i = 0; i < rows; i++) cells[i] = size(state.cells[i] || [], cols);
     state.rows = rows; state.cols = cols; state.cells = cells;
     invalidate(); renderInput();
+    interaction.recoverFocus(focused, $('tpAddRow').disabled ? $('tpDelRow') : $('tpAddRow'));
   }
   function load(p) {
     state.direction = p.direction;
@@ -10498,15 +10586,16 @@ var draft = require('./draft.js');
   $('tpPanel').addEventListener('change', edit);
   $('tpSolveBtn').addEventListener('click', function () {
     invalidate();
+    interaction.message($('tpBanners'), '');
     var res = transport.transportSolve(problem());
-    if (!res.ok) { $('tpBanners').innerHTML = '<div class="banner err">' + esc(res.message) + '</div>'; return; }
+    if (!res.ok) { interaction.message($('tpBanners'), res.message, 'err'); interaction.invalid($('tpPanel')); return; }
     $('tpOut').innerHTML = report.render(res);
     panels.addScrollHints($('tpOut')); layout.wire($('tpOut')); disposePlayer = player.wire($('tpOut'), res); saved.record();
   });
   renderInput();
   saved = draft.attach({ key: 'transport', mount: 'tpPanel', valid: draft.validTransport,
     read: function () { return state; }, restore: load,
-    reset: function () { state.direction = 'min'; resize(0, 0); } });
+    reset: function () { state.direction = 'min'; resize(0, 0); interaction.message($('tpBanners'), ''); } });
 })();
 module.exports = {};
 });
@@ -10537,6 +10626,7 @@ var standardCard = report.standardCard;
 var graphCard = report.graphCard;
 var resultLayout = require('./result-layout.js');
 var study = require('./study-view.js');
+var interaction = require('./interaction.js');
 
 (function () {
   'use strict';
@@ -10561,7 +10651,13 @@ var study = require('./study-view.js');
     var r = $('result');
     if (!r.classList.contains('show') || r.classList.contains('stale')) return;
     r.classList.add('stale');
-    $('banners').innerHTML = '<div class="banner">输入已修改，点「求解」重新计算。</div>';
+    interaction.message($('banners'), '输入已修改，请重新求解。下方旧结果对应修改前的题目。');
+    var extra = r.querySelector('.result-extra');
+    if (extra) extra.hidden = true;
+    var jump = r.querySelector('[data-jump="analysis"]');
+    if (jump) jump.disabled = true;
+    var heading = r.querySelector('h2.sec');
+    if (heading) heading.textContent = '修改前题目的结论';
   }
 
   function renderResult(res, prob) {
@@ -10575,6 +10671,7 @@ var study = require('./study-view.js');
       banners.innerHTML = '<div class="banner err"><b>输入有误</b>：' + esc(res.message) + '</div>';
       box.classList.remove('show');
       box.innerHTML = '';
+      interaction.invalid($('simplexPanel'));
       return;
     }
 

@@ -8,11 +8,16 @@ var player = require('./transport-player.js');
 var panels = require('./input-panel.js');
 var layout = require('./result-layout.js');
 var draft = require('./draft.js');
+var interaction = require('./interaction.js');
 (function () {
   var MAX = 8, guide, saved;
   var state = { direction: 'min', rows: 0, cols: 0, cells: [], supply: [], demand: [], surplusCost: [], shortageCost: [] };
   var disposePlayer = function () {};
-  function invalidate() { disposePlayer(); disposePlayer = function () {}; $('tpOut').innerHTML = ''; $('tpBanners').innerHTML = ''; }
+  function invalidate() {
+    var hadResult = !!$('tpOut').textContent;
+    disposePlayer(); disposePlayer = function () {}; $('tpOut').innerHTML = '';
+    if (hadResult) interaction.message($('tpBanners'), interaction.STALE);
+  }
   function number(raw) { return parseNumber(raw, true); }
   function problem() {
     return { direction: state.direction, cost: state.cells.map(function (r) { return r.map(function (v) { return transport.isForbidden(v) ? v : number(v); }); }),
@@ -67,6 +72,7 @@ var draft = require('./draft.js');
     syncBalance();
   }
   function resize(rows, cols) {
+    var focused = document.activeElement;
     function size(a, n) { var out = []; for (var i = 0; i < n; i++) out[i] = a[i] === undefined ? '' : a[i]; return out; }
     state.supply = size(state.supply, rows); state.demand = size(state.demand, cols);
     state.surplusCost = size(state.surplusCost, rows); state.shortageCost = size(state.shortageCost, cols);
@@ -74,6 +80,7 @@ var draft = require('./draft.js');
     for (var i = 0; i < rows; i++) cells[i] = size(state.cells[i] || [], cols);
     state.rows = rows; state.cols = cols; state.cells = cells;
     invalidate(); renderInput();
+    interaction.recoverFocus(focused, $('tpAddRow').disabled ? $('tpDelRow') : $('tpAddRow'));
   }
   function load(p) {
     state.direction = p.direction;
@@ -130,14 +137,15 @@ var draft = require('./draft.js');
   $('tpPanel').addEventListener('change', edit);
   $('tpSolveBtn').addEventListener('click', function () {
     invalidate();
+    interaction.message($('tpBanners'), '');
     var res = transport.transportSolve(problem());
-    if (!res.ok) { $('tpBanners').innerHTML = '<div class="banner err">' + esc(res.message) + '</div>'; return; }
+    if (!res.ok) { interaction.message($('tpBanners'), res.message, 'err'); interaction.invalid($('tpPanel')); return; }
     $('tpOut').innerHTML = report.render(res);
     panels.addScrollHints($('tpOut')); layout.wire($('tpOut')); disposePlayer = player.wire($('tpOut'), res); saved.record();
   });
   renderInput();
   saved = draft.attach({ key: 'transport', mount: 'tpPanel', valid: draft.validTransport,
     read: function () { return state; }, restore: load,
-    reset: function () { state.direction = 'min'; resize(0, 0); } });
+    reset: function () { state.direction = 'min'; resize(0, 0); interaction.message($('tpBanners'), ''); } });
 })();
 module.exports = {};

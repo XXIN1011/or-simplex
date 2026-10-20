@@ -23,6 +23,7 @@ var standardCard = report.standardCard;
 var graphCard = report.graphCard;
 var resultLayout = require('./result-layout.js');
 var study = require('./study-view.js');
+var interaction = require('./interaction.js');
 
 (function () {
   'use strict';
@@ -47,7 +48,13 @@ var study = require('./study-view.js');
     var r = $('result');
     if (!r.classList.contains('show') || r.classList.contains('stale')) return;
     r.classList.add('stale');
-    $('banners').innerHTML = '<div class="banner">输入已修改，点「求解」重新计算。</div>';
+    interaction.message($('banners'), '输入已修改，请重新求解。下方旧结果对应修改前的题目。');
+    var extra = r.querySelector('.result-extra');
+    if (extra) extra.hidden = true;
+    var jump = r.querySelector('[data-jump="analysis"]');
+    if (jump) jump.disabled = true;
+    var heading = r.querySelector('h2.sec');
+    if (heading) heading.textContent = '修改前题目的结论';
   }
 
   function renderResult(res, prob) {
@@ -61,6 +68,7 @@ var study = require('./study-view.js');
       banners.innerHTML = '<div class="banner err"><b>输入有误</b>：' + esc(res.message) + '</div>';
       box.classList.remove('show');
       box.innerHTML = '';
+      interaction.invalid($('simplexPanel'));
       return;
     }
 

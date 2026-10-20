@@ -40,9 +40,11 @@ function readMode() {
 function saveMode(mode) {
   try {
     localStorage.setItem(KEY, mode);
+    return true;
   } catch (e) {
     /* 存不下就算了：本次仍然生效，只是下次打开回到默认 */
   }
+  return false;
 }
 
 /* 把「用户选的档位」解析成真正生效的 light / dark */
@@ -71,14 +73,18 @@ function paint(mode) {
 }
 
 function selectMode(mode) {
-  saveMode(mode);
+  activeMode = mode;
+  var saved = saveMode(mode);
   paint(mode);
+  var note = document.getElementById('themeSaveNote');
+  if (note) note.textContent = saved ? '显示模式已保存在此浏览器。' : '显示模式本次生效，但未能保存；刷新后可能恢复原设置。';
 }
+
+var activeMode = readMode();
 
 (function () {
   /* 开屏先按已存的档位落属性（早于首次绘制，见文件头注释） */
-  var mode = readMode();
-  paint(mode);
+  paint(activeMode);
 
   var seg = document.getElementById('themeSeg');
   if (seg) {
@@ -96,7 +102,7 @@ function selectMode(mode) {
   /* 系统外观变化时实时跟随：另外两档在 resolve() 里会忽略系统值，
      但仍然无条件重绘一次 —— 省一次判断，代价只是一次属性写入。 */
   if (mq) {
-    var onSysChange = function () { paint(readMode()); };
+    var onSysChange = function () { paint(activeMode); };
     if (mq.addEventListener) mq.addEventListener('change', onSysChange);
     else if (mq.addListener) mq.addListener(onSysChange);   /* 老 WebView 只有这个 */
   }

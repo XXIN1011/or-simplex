@@ -52,7 +52,7 @@
 #asPanel .draft-tools,#asPanel .problem-history{margin-top:4px}
 .result-nav{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 18px}
 .result-nav .btn{min-height:44px}
-.study-toolbar{padding:12px!important}
+.study-toolbar{--card-pad:12px}
 .study-toolbar .seg{display:inline-flex}
 .study-controls{margin-top:12px}
 .study-progress{font-size:13px;font-weight:650;line-height:1.6;margin-bottom:8px;overflow-wrap:anywhere}

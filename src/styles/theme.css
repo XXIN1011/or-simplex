@@ -8,14 +8,12 @@ input,select,textarea{caret-color:var(--accent);accent-color:var(--accent)}
 a{text-underline-offset:4px}
 button,summary,a,input,select{scroll-margin-block:24px 110px}
 input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input.num[aria-invalid="true"]{border-color:var(--err);box-shadow:0 0 0 1px var(--err)}
 button:disabled{transform:none}
 
 /* 保留原有选择状态与底栏指示器，仅统一视觉语言。 */
-.seg{background:var(--soft);border-color:var(--line);padding:4px;gap:4px}
-.seg button{border-radius:7px}
 .seg button.on{background:var(--card);color:var(--accent-text);box-shadow:0 1px 3px rgba(15,22,35,.12)}
 button.btn{border-radius:var(--r);box-shadow:none;transition:background var(--duration-fast),border-color var(--duration-fast),color var(--duration-fast)}
-button.btn.primary{min-height:48px}
 button.btn:disabled{opacity:.45}
 button.btn.primary:disabled{filter:none}
 .tabbar{background:var(--card);border-color:var(--line);border-radius:16px;box-shadow:0 6px 24px -12px rgba(15,22,35,.32);padding:5px;gap:4px}

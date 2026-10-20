@@ -11,6 +11,7 @@ var dom = require('./dom.js');
 var esc = dom.esc;
 var parseNumber = require('../core/number-input.js').parseNumber;
 var inputGuide = require('./input-guide.js');
+var interaction = require('./interaction.js');
 
 /* 表格横向溢出时给一句提示：手机上看不见滚动条，不说一声用户不知道右边还有内容。
    只在真的溢出（scrollWidth > clientWidth）时才插入，且不重复插入。
@@ -244,6 +245,8 @@ function createInputPanel(cfg) {
         state.m--;
         render();
         onChange();
+        var next = t.querySelector('button.delvar[data-i="' + Math.min(+b.dataset.i, state.m - 1) + '"]');
+        (next || el('addCon')).focus();
       });
     });
   }
@@ -327,7 +330,11 @@ function createInputPanel(cfg) {
     Array.prototype.forEach.call(el('dirSeg').querySelectorAll('button'), function (b) {
       b.addEventListener('click', function () { setDir(b.dataset.dir); });
     });
-    var wire = function (key, fn) { el(key).addEventListener('click', fn); };
+    var wire = function (key, fn) { el(key).addEventListener('click', function () {
+      var focused = document.activeElement;
+      fn();
+      interaction.recoverFocus(focused, el(key.indexOf('Var') >= 0 ? (state.n ? 'delVar' : 'addVar') : (state.m ? 'delCon' : 'addCon')));
+    }); };
     wire('addVar', function () { setN(state.n + 1); });
     wire('delVar', function () { setN(state.n - 1); });
     wire('addCon', function () { setM(state.m + 1); });
